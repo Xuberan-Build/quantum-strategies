@@ -8,7 +8,7 @@ import { storeCustomerInsights } from '@/lib/google-sheets/customer-sync';
 
 export async function POST(req: Request) {
   try {
-    const { sessionId, placements, productName = 'Business Alignment Orientation', productSlug = 'business-alignment' } = await req.json();
+    const { sessionId, placements, productName = 'Business Alignment Orientation', productSlug = 'business-alignment', userId } = await req.json();
     if (!sessionId) {
       return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
     }
@@ -68,6 +68,40 @@ export async function POST(req: Request) {
           .filter((insight: string | null) => insight !== null && insight.trim().length > 0)
       )
       .join('\n\n---\n\n');
+
+    // For Strategic Path Declaration: inject all prior deliverables as context
+    let priorDeliverableContext = '';
+    if (productSlug === 'declaration-rite-strategic-path') {
+      try {
+        const resolvedUserId = userId || (await supabaseAdmin
+          .from('product_sessions')
+          .select('user_id')
+          .eq('id', sessionId)
+          .single()
+          .then(({ data }) => data?.user_id));
+
+        if (resolvedUserId) {
+          const { data: priorDeliverables } = await supabaseAdmin
+            .rpc('get_user_prior_deliverables', {
+              p_user_id: resolvedUserId,
+              p_exclude_session: sessionId,
+            });
+
+          if (priorDeliverables && priorDeliverables.length > 0) {
+            priorDeliverableContext = priorDeliverables
+              .map((d: { product_name: string; deliverable_content: string; completed_at: string }) =>
+                `=== ${d.product_name} (completed ${new Date(d.completed_at).toLocaleDateString()}) ===\n\n${d.deliverable_content}`
+              )
+              .join('\n\n---\n\n');
+            console.log(`[final-briefing] Injecting ${priorDeliverables.length} prior deliverables for Strategic Path`);
+          } else {
+            console.log('[final-briefing] No prior deliverables found for Strategic Path');
+          }
+        }
+      } catch (e) {
+        console.error('[final-briefing] Failed to fetch prior deliverables:', e);
+      }
+    }
 
     const astro = placements?.astrology || {};
     const hd = placements?.human_design || {};
@@ -203,7 +237,9 @@ ${userResponses || 'No detailed responses provided.'}
 
 ${wizardNudges ? `\n\n${wizardLabel}'S INSIGHTS FROM EACH STEP:\n\n${wizardNudges}` : ''}
 
-${!isPersonalAlignment && moneyNotes ? `\n\nMONEY/REVENUE GOALS MENTIONED:\n${moneyNotes}` : ''}`;
+${!isPersonalAlignment && moneyNotes ? `\n\nMONEY/REVENUE GOALS MENTIONED:\n${moneyNotes}` : ''}
+
+${priorDeliverableContext ? `\n\n--- PRIOR SCAN & DECLARATION DELIVERABLES ---\nThe following are completed outputs from the user's prior scans and declarations. Use these as the primary diagnostic context for synthesis.\n\n${priorDeliverableContext}` : ''}`;
 
     // Use product-specific deliverable prompt or fallback to hardcoded Quantum Blueprint
     const instructionMessage = product?.final_deliverable_prompt || `Generate my Quantum Brand Blueprint with these 7 sections:
@@ -279,8 +315,9 @@ DO NOT just copy the step insights verbatim. DISTILL them into the most impactfu
 
     // Generate final briefing using AIRequestService
     let briefing = '';
+    let briefingResult: Awaited<ReturnType<typeof AIRequestService.request>> | null = null;
     try {
-      const response = await AIRequestService.request({
+      briefingResult = await AIRequestService.request({
         model: process.env.OPENAI_MODEL || 'gpt-4o',
         systemPrompt,
         messages: [
@@ -296,10 +333,10 @@ DO NOT just copy the step insights verbatim. DISTILL them into the most impactfu
         retries: 2,
       });
 
-      briefing = response.content;
+      briefing = briefingResult.content;
 
       console.log('[final-briefing] AI response successful');
-      console.log(`[final-briefing] Tokens used: ${response.tokensUsed.total} (${response.tokensUsed.prompt} prompt, ${response.tokensUsed.completion} completion)`);
+      console.log(`[final-briefing] Tokens used: ${briefingResult.tokensUsed.total} (${briefingResult.tokensUsed.prompt} prompt, ${briefingResult.tokensUsed.completion} completion)`);
     } catch (err: any) {
       console.error('[final-briefing] AI request failed:', err?.message || err);
       return NextResponse.json({ error: 'AI generation failed', detail: err?.message || 'Unknown error' }, { status: 500 });
@@ -335,16 +372,41 @@ DO NOT just copy the step insights verbatim. DISTILL them into the most impactfu
         .single();
 
       if (session) {
-        // Update product_sessions with deliverable
+        const deliverableModel = process.env.OPENAI_MODEL || 'gpt-4o';
+
+        // Update product_sessions with deliverable + generation metadata
         await supabaseAdmin
           .from('product_sessions')
           .update({
             deliverable_content: briefing,
             completed_at: new Date().toISOString(),
+            deliverable_model: deliverableModel,
+            deliverable_input_tokens: briefingResult?.tokensUsed.prompt ?? null,
+            deliverable_output_tokens: briefingResult?.tokensUsed.completion ?? null,
+            deliverable_generation_ms: briefingResult?.generationMs ?? null,
           })
           .eq('id', sessionId);
 
         console.log('[final-briefing] Saved deliverable to product_sessions');
+
+        // Fire-and-forget: log to generation_log
+        supabaseAdmin.from('generation_log').insert({
+          user_id: session.user_id,
+          session_id: sessionId,
+          product_slug: session.product_slug || productSlug,
+          event_type: 'deliverable',
+          step_number: null,
+          model: deliverableModel,
+          input_tokens: briefingResult?.tokensUsed.prompt ?? null,
+          output_tokens: briefingResult?.tokensUsed.completion ?? null,
+          generation_ms: briefingResult?.generationMs ?? null,
+          user_input: {
+            product_slug: session.product_slug || productSlug,
+            user_response_count: (userResponses || '').split('\n\n').filter(Boolean).length,
+            prior_scans_available: priorDeliverableContext ? true : false,
+          },
+          ai_output: briefing,
+        }).then(() => {}, () => {});
 
         // Get user info for email
         const { data: user } = await supabaseAdmin

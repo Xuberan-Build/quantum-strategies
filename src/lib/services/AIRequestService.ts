@@ -23,6 +23,7 @@ export interface AIRequestOptions {
 export interface AIResponse {
   content: string;
   finishReason: string;
+  generationMs: number;
   tokensUsed: {
     prompt: number;
     completion: number;
@@ -98,6 +99,7 @@ export class AIRequestService {
         return {
           content,
           finishReason,
+          generationMs: duration,
           tokensUsed: {
             prompt: completion.usage?.prompt_tokens || 0,
             completion: completion.usage?.completion_tokens || 0,

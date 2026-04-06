@@ -34,6 +34,7 @@ describe('POST /api/products/final-briefing', () => {
     vi.mocked(AIRequestService.request).mockResolvedValue({
       content: 'Generated briefing content',
       finishReason: 'stop',
+      generationMs: 1200,
       tokensUsed: { total: 500, prompt: 250, completion: 250 },
     });
     vi.mocked(EmailTemplateService.getDeliverablePreview).mockReturnValue('Brief preview...');

@@ -84,8 +84,9 @@ Product: ${productName || 'Business Alignment Orientation'}
 
     // Use AIRequestService for cleaner, more reliable AI requests
     let content = '';
+    let aiResponse: Awaited<ReturnType<typeof AIRequestService.request>> | null = null;
     try {
-      const response = await AIRequestService.request({
+      aiResponse = await AIRequestService.request({
         model: process.env.OPENAI_MODEL || 'gpt-4o',
         systemPrompt: `${systemPrompt || ''}\n\n${context}`,
         messages: messages as any[],
@@ -94,10 +95,10 @@ Product: ${productName || 'Business Alignment Orientation'}
         retries: 2,
       });
 
-      content = response.content;
+      content = aiResponse.content;
 
       console.log('[step-insight] AI response successful');
-      console.log(`[step-insight] Tokens used: ${response.tokensUsed.total} (${response.tokensUsed.prompt} prompt, ${response.tokensUsed.completion} completion)`);
+      console.log(`[step-insight] Tokens used: ${aiResponse.tokensUsed.total} (${aiResponse.tokensUsed.prompt} prompt, ${aiResponse.tokensUsed.completion} completion)`);
     } catch (err: any) {
       console.error('[step-insight] AI request failed:', err?.message || err);
       return NextResponse.json(
@@ -106,7 +107,7 @@ Product: ${productName || 'Business Alignment Orientation'}
       );
     }
 
-    // Log AI response to conversations (append to messages array)
+    // Log AI response to conversations and generation_log
     try {
       if (body?.sessionId) {
         const { data: convo } = await supabaseAdmin
@@ -123,9 +124,39 @@ Product: ${productName || 'Business Alignment Orientation'}
         await supabaseAdmin
           .from('conversations')
           .upsert(
-            { session_id: body.sessionId, step_number: stepNumber, messages: updated },
+            {
+              session_id: body.sessionId,
+              step_number: stepNumber,
+              messages: updated,
+              model: body.model || process.env.OPENAI_MODEL || 'gpt-4o',
+              total_input_tokens: (convo as any)?.total_input_tokens
+                ? ((convo as any).total_input_tokens + (aiResponse?.tokensUsed.prompt || 0))
+                : (aiResponse?.tokensUsed.prompt || 0),
+              total_output_tokens: (convo as any)?.total_output_tokens
+                ? ((convo as any).total_output_tokens + (aiResponse?.tokensUsed.completion || 0))
+                : (aiResponse?.tokensUsed.completion || 0),
+            },
             { onConflict: 'session_id,step_number' }
           );
+
+        // Fire-and-forget: log to generation_log
+        supabaseAdmin.from('generation_log').insert({
+          user_id: userId || null,
+          session_id: body.sessionId,
+          product_slug: productSlug,
+          event_type: 'step_insight',
+          step_number: stepNumber,
+          model: body.model || process.env.OPENAI_MODEL || 'gpt-4o',
+          input_tokens: aiResponse?.tokensUsed.prompt ?? null,
+          output_tokens: aiResponse?.tokensUsed.completion ?? null,
+          generation_ms: aiResponse?.generationMs ?? null,
+          user_input: {
+            step_number: stepNumber,
+            step_title: stepData?.title || null,
+            user_answer: sanitizedResponse,
+          },
+          ai_output: content,
+        }).then(() => {}, () => {});
       }
     } catch (e) {
       // ignore logging errors

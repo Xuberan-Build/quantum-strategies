@@ -3,6 +3,7 @@ import { getDay1Template } from './templates/day-1-check-in';
 import { getDay3Template } from './templates/day-3-value-reminder';
 import { getDay7Template } from './templates/day-7-upsell';
 import { getProductBySlug } from '../constants/products';
+import { BUSINESS } from '../../../config/business.config';
 
 export interface PurchaseRecord {
   timestamp: string;
@@ -58,7 +59,7 @@ export async function sendDay1Email(purchase: PurchaseRecord): Promise<void> {
     name: purchase.name,
     product_name: product.name,
     gpt_link: product.gptLink ?? '',
-    unsubscribe_link: `https://www.quantumstrategies.online/unsubscribe?email=${encodeURIComponent(purchase.email)}`,
+    unsubscribe_link: `${BUSINESS.domain}/unsubscribe?email=${encodeURIComponent(purchase.email)}`,
   });
 
   await sendEmail({
@@ -84,7 +85,7 @@ export async function sendDay3Email(purchase: PurchaseRecord): Promise<void> {
     name: purchase.name,
     product_name: product.name,
     gpt_link: product.gptLink ?? '',
-    unsubscribe_link: `https://www.quantumstrategies.online/unsubscribe?email=${encodeURIComponent(purchase.email)}`,
+    unsubscribe_link: `${BUSINESS.domain}/unsubscribe?email=${encodeURIComponent(purchase.email)}`,
   });
 
   await sendEmail({
@@ -117,7 +118,7 @@ export async function sendDay7Email(purchase: PurchaseRecord): Promise<void> {
     product_name: product.name,
     next_product_name: nextProduct.name,
     next_product_link: nextProduct.link,
-    unsubscribe_link: `https://www.quantumstrategies.online/unsubscribe?email=${encodeURIComponent(purchase.email)}`,
+    unsubscribe_link: `${BUSINESS.domain}/unsubscribe?email=${encodeURIComponent(purchase.email)}`,
   });
 
   await sendEmail({

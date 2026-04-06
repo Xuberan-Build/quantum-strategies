@@ -80,9 +80,10 @@ Placements: ${placementSummary}
       }));
 
     // Generate AI response using AIRequestService
-    let aiResponse = '';
+    let aiResponseText = '';
+    let aiResult: Awaited<ReturnType<typeof AIRequestService.request>> | null = null;
     try {
-      const response = await AIRequestService.request({
+      aiResult = await AIRequestService.request({
         model: process.env.OPENAI_MODEL || 'gpt-4o',
         systemPrompt: `${systemPrompt}\n\n${contextPrompt}`,
         messages: [...previousMessages, { role: 'user', content: sanitizedQuestion }],
@@ -91,20 +92,22 @@ Placements: ${placementSummary}
         retries: 2,
       });
 
-      aiResponse = response.content;
+      aiResponseText = aiResult.content;
 
       console.log('[followup-response] AI response successful');
-      console.log(`[followup-response] Tokens used: ${response.tokensUsed.total} (${response.tokensUsed.prompt} prompt, ${response.tokensUsed.completion} completion)`);
+      console.log(`[followup-response] Tokens used: ${aiResult.tokensUsed.total} (${aiResult.tokensUsed.prompt} prompt, ${aiResult.tokensUsed.completion} completion)`);
     } catch (err: any) {
       console.error('[followup-response] AI request failed:', err?.message || err);
       return NextResponse.json({ error: 'AI generation failed', detail: err?.message || 'Unknown error' }, { status: 500 });
     }
 
-    // Log follow-up exchange to conversations (messages array)
+    const aiResponse = aiResponseText;
+
+    // Log follow-up exchange to conversations and generation_log
     try {
       const { data: convo } = await supabaseAdmin
         .from('conversations')
-        .select('messages')
+        .select('messages, total_input_tokens, total_output_tokens')
         .eq('session_id', sessionId)
         .eq('step_number', stepNumber)
         .maybeSingle();
@@ -117,9 +120,34 @@ Placements: ${placementSummary}
       await supabaseAdmin
         .from('conversations')
         .upsert(
-          { session_id: sessionId, step_number: stepNumber, messages: updated },
+          {
+            session_id: sessionId,
+            step_number: stepNumber,
+            messages: updated,
+            model: process.env.OPENAI_MODEL || 'gpt-4o',
+            total_input_tokens: ((convo as any)?.total_input_tokens || 0) + (aiResult?.tokensUsed.prompt || 0),
+            total_output_tokens: ((convo as any)?.total_output_tokens || 0) + (aiResult?.tokensUsed.completion || 0),
+          },
           { onConflict: 'session_id,step_number' }
         );
+
+      // Fire-and-forget: log to generation_log
+      supabaseAdmin.from('generation_log').insert({
+        user_id: userId || null,
+        session_id: sessionId,
+        product_slug: productSlug,
+        event_type: 'follow_up',
+        step_number: stepNumber,
+        model: process.env.OPENAI_MODEL || 'gpt-4o',
+        input_tokens: aiResult?.tokensUsed.prompt ?? null,
+        output_tokens: aiResult?.tokensUsed.completion ?? null,
+        generation_ms: aiResult?.generationMs ?? null,
+        user_input: {
+          step_number: stepNumber,
+          follow_up_question: followUpQuestion,
+        },
+        ai_output: aiResponse,
+      }).then(() => {}, () => {});
     } catch (e) {
       // ignore logging errors
     }
