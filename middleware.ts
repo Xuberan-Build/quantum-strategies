@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { BUSINESS } from './config/business.config';
 
 // Inline URL config to avoid dependency tracing overhead
 function normalizeUrl(url: string | undefined, fallback: string): string {
@@ -25,17 +26,17 @@ const MARKETING_URL = normalizeUrl(process.env.NEXT_PUBLIC_MARKETING_URL || proc
 // ============================================================================
 
 // CORS: Allowed origins for cross-subdomain requests
+// Derived from NEXT_PUBLIC_DOMAIN env var — add more origins if you have multiple subdomains
+const _domain = BUSINESS.domain.replace(/^https?:\/\//, '');
 const ALLOWED_ORIGINS = [
-  'https://www.quantumstrategies.online',
-  'https://quantumstrategies.online',
-  'https://app.quantumstrategies.online',
-];
+  BUSINESS.domain,
+  `https://${_domain}`,
+  `https://www.${_domain}`,
+  `https://app.${_domain}`,
+].filter((v, i, arr) => arr.indexOf(v) === i); // deduplicate
 
-// Admin: Emails that can access /admin routes
-const ADMIN_EMAILS = [
-  'santos.93.aus@gmail.com',
-  'austin@quantumstrategies.online',
-];
+// Admin: Emails that can access /admin routes (from ADMIN_EMAILS env var)
+const ADMIN_EMAILS = BUSINESS.adminEmails;
 
 // Admin: Set ADMIN_DISABLED=true in production to hide admin entirely
 const ADMIN_DISABLED = process.env.ADMIN_DISABLED === 'true';
@@ -59,7 +60,7 @@ const appPrefixes = ['/dashboard', '/admin'];
 const appExactPaths = ['/products/personal-alignment/interact'];
 
 // Protected paths requiring authentication
-const protectedPathPatterns = ['/dashboard', '/products/*/experience', '/products/*/interact'];
+const protectedPathPatterns = ['/dashboard', '/products/*/experience', '/products/*/interact', '/ledger', '/onboarding', '/commitments', '/billing'];
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -214,6 +215,15 @@ export async function middleware(request: NextRequest) {
     }
   }
   */
+
+  // -------------------------------------------------------------------------
+  // 2b. WWW → NON-WWW CANONICAL REDIRECT
+  // -------------------------------------------------------------------------
+  if (hostname.startsWith('www.')) {
+    const url = request.nextUrl.clone();
+    url.hostname = hostname.slice(4);
+    return NextResponse.redirect(url, 301);
+  }
 
   console.log('[Middleware] No routing match, continuing normally');
 

@@ -65,9 +65,11 @@ function getProductEntries(): MetadataRoute.Sitemap {
     return [];
   }
 
+  const excludedSlugs = new Set(["beta"]);
+
   return fs
     .readdirSync(productsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_"))
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_") && !excludedSlugs.has(entry.name))
     .map((entry) => ({
       url: `${base}/products/${entry.name}/`,
       lastModified: new Date(),
@@ -87,19 +89,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/articles/operations/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: `${base}/articles/product-development/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: `${base}/articles/waveforms/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${base}/the-rite-system/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/courses/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: `${base}/courses/vcap/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: `${base}/whitepapers/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: `${base}/portfolio/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: `${base}/quantum-glossary/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/privacy/`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
     { url: `${base}/terms/`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
   ];
 
   const articles = getArticleEntries();
   const whitepapers = getMdxEntries(path.join(contentRoot, "whitepapers"), "/whitepapers");
-  const glossary = getMdxEntries(path.join(contentRoot, "glossary"), "/quantum-glossary");
   const products = getProductEntries();
 
-  return [...staticRoutes, ...articles, ...whitepapers, ...glossary, ...products];
+  // Note: Glossary entries excluded from sitemap - they have noindex directives
+  return [...staticRoutes, ...articles, ...whitepapers, ...products];
 }
