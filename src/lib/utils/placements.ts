@@ -3,18 +3,55 @@
  * Used by both server and client to ensure consistent logic
  */
 
+export interface HumanDesignCenters {
+  head?: string;
+  ajna?: string;
+  throat?: string;
+  g_identity?: string;
+  heart_ego?: string;
+  solar_plexus?: string;
+  sacral?: string;
+  spleen?: string;
+  root?: string;
+}
+
 export interface Placements {
   astrology?: {
     sun?: string;
     moon?: string;
     rising?: string;
+    mercury?: string;
+    venus?: string;
+    mars?: string;
+    jupiter?: string;
+    saturn?: string;
+    uranus?: string;
+    neptune?: string;
+    pluto?: string;
+    houses?: string;
     [key: string]: string | undefined;
   };
   human_design?: {
     type?: string;
-    strategy?: string;
+    profile?: string;
     authority?: string;
-    [key: string]: string | undefined;
+    strategy?: string;
+    definition?: string;
+    not_self_theme?: string;
+    incarnation_cross?: string;
+    digestion?: string;
+    environment?: string;
+    sign?: string;
+    strongest_sense?: string;
+    primary_gift?: string;
+    other_gifts?: string;
+    design_gates?: number[];
+    personality_gates?: number[];
+    centers?: HumanDesignCenters | string;
+    // legacy
+    channels?: string;
+    gifts?: string;
+    [key: string]: unknown;
   };
   notes?: string;
 }
@@ -38,10 +75,13 @@ export function isPlacementsEmpty(placements: Placements | null | undefined): bo
     (v) => v && String(v).trim() && String(v).trim().toUpperCase() !== 'UNKNOWN'
   );
 
-  // Check if human design has any valid values
-  const hdHas = Object.values(hd).some(
-    (v) => v && String(v).trim() && String(v).trim().toUpperCase() !== 'UNKNOWN'
-  );
+  // Check if human design has any valid values (handle arrays, objects, and strings)
+  const hdHas = Object.values(hd).some((v) => {
+    if (!v) return false;
+    if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === 'object') return Object.values(v as object).some((cv) => cv && cv !== 'UNKNOWN');
+    return String(v).trim() && String(v).trim().toUpperCase() !== 'UNKNOWN';
+  });
 
   // Check if notes exist
   const notesHas =

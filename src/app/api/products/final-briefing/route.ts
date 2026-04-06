@@ -96,12 +96,21 @@ export async function POST(req: Request) {
     if (astro.houses && astro.houses !== 'UNKNOWN') astroFields.push(`Houses: ${astro.houses}`);
 
     const hdFields = [];
-    if (hd.type && hd.type !== 'UNKNOWN') hdFields.push(`Type: ${hd.type}`);
-    if (hd.strategy && hd.strategy !== 'UNKNOWN') hdFields.push(`Strategy: ${hd.strategy}`);
-    if (hd.authority && hd.authority !== 'UNKNOWN') hdFields.push(`Authority: ${hd.authority}`);
-    if (hd.profile && hd.profile !== 'UNKNOWN') hdFields.push(`Profile: ${hd.profile}`);
-    if (hd.incarnation_cross && hd.incarnation_cross !== 'UNKNOWN') hdFields.push(`Incarnation Cross: ${hd.incarnation_cross}`);
-    if (hd.channels && hd.channels !== 'UNKNOWN') hdFields.push(`Channels: ${hd.channels}`);
+    const isKnown = (v: any) => v && v !== 'UNKNOWN';
+
+    if (isKnown(hd.type)) hdFields.push(`Type: ${hd.type}`);
+    if (isKnown(hd.profile)) hdFields.push(`Profile: ${hd.profile}`);
+    if (isKnown(hd.authority)) hdFields.push(`Authority: ${hd.authority}`);
+    if (isKnown(hd.strategy)) hdFields.push(`Strategy: ${hd.strategy}`);
+    if (isKnown(hd.definition)) hdFields.push(`Definition: ${hd.definition}`);
+    if (isKnown(hd.not_self_theme)) hdFields.push(`Not-Self Theme: ${hd.not_self_theme}`);
+    if (isKnown(hd.incarnation_cross)) hdFields.push(`Incarnation Cross: ${hd.incarnation_cross}`);
+    if (isKnown(hd.primary_gift)) hdFields.push(`Primary Gift: Gate ${hd.primary_gift}`);
+    if (isKnown(hd.other_gifts)) hdFields.push(`Other Gifts: ${hd.other_gifts}`);
+    if (isKnown(hd.digestion)) hdFields.push(`Digestion: ${hd.digestion}`);
+    if (isKnown(hd.environment)) hdFields.push(`Environment: ${hd.environment}`);
+    if (isKnown(hd.sign)) hdFields.push(`Sign: ${hd.sign}`);
+    if (isKnown(hd.strongest_sense)) hdFields.push(`Strongest Sense: ${hd.strongest_sense}`);
 
     // Centers — support both legacy string format and new per-center object
     if (hd.centers) {
@@ -122,6 +131,13 @@ export async function POST(req: Request) {
         if (defined.length) hdFields.push(`Defined Centers: ${defined.join(', ')}`);
         if (undefined_.length) hdFields.push(`Undefined Centers: ${undefined_.join(', ')}`);
       }
+    }
+
+    if (Array.isArray(hd.design_gates) && hd.design_gates.length) {
+      hdFields.push(`Design Gates: ${hd.design_gates.join(', ')}`);
+    }
+    if (Array.isArray(hd.personality_gates) && hd.personality_gates.length) {
+      hdFields.push(`Personality (Conscious) Gates: ${hd.personality_gates.join(', ')}`);
     }
 
     let placementSummary = '';

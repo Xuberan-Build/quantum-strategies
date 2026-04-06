@@ -137,17 +137,60 @@ Rules:
 `;
 
     const hdPrompt = `
-You are an expert Human Design analyst. You will receive Human Design chart data either as images or as extracted PDF text.
+You are an expert Human Design analyst. Extract data from the provided Human Design chart PDF or image.
 
-IMPORTANT: Human Design centers CANNOT be reliably read from a bodygraph image alone — the color fill is ambiguous at low resolution. Prioritize any TEXT summary in the PDF (e.g. "Defined Centers: Sacral, Throat") over the image. If only an image is provided and centers are unclear, set them to "UNKNOWN".
+STEP 1 — Extract all explicitly stated text fields:
+- type (e.g. "Manifestor", "Generator", "Projector", "Reflector", "Manifesting Generator")
+- profile (e.g. "1/3")
+- authority (e.g. "Emotional - Solar Plexus")
+- strategy (e.g. "Informing", "To Respond", "To Wait for the Invitation")
+- definition (e.g. "Single", "Split", "Triple Split", "Quadruple Split")
+- not_self_theme (e.g. "Anger", "Frustration", "Bitterness", "Disappointment")
+- incarnation_cross (full name, e.g. "Right Angle Cross of The Unexpected (27/28 | 41/31)")
+- digestion (e.g. "Buzzing (Nervous Touch)")
+- environment (e.g. "Shores")
+- sign (e.g. "Peace")
+- strongest_sense (e.g. "Inner Vision")
+- primary_gift (the "Most Important Gift" number, e.g. "27")
+- other_gifts (comma-separated list of all other gift numbers)
 
-Extract ONLY what is clearly visible or explicitly stated. Never guess. Return JSON only:
+STEP 2 — Extract gate lists from the Design and Personality columns (just the gate number before the dot):
+- design_gates: array of gate numbers from the Design column (e.g. [41, 31, 26, 45, 49, 22, 39, 48, 54, 14])
+- personality_gates: array of gate numbers from the Personality column (e.g. [27, 28, 5, 35, 24, 21, 25, 56, 18, 30, 61, 14])
+
+STEP 3 — Using your Human Design knowledge, determine which of the 9 centers are defined.
+A center is DEFINED if it has at least one complete channel activated (both gates of a channel present across Design + Personality gates combined).
+Set each center to "defined", "undefined", or "UNKNOWN" if you cannot determine it.
+
+Centers and their channels:
+- head: channels 64-47, 61-24, 63-4
+- ajna: channels 64-47, 61-24, 63-4, 17-62, 11-56, 43-23
+- throat: channels 17-62, 11-56, 43-23, 35-36, 12-22, 45-21, 31-7, 33-13, 8-1, 20-57, 20-34, 16-48
+- g_identity: channels 31-7, 33-13, 8-1, 10-20, 25-51, 46-29, 2-14, 15-5
+- heart_ego: channels 45-21, 25-51, 26-44, 40-37
+- solar_plexus: channels 35-36, 12-22, 49-19, 55-39, 30-41, 6-59, 37-40
+- sacral: channels 46-29, 2-14, 15-5, 20-34, 6-59, 59-6, 27-50, 34-57, 9-52, 3-60, 42-53
+- spleen: channels 20-57, 34-57, 26-44, 27-50, 48-16, 18-58, 28-38, 32-54
+- root: channels 30-41, 49-19, 55-39, 28-38, 32-54, 53-42, 60-3, 19-49, 58-18
+
+Return JSON only:
 {
   "human_design": {
     "type": "",
-    "strategy": "",
-    "authority": "",
     "profile": "",
+    "authority": "",
+    "strategy": "",
+    "definition": "",
+    "not_self_theme": "",
+    "incarnation_cross": "",
+    "digestion": "",
+    "environment": "",
+    "sign": "",
+    "strongest_sense": "",
+    "primary_gift": "",
+    "other_gifts": "",
+    "design_gates": [],
+    "personality_gates": [],
     "centers": {
       "head": "",
       "ajna": "",
@@ -158,15 +201,9 @@ Extract ONLY what is clearly visible or explicitly stated. Never guess. Return J
       "sacral": "",
       "spleen": "",
       "root": ""
-    },
-    "channels": "",
-    "incarnation_cross": ""
+    }
   }
 }
-
-For each center, set "defined", "undefined", or "UNKNOWN".
-For channels: list any visible channel numbers/names as a comma-separated string, or "UNKNOWN".
-For incarnation_cross: include the full name if visible in text, or "UNKNOWN".
 `;
 
     const callExtraction = async (type: string, promptText: string, images: string[], pdfText: string | null) => {
@@ -237,9 +274,20 @@ For incarnation_cross: include the full name if visible in text, or "UNKNOWN".
       },
       human_design: hdResult?.human_design || {
         type: 'UNKNOWN',
-        strategy: 'UNKNOWN',
-        authority: 'UNKNOWN',
         profile: 'UNKNOWN',
+        authority: 'UNKNOWN',
+        strategy: 'UNKNOWN',
+        definition: 'UNKNOWN',
+        not_self_theme: 'UNKNOWN',
+        incarnation_cross: 'UNKNOWN',
+        digestion: 'UNKNOWN',
+        environment: 'UNKNOWN',
+        sign: 'UNKNOWN',
+        strongest_sense: 'UNKNOWN',
+        primary_gift: 'UNKNOWN',
+        other_gifts: 'UNKNOWN',
+        design_gates: [],
+        personality_gates: [],
         centers: {
           head: 'UNKNOWN',
           ajna: 'UNKNOWN',
@@ -251,8 +299,6 @@ For incarnation_cross: include the full name if visible in text, or "UNKNOWN".
           spleen: 'UNKNOWN',
           root: 'UNKNOWN',
         },
-        channels: 'UNKNOWN',
-        incarnation_cross: 'UNKNOWN',
       },
     };
 
