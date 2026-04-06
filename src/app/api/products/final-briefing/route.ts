@@ -339,7 +339,7 @@ DO NOT just copy the step insights verbatim. DISTILL them into the most impactfu
         await supabaseAdmin
           .from('product_sessions')
           .update({
-            deliverable: briefing,
+            deliverable_content: briefing,
             completed_at: new Date().toISOString(),
           })
           .eq('id', sessionId);

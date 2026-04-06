@@ -36,6 +36,8 @@ export default function ProductExperience({
   const [followUpCount, setFollowUpCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deliverable, setDeliverable] = useState<string | null>(null);
+  const [deliverableError, setDeliverableError] = useState<string | null>(null);
+  const [isGeneratingDeliverable, setIsGeneratingDeliverable] = useState(false);
   const [actionableNudges, setActionableNudges] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -660,12 +662,12 @@ export default function ProductExperience({
   };
 
   const generateDeliverable = async () => {
+    setIsGeneratingDeliverable(true);
+    setDeliverableError(null);
+
     try {
       console.log('[generateDeliverable] Called with placements:', JSON.stringify(placements, null, 2));
-      console.log('[generateDeliverable] Placements astrology:', placements?.astrology);
-      console.log('[generateDeliverable] Placements HD:', placements?.human_design);
 
-      // Call API to generate final briefing
       const response = await fetch('/api/products/final-briefing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -680,15 +682,17 @@ export default function ProductExperience({
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[generateDeliverable] API error:', response.status, errorText);
-        throw new Error(`Final briefing API failed: ${response.status}`);
+        throw new Error(`Failed to generate your report (${response.status}). Please try again.`);
       }
 
       const responseData = await response.json();
-      console.log('[generateDeliverable] API response received, briefing length:', responseData.briefing?.length);
-
       const { briefing: generatedDeliverable } = responseData;
 
-      // Save deliverable and mark complete
+      if (!generatedDeliverable) {
+        throw new Error('No report content returned. Please try again.');
+      }
+
+      // Single save — deliverable_content is the canonical column read by loadDeliverable
       await supabase
         .from('product_sessions')
         .update({
@@ -699,10 +703,13 @@ export default function ProductExperience({
         })
         .eq('id', session.id);
 
-      console.log('[generateDeliverable] Deliverable saved to database');
+      console.log('[generateDeliverable] Deliverable saved, length:', generatedDeliverable.length);
       setDeliverable(generatedDeliverable);
-    } catch (error) {
+    } catch (error: any) {
       console.error('[generateDeliverable] Error:', error);
+      setDeliverableError(error?.message || 'Something went wrong generating your report. Please try again.');
+    } finally {
+      setIsGeneratingDeliverable(false);
     }
   };
 
@@ -853,6 +860,44 @@ export default function ProductExperience({
   // - Show confirmation gate after files uploaded
   // - Auto-advance to step 2 if placements confirmed
   // - Guard effect to normalize state
+
+  // Generating deliverable — show loading screen
+  if (isGeneratingDeliverable) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1.5rem', textAlign: 'center', padding: '2rem' }}>
+        <div style={{ fontSize: '3rem' }}>✨</div>
+        <h2 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>
+          Building your {product.name}...
+        </h2>
+        <p style={{ color: 'rgba(206, 190, 255, 0.7)', fontSize: '1rem', maxWidth: '400px', margin: 0 }}>
+          Synthesizing your chart data and responses. This takes about 20–30 seconds.
+        </p>
+        <div style={{ width: '48px', height: '48px', border: '3px solid rgba(139, 92, 246, 0.3)', borderTopColor: '#8b5cf6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // Deliverable generation failed — show error with retry
+  if (deliverableError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1.5rem', textAlign: 'center', padding: '2rem' }}>
+        <div style={{ fontSize: '3rem' }}>⚠️</div>
+        <h2 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>
+          Something went wrong
+        </h2>
+        <p style={{ color: 'rgba(252, 165, 165, 0.9)', fontSize: '1rem', maxWidth: '420px', margin: 0 }}>
+          {deliverableError}
+        </p>
+        <button
+          onClick={() => generateDeliverable()}
+          style={{ padding: '0.875rem 2rem', background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: 600, cursor: 'pointer' }}
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   // If deliverable is ready, show it
   if (deliverable) {
