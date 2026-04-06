@@ -137,18 +137,36 @@ Rules:
 `;
 
     const hdPrompt = `
-You are an expert Human Design analyst. You will receive Human Design chart data either as images (signed URLs) or as extracted PDF text. Extract ONLY visible fields from charts or text data. If unclear, set "UNKNOWN". Never guess. Ignore narrative descriptions.
-Return JSON only:
+You are an expert Human Design analyst. You will receive Human Design chart data either as images or as extracted PDF text.
+
+IMPORTANT: Human Design centers CANNOT be reliably read from a bodygraph image alone — the color fill is ambiguous at low resolution. Prioritize any TEXT summary in the PDF (e.g. "Defined Centers: Sacral, Throat") over the image. If only an image is provided and centers are unclear, set them to "UNKNOWN".
+
+Extract ONLY what is clearly visible or explicitly stated. Never guess. Return JSON only:
 {
   "human_design": {
     "type": "",
     "strategy": "",
     "authority": "",
     "profile": "",
-    "centers": "",
-    "gifts": ""
+    "centers": {
+      "head": "",
+      "ajna": "",
+      "throat": "",
+      "g_identity": "",
+      "heart_ego": "",
+      "solar_plexus": "",
+      "sacral": "",
+      "spleen": "",
+      "root": ""
+    },
+    "channels": "",
+    "incarnation_cross": ""
   }
 }
+
+For each center, set "defined", "undefined", or "UNKNOWN".
+For channels: list any visible channel numbers/names as a comma-separated string, or "UNKNOWN".
+For incarnation_cross: include the full name if visible in text, or "UNKNOWN".
 `;
 
     const callExtraction = async (type: string, promptText: string, images: string[], pdfText: string | null) => {
@@ -222,8 +240,19 @@ Return JSON only:
         strategy: 'UNKNOWN',
         authority: 'UNKNOWN',
         profile: 'UNKNOWN',
-        centers: 'UNKNOWN',
-        gifts: 'UNKNOWN',
+        centers: {
+          head: 'UNKNOWN',
+          ajna: 'UNKNOWN',
+          throat: 'UNKNOWN',
+          g_identity: 'UNKNOWN',
+          heart_ego: 'UNKNOWN',
+          solar_plexus: 'UNKNOWN',
+          sacral: 'UNKNOWN',
+          spleen: 'UNKNOWN',
+          root: 'UNKNOWN',
+        },
+        channels: 'UNKNOWN',
+        incarnation_cross: 'UNKNOWN',
       },
     };
 

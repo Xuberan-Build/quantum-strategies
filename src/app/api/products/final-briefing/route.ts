@@ -24,14 +24,37 @@ export async function POST(req: Request) {
       throw new Error(error.message);
     }
 
-    // Extract user responses
-    const userResponses = (conversations || [])
+    // Extract user responses from conversations first
+    let userResponses = (conversations || [])
       .flatMap((c: any) =>
         ((c.messages as any[]) || [])
           .filter((m: any) => m.role === 'user')
           .map((m: any) => `Step ${c.step_number}: ${m.content}`)
       )
       .join('\n\n');
+
+    // Fallback: if no conversation rows exist, build responses from product_sessions.step_data
+    if (!userResponses.trim()) {
+      const { data: sessionDataRow } = await supabaseAdmin
+        .from('product_sessions')
+        .select('step_data')
+        .eq('id', sessionId)
+        .maybeSingle();
+
+      const stepData = (sessionDataRow?.step_data as Record<string, any>) || {};
+      const stepEntries = Object.entries(stepData)
+        .filter(([k]) => /^step_\d+$/.test(k))
+        .sort((a, b) => Number(a[0].split('_')[1]) - Number(b[0].split('_')[1]));
+
+      userResponses = stepEntries
+        .map(([stepKey, value]) => {
+          const stepNumber = stepKey.split('_')[1];
+          const answer = typeof value?.answer === 'string' ? value.answer : '';
+          return answer.trim() ? `Step ${stepNumber}: ${answer}` : '';
+        })
+        .filter(Boolean)
+        .join('\n\n');
+    }
 
     // Extract Wizard's insights from each step (GPT will intelligently filter for actionable content)
     const wizardNudges = (conversations || [])
@@ -77,8 +100,29 @@ export async function POST(req: Request) {
     if (hd.strategy && hd.strategy !== 'UNKNOWN') hdFields.push(`Strategy: ${hd.strategy}`);
     if (hd.authority && hd.authority !== 'UNKNOWN') hdFields.push(`Authority: ${hd.authority}`);
     if (hd.profile && hd.profile !== 'UNKNOWN') hdFields.push(`Profile: ${hd.profile}`);
-    if (hd.centers && hd.centers !== 'UNKNOWN') hdFields.push(`Centers: ${hd.centers}`);
-    if (hd.gifts && hd.gifts !== 'UNKNOWN') hdFields.push(`Gifts: ${hd.gifts}`);
+    if (hd.incarnation_cross && hd.incarnation_cross !== 'UNKNOWN') hdFields.push(`Incarnation Cross: ${hd.incarnation_cross}`);
+    if (hd.channels && hd.channels !== 'UNKNOWN') hdFields.push(`Channels: ${hd.channels}`);
+
+    // Centers — support both legacy string format and new per-center object
+    if (hd.centers) {
+      if (typeof hd.centers === 'string' && hd.centers !== 'UNKNOWN') {
+        hdFields.push(`Centers: ${hd.centers}`);
+      } else if (typeof hd.centers === 'object') {
+        const centerNames: Record<string, string> = {
+          head: 'Head', ajna: 'Ajna', throat: 'Throat', g_identity: 'G/Identity',
+          heart_ego: 'Heart/Ego', solar_plexus: 'Solar Plexus', sacral: 'Sacral',
+          spleen: 'Spleen', root: 'Root',
+        };
+        const defined = Object.entries(hd.centers)
+          .filter(([, v]) => v === 'defined')
+          .map(([k]) => centerNames[k] || k);
+        const undefined_ = Object.entries(hd.centers)
+          .filter(([, v]) => v === 'undefined')
+          .map(([k]) => centerNames[k] || k);
+        if (defined.length) hdFields.push(`Defined Centers: ${defined.join(', ')}`);
+        if (undefined_.length) hdFields.push(`Undefined Centers: ${undefined_.join(', ')}`);
+      }
+    }
 
     let placementSummary = '';
     if (astroFields.length > 0) {
@@ -227,7 +271,9 @@ DO NOT just copy the step insights verbatim. DISTILL them into the most impactfu
           { role: 'user', content: chartDataMessage },
           { role: 'user', content: conversationMessage },
           { role: 'user', content: instructionMessage },
-          { role: 'user', content: actionableNudgeInstruction },
+          ...(wizardNudges
+            ? [{ role: 'user' as const, content: actionableNudgeInstruction }]
+            : []),
         ],
         maxTokens: 15000,
         context: 'final-briefing',

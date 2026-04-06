@@ -12,6 +12,27 @@ interface UploadModalProps {
   userId: string;
 }
 
+const CHART_SOURCES = [
+  {
+    label: 'Astrology Birth Chart',
+    site: 'astro-seek.com',
+    url: 'https://horoscopes.astro-seek.com/calculate-birth-chart-horoscope-online/',
+    tip: 'Enter your birth date, time, and city → screenshot or download the chart image.',
+    color: 'rgba(139, 92, 246, 0.15)',
+    border: 'rgba(139, 92, 246, 0.35)',
+    accent: '#c4b5fd',
+  },
+  {
+    label: 'Human Design Chart',
+    site: 'myhumandesign.com',
+    url: 'https://www.myhumandesign.com/',
+    tip: 'Enter birth details → download the PDF. The PDF text summary gives the most accurate results.',
+    color: 'rgba(59, 130, 246, 0.15)',
+    border: 'rgba(59, 130, 246, 0.35)',
+    accent: '#93c5fd',
+  },
+];
+
 export default function UploadModal({ show, onClose, onComplete, userId }: UploadModalProps) {
   const [uploading, setUploading] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -41,10 +62,9 @@ export default function UploadModal({ show, onClose, onComplete, userId }: Uploa
         }
 
         if (data) {
-          // Save to database
           await supabase.from('uploaded_documents').insert({
             user_id: userId,
-            session_id: null, // Profile uploads don't have a session
+            session_id: null,
             file_name: file.name,
             storage_path: data.path,
             file_type: file.type,
@@ -88,7 +108,6 @@ export default function UploadModal({ show, onClose, onComplete, userId }: Uploa
       const data = await response.json();
       onComplete(data.placements);
 
-      // Reset modal state
       setUploadedFiles([]);
       setError(null);
     } catch (err: any) {
@@ -147,6 +166,7 @@ export default function UploadModal({ show, onClose, onComplete, userId }: Uploa
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h3 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>
             Upload Chart Data
@@ -182,9 +202,65 @@ export default function UploadModal({ show, onClose, onComplete, userId }: Uploa
           </div>
         )}
 
-        <p style={{ color: 'rgba(206, 190, 255, 0.85)', fontSize: '0.9375rem', marginBottom: '1.5rem' }}>
-          Drag and drop your chart images here, or click to browse.
-        </p>
+        {/* Where to get your charts */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <p style={{ color: 'rgba(206, 190, 255, 0.6)', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+            Don't have your charts yet?
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+            {CHART_SOURCES.map((source) => (
+              <a
+                key={source.site}
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.875rem',
+                  padding: '0.875rem 1rem',
+                  background: source.color,
+                  border: `1px solid ${source.border}`,
+                  borderRadius: '12px',
+                  textDecoration: 'none',
+                  transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <span style={{ color: source.accent, fontSize: '0.9375rem', fontWeight: 600 }}>
+                      {source.label}
+                    </span>
+                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}>
+                      {source.site} ↗
+                    </span>
+                  </div>
+                  <p style={{ color: 'rgba(206, 190, 255, 0.65)', fontSize: '0.8125rem', margin: 0, lineHeight: 1.4 }}>
+                    {source.tip}
+                  </p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* PDF tip */}
+        <div
+          style={{
+            marginBottom: '1.5rem',
+            padding: '0.75rem 1rem',
+            background: 'rgba(234, 179, 8, 0.08)',
+            border: '1px solid rgba(234, 179, 8, 0.2)',
+            borderRadius: '10px',
+            color: 'rgba(253, 224, 71, 0.85)',
+            fontSize: '0.8125rem',
+            lineHeight: 1.5,
+          }}
+        >
+          <strong>Tip:</strong> PDFs extract more accurately than screenshots — especially for Human Design. The text summary page in the PDF contains center and gate data that images can't reliably show.
+        </div>
 
         {/* File Drop Zone */}
         <div
