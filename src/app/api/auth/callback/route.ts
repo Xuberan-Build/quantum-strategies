@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Validate next param to prevent open redirect
-  const safePaths = ['/dashboard', '/onboarding', '/billing'];
+  const safePaths = ['/dashboard', '/onboarding', '/billing', '/reset-password'];
   const safeNext = safePaths.some(p => next.startsWith(p)) ? next : '/dashboard';
 
   try {
