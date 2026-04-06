@@ -204,9 +204,19 @@ FROM uploaded_documents;
 
 -- 11. STORAGE BUCKET POLICIES (security check)
 SELECT '=== STORAGE BUCKET POLICIES ===' as section;
-SELECT
-  name as policy_name,
-  definition,
-  bucket_id
-FROM storage.policies
-ORDER BY bucket_id, name;
+DO $$
+BEGIN
+  IF to_regclass('storage.policies') IS NOT NULL THEN
+    RAISE NOTICE 'Storage policies found';
+  ELSE
+    RAISE NOTICE 'storage.policies not found (Supabase storage policies are managed in the dashboard for this project)';
+  END IF;
+END $$;
+
+-- If storage.policies exists in your project, uncomment:
+-- SELECT
+--   name as policy_name,
+--   definition,
+--   bucket_id
+-- FROM storage.policies
+-- ORDER BY bucket_id, name;
