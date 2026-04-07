@@ -216,15 +216,6 @@ export async function middleware(request: NextRequest) {
   }
   */
 
-  // -------------------------------------------------------------------------
-  // 2b. WWW → NON-WWW CANONICAL REDIRECT
-  // -------------------------------------------------------------------------
-  if (hostname.startsWith('www.')) {
-    const url = request.nextUrl.clone();
-    url.hostname = hostname.slice(4);
-    return NextResponse.redirect(url, 301);
-  }
-
   console.log('[Middleware] No routing match, continuing normally');
 
   // -------------------------------------------------------------------------
