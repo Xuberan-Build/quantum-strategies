@@ -27,18 +27,21 @@ export default async function ProductPromptsPage({
   const productSlug = decodeURIComponent(product);
 
   // Load all versions for this product to show history
-  const { data: allVersions } = await supabaseAdmin
+  const { data: rawVersions } = await supabaseAdmin
     .from('prompts')
     .select('id, product_slug, scope, step_number, content, version, is_active, updated_at')
     .eq('product_slug', productSlug)
     .order('scope')
     .order('version', { ascending: false });
 
-  // Get active prompts (latest per scope)
-  const activeMap = new Map<string, (typeof allVersions)[0]>();
-  const historyMap = new Map<string, (typeof allVersions)>();
+  const allVersions = rawVersions ?? [];
+  type PromptRow = (typeof allVersions)[number];
 
-  for (const row of allVersions ?? []) {
+  // Get active prompts (latest per scope)
+  const activeMap = new Map<string, PromptRow>();
+  const historyMap = new Map<string, PromptRow[]>();
+
+  for (const row of allVersions) {
     const key = `${row.scope}:${row.step_number ?? ''}`;
     if (!activeMap.has(key)) {
       activeMap.set(key, row);
