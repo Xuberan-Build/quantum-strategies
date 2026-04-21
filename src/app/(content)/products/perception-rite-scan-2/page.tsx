@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Value Pattern Decoder - Reveal What You Truly Value",
   description:
     "Discover the gap between stated and revealed values and realign your business decisions. Complete the Value Pattern Decoder in about 20 minutes.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/perception-rite-scan-2/",
+  },
 };
 
 export default function ValuePatternDecoderPage() {

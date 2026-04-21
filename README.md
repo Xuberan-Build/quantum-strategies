@@ -15,7 +15,7 @@ Strategic consulting and course platform built with Next.js 16.
 - **Framework:** Next.js 16 (App Router)
 - **Database:** Supabase (PostgreSQL)
 - **Auth:** Supabase Auth
-- **Hosting:** Netlify
+- **Hosting:** Vercel (primary)
 - **Styling:** Tailwind CSS 4
 - **Content:** MDX (next-mdx-remote)
 - **Video:** Vimeo embeds
@@ -36,7 +36,9 @@ src/
 ├── app/
 │   ├── (marketing)/      # Public pages (Home, About, Values)
 │   ├── (content)/        # Articles, Blog, White Papers
-│   └── (courses)/        # Course platform (VCAP)
+│   ├── (content)/courses # Course marketing + public course pages
+│   ├── dashboard/        # Authenticated portal (products, courses, affiliate)
+│   └── products/         # Product experience routes
 ├── components/
 ├── content/              # MDX content files
 └── lib/                  # Utilities and configs
@@ -44,9 +46,9 @@ src/
 
 ## Deployment
 
-Deployed on Netlify with automatic deployments from the `nextjs` branch.
+Deployed on Vercel. A cron is configured for `/api/cron/backfill-crm`.
 
-**Environment Variables Required:**
+**Environment Variables Required (core):**
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -72,5 +74,5 @@ The site includes embedded GPT knowledge products. Each product has:
 
 ## Documentation
 
-- [Course Architecture](./COURSE_ARCHITECTURE.md)
-- [Migration Plan](./MIGRATION_PLAN.md)
+- [Course Architecture](docs/architecture/COURSE_ARCHITECTURE.md)
+- [Migration Plan](docs/plans/MIGRATION_PLAN.md)

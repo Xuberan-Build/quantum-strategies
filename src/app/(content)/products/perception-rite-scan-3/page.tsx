@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Boundary & Burnout Scan - Redesign Your Energy System",
   description:
     "Reveal your duty cycle, identify boundary failures, and restore sustainable energy. Complete the Boundary & Burnout scan in about 20 minutes.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/perception-rite-scan-3/",
+  },
 };
 
 export default function BoundaryBurnoutPage() {

@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Signal Awareness Scan - Reveal Your Current Frequency",
   description:
     "Discover what signal you are broadcasting and why certain opportunities appear (or do not). Complete the Signal Awareness scan in 15-20 minutes.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/perception-rite-scan-1/",
+  },
 };
 
 export default function SignalAwarenessPage() {

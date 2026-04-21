@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "Rite III: Declaration - Bind Clarity to Chosen Trajectory",
   description:
     "Three strategic declarations to move from possibility to commitment. Declare your life vision, business model, and strategic path in 75-105 minutes total.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/declaration/",
+  },
 };
 
 export default function RiteIIIDeclarationPage() {

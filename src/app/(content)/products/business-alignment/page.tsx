@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Business Alignment Orientation - Clarify Strategy and Offers",
   description:
     "Align your business model, offers, and pricing with your core waveform. Build a strategy that matches how you're designed to build.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/business-alignment/",
+  },
 };
 
 export default function BusinessAlignmentPage() {

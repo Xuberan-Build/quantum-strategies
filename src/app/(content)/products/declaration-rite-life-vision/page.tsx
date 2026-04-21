@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "Life Vision Declaration - Declare Your Moonshot",
   description:
     "Declare the revenue target and life vision you are committing to. Complete the Life Vision Declaration in 25-30 minutes.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/declaration-rite-life-vision/",
+  },
 };
 
 export default function LifeVisionDeclarationPage() {

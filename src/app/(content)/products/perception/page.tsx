@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "Rite I: Perception - Learn to See the System",
   description:
     "Five perception scans to help you move from ignorance to awareness. Learn to recognize the patterns, signals, and structures governing your reality.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/perception/",
+  },
 };
 
 export default function RiteIPerceptionPage() {

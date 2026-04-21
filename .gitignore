@@ -44,6 +44,9 @@ SLIDESHOW_*.md
 *.DS_Store
 .vercel
 
+# Database backups (contain sensitive user data)
+backups/
+
 # Security: Don't commit documentation with potential secrets
 *_AUDIT.md
 *_GUIDE.md

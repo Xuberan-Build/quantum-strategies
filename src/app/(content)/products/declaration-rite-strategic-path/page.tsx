@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "Strategic Path Declaration - Choose the Path",
   description:
     "Integrate everything into a single execution plan and choose your path: solo build or strategic partnership. Complete the Strategic Path Declaration in 30-35 minutes.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/declaration-rite-strategic-path/",
+  },
 };
 
 export default function StrategicPathDeclarationPage() {

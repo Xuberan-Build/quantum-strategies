@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "Rite II: Orientation - Locate Yourself Within the System",
   description:
     "Three alignment orientations to help you move from confusion to clarity. Discover your personal, business, and brand alignment in 60 minutes total.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/orientation/",
+  },
 };
 
 export default function RiteIIOrientationPage() {

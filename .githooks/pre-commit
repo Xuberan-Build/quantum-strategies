@@ -4,12 +4,12 @@ set -e
 pattern='sb_secret_|SUPABASE_SERVICE_KEY|SUPABASE_SERVICE_ROLE_KEY'
 
 if command -v rg >/dev/null 2>&1; then
-  if git diff --cached -U0 -- . ':!.githooks/pre-commit' | rg -n "$pattern"; then
+  if git diff --cached -U0 -- . ':!.githooks/pre-commit' ':!.env.example' | rg -n "$pattern"; then
     echo "❌ Secret detected in staged diff. Remove it before committing."
     exit 1
   fi
 else
-  if git diff --cached -U0 -- . ':!.githooks/pre-commit' | grep -nE "$pattern"; then
+  if git diff --cached -U0 -- . ':!.githooks/pre-commit' ':!.env.example' | grep -nE "$pattern"; then
     echo "❌ Secret detected in staged diff. Remove it before committing."
     exit 1
   fi

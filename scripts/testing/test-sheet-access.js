@@ -5,17 +5,29 @@
  */
 
 require('dotenv').config({ path: '.env.production' });
+require('dotenv').config({ path: '.env.local' });
 const { google } = require('googleapis');
 
-const SHEET_ID = '1EhC-MCjlqG_4otRZjxefEpttR98s5rXqr98vj2TnLTE';
+const SHEET_ID =
+  process.env.GOOGLE_CRM_SHEET_ID ||
+  process.env.GOOGLE_SHEET_ID ||
+  '1rTuGFZePZPV1PpC9bm7rcLs4nWXdr6zsb931OGH3rr8';
+const READ_ONLY = process.argv.includes('--read-only');
+const SHOW_ALL = process.argv.includes('--all');
 
 async function testSheetAccess() {
   console.log('🔍 Testing Google Sheets API Access...\n');
 
   // Check environment variables
   console.log('1️⃣ Checking environment variables...');
-  const clientEmail = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
-  const privateKey = process.env.GOOGLE_DRIVE_PRIVATE_KEY;
+  const clientEmailEnv = process.env.GOOGLE_CRM_CLIENT_EMAIL
+    ? 'GOOGLE_CRM_CLIENT_EMAIL'
+    : 'GOOGLE_DRIVE_CLIENT_EMAIL';
+  const privateKeyEnv = process.env.GOOGLE_CRM_PRIVATE_KEY
+    ? 'GOOGLE_CRM_PRIVATE_KEY'
+    : 'GOOGLE_DRIVE_PRIVATE_KEY';
+  const clientEmail = process.env[clientEmailEnv];
+  const privateKey = process.env[privateKeyEnv];
 
   if (!clientEmail || !privateKey) {
     console.error('❌ Missing credentials:');
@@ -24,8 +36,8 @@ async function testSheetAccess() {
     process.exit(1);
   }
 
-  console.log('   ✅ GOOGLE_DRIVE_CLIENT_EMAIL:', clientEmail);
-  console.log('   ✅ GOOGLE_DRIVE_PRIVATE_KEY: [REDACTED]');
+  console.log(`   ✅ ${clientEmailEnv}:`, clientEmail);
+  console.log(`   ✅ ${privateKeyEnv}: [REDACTED]`);
   console.log('');
 
   // Create auth client
@@ -39,9 +51,72 @@ async function testSheetAccess() {
   console.log('   ✅ Auth client created');
   console.log('');
 
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  // If --all flag, show all tabs and all data
+  if (SHOW_ALL) {
+    console.log('3️⃣ Fetching ALL sheet data...\n');
+
+    try {
+      // Get spreadsheet metadata to find all tabs
+      const metadata = await sheets.spreadsheets.get({
+        spreadsheetId: SHEET_ID,
+      });
+
+      const sheetTabs = metadata.data.sheets || [];
+      console.log(`📑 Found ${sheetTabs.length} tab(s):\n`);
+
+      for (const sheet of sheetTabs) {
+        const tabName = sheet.properties.title;
+        console.log('═══════════════════════════════════════════════════════════════');
+        console.log(`📋 TAB: "${tabName}"`);
+        console.log('═══════════════════════════════════════════════════════════════');
+
+        try {
+          const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SHEET_ID,
+            range: `'${tabName}'!A:Z`,
+          });
+
+          const rows = response.data.values || [];
+
+          if (rows.length === 0) {
+            console.log('   (empty)\n');
+            continue;
+          }
+
+          const headers = rows[0] || [];
+          console.log(`\n📊 ${rows.length} rows (1 header + ${rows.length - 1} data)\n`);
+          console.log('HEADERS:', headers.join(' | '));
+          console.log('─'.repeat(70));
+
+          // Print all data rows
+          for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            console.log(`Row ${i}:`);
+            for (let j = 0; j < headers.length; j++) {
+              const value = row[j] || '(empty)';
+              console.log(`   ${headers[j]}: ${value}`);
+            }
+            console.log('');
+          }
+        } catch (err) {
+          console.log(`   ❌ Error reading tab: ${err.message}\n`);
+        }
+      }
+
+      console.log('═══════════════════════════════════════════════════════════════');
+      console.log('✅ ALL DATA DISPLAYED');
+      console.log('═══════════════════════════════════════════════════════════════');
+      return;
+    } catch (error) {
+      console.error('❌ Failed to fetch sheet data:', error.message);
+      process.exit(1);
+    }
+  }
+
   // Test read access
   console.log('3️⃣ Testing READ access to Purchases sheet...');
-  const sheets = google.sheets({ version: 'v4', auth });
 
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -64,6 +139,14 @@ async function testSheetAccess() {
   }
 
   // Test write access (append a test row)
+  if (READ_ONLY) {
+    console.log('4️⃣ Skipping WRITE access (read-only mode)');
+    console.log('═══════════════════════════════════════════════');
+    console.log('✅ READ-ONLY CHECK COMPLETE');
+    console.log('═══════════════════════════════════════════════');
+    return;
+  }
+
   console.log('4️⃣ Testing WRITE access (appending test row)...');
 
   const testRow = [

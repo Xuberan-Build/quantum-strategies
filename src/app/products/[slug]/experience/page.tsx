@@ -41,11 +41,12 @@ export default async function ProductExperiencePage({
     redirect('/dashboard?error=no-access');
   }
 
-  // Get product definition
+  // Get product definition (must be active)
   const { data: product } = await supabase
     .from('product_definitions')
     .select('*')
     .eq('product_slug', slug)
+    .eq('is_active', true)
     .single();
 
   if (!product) {

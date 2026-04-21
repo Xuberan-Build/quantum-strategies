@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Money Signal Scan - Recalibrate Your Pricing and Language",
   description:
     "Decode your money beliefs, pricing signal, and sales language. Complete the Money Signal scan in 15-20 minutes.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/perception-rite-scan-4/",
+  },
 };
 
 export default function MoneySignalPage() {

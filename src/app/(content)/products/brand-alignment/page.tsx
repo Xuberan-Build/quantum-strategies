@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Brand Alignment Orientation - Unify Who You Are with How You Show Up",
   description:
     "Transform personal waveform into coherent brand strategy. 8-step orientation to align your authentic self with your brand expression.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/brand-alignment/",
+  },
 };
 
 export default function BrandAlignmentPage() {

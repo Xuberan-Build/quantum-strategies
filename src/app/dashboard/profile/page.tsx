@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import ProfileEditor from '@/components/profile/ProfileEditor';
+import ProfileSettings from '@/components/profile/ProfileSettings';
 import { isPlacementsEmpty } from '@/lib/utils/placements';
 import styles from '../dashboard.module.css';
 
@@ -21,10 +22,10 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
     redirect('/login');
   }
 
-  // Fetch user's profile placements
+  // Fetch user's profile fields
   const { data: userData, error } = await supabase
     .from('users')
-    .select('placements, placements_confirmed, placements_updated_at')
+    .select('name, email, company_name, ig_handle, placements, placements_confirmed, placements_updated_at')
     .eq('id', session.user.id)
     .single();
 
@@ -45,6 +46,12 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         </p>
       </div>
       <div className={styles.main}>
+        <ProfileSettings
+          initialName={userData?.name || null}
+          initialEmail={userData?.email || session.user.email || ''}
+          initialCompanyName={userData?.company_name || null}
+          initialIgHandle={userData?.ig_handle || null}
+        />
         {showOnboarding && (
           <div className={styles.onboardingCard}>
             <div>

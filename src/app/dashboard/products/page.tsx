@@ -126,6 +126,7 @@ export default async function ProductsDashboardPage() {
     supabase
       .from('product_definitions')
       .select('product_slug, name, description, price, total_steps, estimated_duration, display_order')
+      .eq('is_active', true)
       .order('created_at', { ascending: true }),
     supabase
       .from('product_access')

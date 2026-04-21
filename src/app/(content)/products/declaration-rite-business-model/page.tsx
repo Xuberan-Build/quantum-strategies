@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "Business Model Declaration - Design the System",
   description:
     "Map your business as a system, identify constraints, and design the ecosystem required to scale. Complete the Business Model Declaration in 30-35 minutes.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/declaration-rite-business-model/",
+  },
 };
 
 export default function BusinessModelDeclarationPage() {

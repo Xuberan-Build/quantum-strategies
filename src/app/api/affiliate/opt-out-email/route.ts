@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { EmailSequenceService } from '@/lib/services/EmailSequenceService';
+import { APP_URL } from '@/lib/config/urls';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -125,7 +126,7 @@ export async function GET(req: Request) {
     <p>You will no longer receive affiliate program invitation emails from us.</p>
     <p>You can still access your dashboard and products as normal.</p>
     <p>If you change your mind, you can always join the affiliate program from your dashboard.</p>
-    <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://quantumstrategies.online'}/dashboard">
+    <a href="${APP_URL}/dashboard">
       Go to Dashboard
     </a>
   </div>

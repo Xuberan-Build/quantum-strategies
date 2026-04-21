@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Competence Mapping Scan - Identify Your Genius Zone",
   description:
     "Map your circle of competence, identify delegation priorities, and redesign your system around your genius. Complete the scan in 15-20 minutes.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/perception-rite-scan-5/",
+  },
 };
 
 export default function CompetenceMappingPage() {

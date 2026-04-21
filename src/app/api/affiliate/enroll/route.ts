@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createConnectAccount } from '@/lib/stripe/connect';
+import { MARKETING_URL } from '@/lib/config/urls';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { startTimer, logAffiliate, logApiError, logSuccess } from '@/lib/logging/audit-logger';
 
@@ -130,8 +131,7 @@ export async function POST(req: NextRequest) {
     }
 
     const newReferralCode = codeResult as string;
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://quantumstrategies.online';
-    const referralLink = `${baseUrl}?ref=${newReferralCode}`;
+    const referralLink = `${MARKETING_URL}?ref=${newReferralCode}`;
 
     // Create referral_hierarchy record
     const { error: hierarchyError } = await supabaseAdmin

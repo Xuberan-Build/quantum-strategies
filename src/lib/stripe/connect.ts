@@ -5,6 +5,7 @@
 
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { APP_URL } from '@/lib/config/urls';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-12-15.clover',
@@ -19,7 +20,7 @@ function getSupabaseClient() {
   );
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://quantumstrategies.online';
+const BASE_URL = APP_URL;
 
 export interface ConnectAccountInfo {
   accountId: string;

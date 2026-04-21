@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Personal Alignment Orientation - Discover Your Life Purpose",
   description:
     "Uncover your core values, life purpose, and authentic self using your Astrology & Human Design. Know who you're designed to be before you decide what to build—in 20 minutes.",
+  alternates: {
+    canonical: "https://quantumstrategies.online/products/personal-alignment/",
+  },
 };
 
 export default function PersonalAlignmentPage() {
