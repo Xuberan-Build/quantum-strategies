@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { EmailSequenceService } from '@/lib/services/EmailSequenceService';
 import { EmailTemplateService } from '@/lib/services/EmailTemplateService';
 import { sendEmail } from '@/lib/email/gmail-sender';
+import { sendEmailViaResend } from '@/lib/email/resend-sender';
 import type { EmailSequence } from '@/types/database';
 
 export const runtime = 'nodejs';
@@ -53,43 +54,64 @@ export async function GET(req: Request) {
     // Process each email
     for (const email of emailsToSend) {
       try {
-        // Check if email should still be sent
-        const isValid = await EmailSequenceService.isEmailStillValid(email.user_id);
-
-        if (!isValid) {
-          // User has enrolled or opted out - cancel this email
-          await EmailSequenceService.markAsCancelled(email.id);
-          cancelledCount++;
-          console.log(`[send-affiliate-emails] Cancelled email ${email.id} (user enrolled/opted out)`);
-          continue;
+        // Blueprint follow-ups always send; affiliate check only applies to the invitation
+        const isBlueprintEmail = email.sequence_type.startsWith('blueprint_');
+        if (!isBlueprintEmail) {
+          const isValid = await EmailSequenceService.isEmailStillValid(email.user_id);
+          if (!isValid) {
+            await EmailSequenceService.markAsCancelled(email.id);
+            cancelledCount++;
+            console.log(`[send-affiliate-emails] Cancelled email ${email.id} (user enrolled/opted out)`);
+            continue;
+          }
         }
 
         // Generate email template based on sequence type
         let emailTemplate;
+        let fromEmail: string;
+        let fromName: string;
 
         switch (email.sequence_type) {
           case 'affiliate_invitation':
             emailTemplate = EmailTemplateService.generateAffiliateInvitation(
               email.email_content,
-              email.user_id // Pass user_id for opt-out link
+              email.user_id
             );
+            fromEmail = process.env.GMAIL_FROM_EMAIL || 'hello@quantumstrategies.online';
+            fromName = process.env.GMAIL_FROM_NAME || 'Quantum Strategies';
+            break;
+          case 'blueprint_day1':
+            emailTemplate = EmailTemplateService.generateBlueprintDay1(email.email_content);
+            fromEmail = process.env.GMAIL_AUSTIN_EMAIL || 'austin@quantumstrategies.online';
+            fromName = 'Austin';
+            break;
+          case 'blueprint_day3':
+            emailTemplate = EmailTemplateService.generateBlueprintDay3(email.email_content);
+            fromEmail = process.env.GMAIL_AUSTIN_EMAIL || 'austin@quantumstrategies.online';
+            fromName = 'Austin';
+            break;
+          case 'blueprint_day7':
+            emailTemplate = EmailTemplateService.generateBlueprintDay7(email.email_content);
+            fromEmail = process.env.GMAIL_AUSTIN_EMAIL || 'austin@quantumstrategies.online';
+            fromName = 'Austin';
             break;
           default:
             throw new Error(`Unknown sequence type: ${email.sequence_type}`);
         }
 
-        // Send email via Gmail API
-        const fromEmail = process.env.GMAIL_FROM_EMAIL || 'hello@quantumstrategies.online';
-        const fromName = process.env.GMAIL_FROM_NAME || 'Quantum Strategies';
-
-        const messageId = await sendEmail({
+        const sendParams = {
           to: email.email_content.user_email,
           subject: emailTemplate.subject,
           html: emailTemplate.htmlContent,
           text: emailTemplate.textContent,
           fromEmail,
           fromName,
-        });
+        };
+
+        // Blueprint emails use Resend; affiliate emails use Gmail API
+        const messageId = isBlueprintEmail
+          ? await sendEmailViaResend(sendParams)
+          : await sendEmail(sendParams);
 
         // Mark as sent
         await EmailSequenceService.markAsSent(email.id);

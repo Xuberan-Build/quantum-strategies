@@ -4,6 +4,10 @@
  */
 
 import type { EmailContent } from '@/types/database';
+import { APP_URL } from '@/lib/config/urls';
+import { getBlueprintDay1Template } from '@/lib/email/templates/blueprint-day1';
+import { getBlueprintDay3Template } from '@/lib/email/templates/blueprint-day3';
+import { getBlueprintDay7Template } from '@/lib/email/templates/blueprint-day7';
 
 export interface EmailTemplate {
   subject: string;
@@ -69,7 +73,7 @@ export class EmailTemplateService {
     preview: string,
     userId?: string
   ): string {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://quantumstrategies.online';
+    const siteUrl = APP_URL;
     const optOutUrl = userId
       ? `${siteUrl}/api/affiliate/opt-out-email?user_id=${userId}`
       : `${siteUrl}/api/affiliate/opt-out-email`;
@@ -120,7 +124,7 @@ Not interested in affiliate opportunities? Click here to opt out: ${optOutUrl}
     preview: string,
     userId?: string
   ): string {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://quantumstrategies.online';
+    const siteUrl = APP_URL;
     const optOutUrl = userId
       ? `${siteUrl}/api/affiliate/opt-out-email?user_id=${userId}`
       : `${siteUrl}/api/affiliate/opt-out-email`;
@@ -367,5 +371,28 @@ Not interested in affiliate opportunities? Click here to opt out: ${optOutUrl}
 </body>
 </html>
 `;
+  }
+
+  static generateBlueprintDay1(content: EmailContent): EmailTemplate {
+    const { subject, html, text } = getBlueprintDay1Template(content);
+    return { subject, htmlContent: html, textContent: text };
+  }
+
+  static generateBlueprintDay3(content: EmailContent): EmailTemplate {
+    const { subject, html, text } = getBlueprintDay3Template(content);
+    return { subject, htmlContent: html, textContent: text };
+  }
+
+  static generateBlueprintDay7(content: EmailContent): EmailTemplate {
+    const { subject, html, text } = getBlueprintDay7Template(content);
+    return { subject, htmlContent: html, textContent: text };
+  }
+
+  static extractClosingGate(content: string): string | null {
+    if (!content) return null;
+    const match = content.match(/When\s+[\s\S]{20,600}(?:focused hours|per week|enabling)[^.]*\./);
+    if (match) return match[0].trim();
+    const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+    return lines.at(-1) ?? null;
   }
 }

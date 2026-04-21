@@ -40,8 +40,7 @@ export function SliderAllocation({ categories, onChange, disabled = false }: Sli
 
     // If increasing this value, we need to decrease others
     if (delta > 0) {
-      const available = 100 - total + currentValue;
-      const actualIncrease = Math.min(delta, available);
+      const actualIncrease = Math.min(delta, 100 - total);
 
       setValues((prev) => ({
         ...prev,

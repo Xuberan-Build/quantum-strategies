@@ -9,7 +9,11 @@
 // ============================================================================
 
 export type EmailStatus = 'scheduled' | 'sent' | 'failed' | 'cancelled';
-export type SequenceType = 'affiliate_invitation';
+export type SequenceType =
+  | 'affiliate_invitation'
+  | 'blueprint_day1'
+  | 'blueprint_day3'
+  | 'blueprint_day7';
 export type TriggerEvent = 'deliverable_completed';
 
 export interface EmailContent {
@@ -18,6 +22,8 @@ export interface EmailContent {
   deliverable_preview: string;
   user_first_name: string;
   user_email: string;
+  closing_gate?: string;
+  dashboard_url?: string;
 }
 
 export interface EmailSequence {

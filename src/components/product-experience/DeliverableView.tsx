@@ -295,7 +295,7 @@ export function DeliverableView({ deliverable, productName, instructions, action
                   </h3>
 
                   {/* Section Content */}
-                  <div className="prose prose-invert prose-sm max-w-none [&_strong]:text-[#F8F5FF] [&_strong]:font-semibold [&_p]:text-[#F8F5FF]/90 [&_p]:leading-relaxed [&_li]:text-[#F8F5FF]/90 [&_h3]:text-[#F8F5FF] [&_h4]:text-[#F8F5FF] [&_ul>li]:marker:text-[#6C5CE7] [&_ol>li]:marker:text-[#6C5CE7] [&_ol>li]:marker:font-semibold">
+                  <div className="prose prose-invert prose-sm max-w-none [&_strong]:text-[#F8F5FF] [&_strong]:font-semibold [&_p]:text-[#F8F5FF]/90 [&_p]:leading-relaxed [&_li]:text-[#F8F5FF]/90 [&_h3]:text-[#F8F5FF] [&_h4]:text-[#F8F5FF] [&_ul>li]:marker:text-[#6C5CE7] [&_ol>li]:marker:text-[#6C5CE7] [&_ol>li]:marker:font-semibold [&_li>p]:my-0 [&_li>p]:inline">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {section.content}
                     </ReactMarkdown>
@@ -326,15 +326,16 @@ export function DeliverableView({ deliverable, productName, instructions, action
                   <p className="text-[#F8F5FF]/70 mb-6">
                     Key insights and next steps from your journey:
                   </p>
-                  <div className="prose prose-invert prose-sm max-w-none [&_strong]:text-[#F8F5FF] [&_strong]:font-semibold [&_p]:text-[#F8F5FF]/90 [&_p]:leading-relaxed [&_ul>li]:marker:text-[#6C5CE7] [&_ol>li]:marker:text-[#6C5CE7]">
+                  <div className="prose prose-invert prose-sm max-w-none [&_strong]:text-[#F8F5FF] [&_strong]:font-semibold [&_p]:text-[#F8F5FF]/90 [&_p]:leading-relaxed [&_ul>li]:marker:text-[#6C5CE7] [&_ol>li]:marker:text-[#6C5CE7] [&_li>p]:my-0 [&_li>p]:inline">
                     <ul>
                       {actionableNudges.map((nudge, index) => (
                         <li key={index}>
-                          <span className="inline">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {nudge.trim()}
-                            </ReactMarkdown>
-                          </span>
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{ p: ({ children }) => <span>{children}</span> }}
+                          >
+                            {nudge.trim()}
+                          </ReactMarkdown>
                         </li>
                       ))}
                     </ul>

@@ -289,29 +289,21 @@ REQUIREMENTS:
 
 Generate the blueprint now.`;
 
-    const actionableNudgeInstruction = `CRITICAL: Extract and Surface Actionable Nudges
+    const actionableNudgeInstruction = `CRITICAL: Add an Actionable Nudges section to the deliverable.
 
-Review all the insights from each step above. Identify the 5-7 MOST actionable nudges - insights that are:
+Review all insights from each step. Identify the 5-7 MOST actionable nudges — insights that are:
 - Concrete and specific (not abstract or theoretical)
 - Immediately implementable (can be acted on this week)
-- Connected to the user's actual responses and situation
-- Transformational (not just surface-level tips)
+- Directly tied to something the user shared
+- Framed as an action, not an observation
 
-Create a dedicated section in the deliverable called "Your Actionable Nudges" or similar.
-Position this section prominently (near the top or bottom of the report).
+Place this section BEFORE Section 1, using EXACTLY this header on its own line:
+**OPENING: Your Actionable Nudges (This Week)**
 
-For each nudge:
-- Make it specific and concrete (avoid generic advice)
-- Tie it back to something the user shared in their responses
-- Frame it as an action, not just an observation
-- Keep it concise (1-2 sentences max per nudge)
+Then list the nudges numbered 1–7, one per line. Keep each to 1–2 sentences: [specific action] — because [specific thing from their responses].
 
-Example format:
-Your Actionable Nudges
-1. [Specific action based on their pattern] - because [insight from their responses]
-2. [Specific behavior change] - this addresses [specific thing they mentioned]
-
-DO NOT just copy the step insights verbatim. DISTILL them into the most impactful, implementable actions.`;
+DO NOT copy step insights verbatim. Distill them into the most impactful, implementable actions.
+DO NOT output an "Input Requirements" section or any checklist — begin with the OPENING header immediately.`;
 
     // Generate final briefing using AIRequestService
     let briefing = '';
@@ -416,11 +408,34 @@ DO NOT just copy the step insights verbatim. DISTILL them into the most impactfu
           .single();
 
         if (user) {
-          // Only schedule email if user hasn't enrolled and hasn't opted out
+          const closingGate = EmailTemplateService.extractClosingGate(briefing);
+          const resolvedSlug = session.product_slug || productSlug || 'business-alignment';
+          const resolvedName = productName || product?.name || resolvedSlug;
+          const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.quantumstrategies.online'}/dashboard/products`;
+
+          const blueprintEmailContent: EmailContent = {
+            product_name: resolvedName,
+            product_slug: resolvedSlug,
+            deliverable_preview: EmailTemplateService.getDeliverablePreview(briefing),
+            user_first_name: EmailTemplateService.getFirstName(user.name),
+            user_email: user.email,
+            closing_gate: closingGate ?? undefined,
+            dashboard_url: dashboardUrl,
+          };
+
+          // Schedule blueprint follow-up sequence: Day 1 / Day 3 / Day 7
+          await Promise.allSettled([
+            EmailSequenceService.scheduleEmail(user.id, 'blueprint_day1', 'deliverable_completed', blueprintEmailContent, 24 * 60),
+            EmailSequenceService.scheduleEmail(user.id, 'blueprint_day3', 'deliverable_completed', blueprintEmailContent, 3 * 24 * 60),
+            EmailSequenceService.scheduleEmail(user.id, 'blueprint_day7', 'deliverable_completed', blueprintEmailContent, 7 * 24 * 60),
+          ]);
+          console.log('[final-briefing] Scheduled blueprint Day 1/3/7 follow-up emails');
+
+          // Only schedule affiliate email if user hasn't enrolled and hasn't opted out
           if (!user.is_affiliate && !user.affiliate_opted_out) {
-            const emailContent: EmailContent = {
-              product_name: productName || 'Business Alignment Orientation',
-              product_slug: session.product_slug || productSlug || 'business-alignment',
+            const affiliateEmailContent: EmailContent = {
+              product_name: resolvedName,
+              product_slug: resolvedSlug,
               deliverable_preview: EmailTemplateService.getDeliverablePreview(briefing),
               user_first_name: EmailTemplateService.getFirstName(user.name),
               user_email: user.email,
@@ -430,7 +445,7 @@ DO NOT just copy the step insights verbatim. DISTILL them into the most impactfu
               user.id,
               'affiliate_invitation',
               'deliverable_completed',
-              emailContent,
+              affiliateEmailContent,
               30 // 30 minutes delay
             );
 
@@ -441,7 +456,7 @@ DO NOT just copy the step insights verbatim. DISTILL them into the most impactfu
             }
           } else {
             console.log(
-              `[final-briefing] Skipping email (is_affiliate: ${user.is_affiliate}, opted_out: ${user.affiliate_opted_out})`
+              `[final-briefing] Skipping affiliate email (is_affiliate: ${user.is_affiliate}, opted_out: ${user.affiliate_opted_out})`
             );
           }
 
