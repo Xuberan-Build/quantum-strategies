@@ -1,0 +1,411 @@
+/* Page Container */
+.page {
+  min-height: 100vh;
+  background: #030048;
+  color: #FEFCF8;
+  overflow-x: hidden;
+}
+
+/* Background */
+.background {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #030048 0%, #090018 50%, #030048 100%);
+  z-index: 0;
+}
+
+.gridOverlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(147, 51, 234, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(147, 51, 234, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.4;
+}
+
+.radialGlow {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(
+    circle at center,
+    rgba(147, 51, 234, 0.2) 0%,
+    rgba(192, 132, 252, 0.1) 30%,
+    rgba(147, 51, 234, 0.04) 60%,
+    transparent 100%
+  );
+  filter: blur(80px);
+  animation: pulse 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+  50% { opacity: 0.9; transform: translateX(-50%) scale(1.1); }
+}
+
+/* Content Wrapper */
+.wrapper {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 3rem 1.5rem 5rem;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  max-width: 640px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.4rem 1.25rem;
+  background: rgba(147, 51, 234, 0.15);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #FEFCF8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 0 20px rgba(147, 51, 234, 0.2);
+}
+
+.title {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FEFCF8 50%, #F5E6CC 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: rgba(254, 252, 248, 0.82);
+  line-height: 1.6;
+}
+
+/* Step Indicator */
+.stepIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 2rem;
+}
+
+.stepDot {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid rgba(192, 132, 252, 0.25);
+  background: rgba(9, 0, 24, 0.6);
+  color: rgba(254, 252, 248, 0.5);
+  transition: all 0.3s ease;
+}
+
+.stepDotActive {
+  background: linear-gradient(135deg, #9333EA 0%, #C084FC 100%);
+  border-color: transparent;
+  color: #FEFCF8;
+  box-shadow: 0 0 16px rgba(147, 51, 234, 0.5);
+}
+
+.stepDotComplete {
+  background: rgba(147, 51, 234, 0.3);
+  border-color: rgba(192, 132, 252, 0.4);
+  color: #FEFCF8;
+}
+
+.stepLine {
+  width: 48px;
+  height: 1px;
+  background: rgba(192, 132, 252, 0.2);
+}
+
+/* Card */
+.card {
+  width: 100%;
+  max-width: 640px;
+  padding: 2.5rem;
+  background: linear-gradient(135deg, rgba(9, 0, 24, 0.8) 0%, rgba(26, 0, 51, 0.6) 100%);
+  border: 1px solid rgba(192, 132, 252, 0.2);
+  border-radius: 20px;
+  box-shadow:
+    0 0 40px rgba(147, 51, 234, 0.15),
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Step Title */
+.stepTitle {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #FEFCF8;
+  margin-bottom: 0.5rem;
+}
+
+.stepDescription {
+  font-size: 0.95rem;
+  color: rgba(254, 252, 248, 0.72);
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+/* Form Fields */
+.fieldGroup {
+  margin-bottom: 1.5rem;
+}
+
+.label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(254, 252, 248, 0.95);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.sublabel {
+  font-size: 0.85rem;
+  color: rgba(254, 252, 248, 0.62);
+  margin-bottom: 0.5rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  background: rgba(9, 0, 24, 0.7);
+  border: 1px solid rgba(192, 132, 252, 0.2);
+  border-radius: 10px;
+  color: #FEFCF8;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+  font-family: inherit;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: rgba(254, 252, 248, 0.38);
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  border-color: rgba(192, 132, 252, 0.5);
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15), 0 0 16px rgba(147, 51, 234, 0.1);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23C084FC' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+.select option {
+  background: #090018;
+  color: #FEFCF8;
+}
+
+/* Identity sub-inputs */
+.identityStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.identityInput {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(9, 0, 24, 0.7);
+  border: 1px solid rgba(192, 132, 252, 0.15);
+  border-radius: 8px;
+  color: #FEFCF8;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+  font-family: inherit;
+}
+
+.identityInput::placeholder {
+  color: rgba(254, 252, 248, 0.32);
+}
+
+.identityInput:focus {
+  border-color: rgba(192, 132, 252, 0.4);
+  box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.12);
+}
+
+/* Commitment cards */
+.commitmentCard {
+  padding: 1.25rem;
+  background: rgba(9, 0, 24, 0.5);
+  border: 1px solid rgba(192, 132, 252, 0.15);
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Add button */
+.addButton {
+  width: 100%;
+  padding: 0.85rem;
+  background: transparent;
+  border: 1px dashed rgba(192, 132, 252, 0.3);
+  border-radius: 10px;
+  color: rgba(192, 132, 252, 0.7);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.addButton:hover {
+  border-color: rgba(192, 132, 252, 0.5);
+  color: #C084FC;
+  background: rgba(147, 51, 234, 0.06);
+}
+
+/* Buttons */
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.btnSecondary {
+  flex: 1;
+  padding: 0.9rem 1.5rem;
+  background: rgba(9, 0, 24, 0.6);
+  border: 1px solid rgba(192, 132, 252, 0.2);
+  border-radius: 9999px;
+  color: rgba(254, 252, 248, 0.82);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.btnSecondary:hover {
+  border-color: rgba(192, 132, 252, 0.35);
+  color: #FEFCF8;
+}
+
+.btnPrimary {
+  flex: 2;
+  padding: 0.9rem 1.5rem;
+  background: linear-gradient(135deg, #090018 0%, #1a0033 100%);
+  border: 1px solid rgba(192, 132, 252, 0.4);
+  border-radius: 9999px;
+  box-shadow:
+    0 0 24px rgba(147, 51, 234, 0.25),
+    0 6px 16px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: #FEFCF8;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.btnPrimary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.15) 0%, rgba(192, 132, 252, 0.15) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  transform: scale(1.02) translateY(-1px);
+  box-shadow:
+    0 0 36px rgba(147, 51, 234, 0.35),
+    0 10px 24px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-color: rgba(192, 132, 252, 0.6);
+}
+
+.btnPrimary:hover:not(:disabled)::before {
+  opacity: 1;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnFullWidth {
+  flex: unset;
+  width: 100%;
+}
+
+/* Error */
+.error {
+  padding: 0.85rem 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+  color: rgba(252, 165, 165, 0.9);
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .wrapper {
+    padding: 2rem 1rem 4rem;
+  }
+
+  .card {
+    padding: 1.75rem 1.25rem;
+  }
+
+  .title {
+    font-size: 1.75rem;
+  }
+}
