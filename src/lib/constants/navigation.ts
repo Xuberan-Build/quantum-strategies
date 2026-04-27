@@ -27,44 +27,37 @@ export const navigationConfig = {
     },
     {
       label: "Resources",
+      href: "/resources",
       megaMenu: {
         sections: [
           {
-            title: "Content Types",
+            title: "Pillars",
+            links: [
+              { label: "All Pillars", href: "/pillars", description: "Our five strategic content territories" },
+              { label: "The Self as Signal", href: "/pillars/the-self-as-signal", description: "Identity, perception, personal brand" },
+              { label: "The Architecture of Reality", href: "/pillars/the-architecture-of-reality", description: "Waveform physics meets strategy" },
+              { label: "Strategy as Alignment", href: "/pillars/strategy-as-alignment", description: "Quantum Business Framework + Three Rites" },
+              { label: "Network as Infrastructure", href: "/pillars/network-as-infrastructure", description: "Community, coordination, distribution" },
+              { label: "The Builder's Stack", href: "/pillars/the-builders-stack", description: "Demand generation, GTM, fundamentals" },
+            ],
+          },
+          {
+            title: "Content",
             links: [
               {
                 label: "Articles",
                 href: "/articles",
                 submenu: [
-                  {
-                    label: "Customer Acquisition",
-                    submenu: [
-                      { label: "Customer Acquisition Hub", href: "/articles/customer-acquisition" },
-                      { label: "B2B Digital Marketing", href: "/articles/b2b-digital-marketing-strategy" },
-                      { label: "SEO Lead Generation", href: "/articles/seo-lead-generation" },
-                      { label: "Content Marketing", href: "/articles/content-marketing" },
-                    ],
-                  },
-                  {
-                    label: "Operations",
-                    submenu: [
-                      { label: "Operations Hub", href: "/articles/operations" },
-                      { label: "Automation Tools", href: "/articles/automation-tools" },
-                      { label: "CRM Implementation", href: "/articles/crm-implementation" },
-                      { label: "Marketing Operations", href: "/articles/marketing-operations" },
-                    ],
-                  },
-                  {
-                    label: "Product Development",
-                    submenu: [
-                      { label: "Product Development Hub", href: "/articles/product-development" },
-                      { label: "MVP Strategy", href: "/articles/mvp-strategy" },
-                      { label: "Product Market Fit", href: "/articles/product-market-fit" },
-                      { label: "User Research", href: "/articles/user-research" },
-                    ],
-                  },
+                  { label: "All Articles", href: "/articles", description: "Browse the full library" },
+                  { label: "The Self as Signal", href: "/pillars/the-self-as-signal", description: "Identity, perception, personal brand" },
+                  { label: "The Architecture of Reality", href: "/pillars/the-architecture-of-reality", description: "Waveform physics meets strategy" },
+                  { label: "Strategy as Alignment", href: "/pillars/strategy-as-alignment", description: "Quantum Business Framework + Three Rites" },
+                  { label: "Network as Infrastructure", href: "/pillars/network-as-infrastructure", description: "Community, coordination, distribution" },
+                  { label: "The Builder's Stack", href: "/pillars/the-builders-stack", description: "Demand generation, GTM, fundamentals" },
                 ],
               },
+              { label: "The Rite System", href: "/the-rite-system", description: "Perception, Orientation, Declaration" },
+              { label: "Quantum Glossary", href: "/quantum-glossary", description: "Core terms and concepts" },
               { label: "Courses", href: "/courses" },
               { label: "White Papers", href: "/whitepapers" },
               { label: "Case Studies", href: "/portfolio" },
@@ -156,7 +149,10 @@ export const navigationConfig = {
       { label: "Contact", href: "/contact" },
     ],
     resources: [
+      { label: "Pillars", href: "/pillars" },
       { label: "Articles", href: "/articles" },
+      { label: "The Rite System", href: "/the-rite-system" },
+      { label: "Quantum Glossary", href: "/quantum-glossary" },
       { label: "Courses", href: "/courses" },
       { label: "White Papers", href: "/whitepapers" },
       { label: "Case Studies", href: "/portfolio" },

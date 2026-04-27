@@ -12,9 +12,16 @@ const config: NextConfig = {
   // Skip trailing slash redirects for API routes (fixes Stripe webhook 308 errors)
   skipTrailingSlashRedirect: true,
 
-  // Redirects for renamed product slugs
   async redirects() {
     return [
+      // www → non-www canonical redirect
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.quantumstrategies.online' }],
+        destination: 'https://quantumstrategies.online/:path*',
+        permanent: true,
+      },
+      // Redirects for renamed product slugs
       {
         source: '/products/quantum-initiation/:path*',
         destination: '/products/business-alignment/:path*',

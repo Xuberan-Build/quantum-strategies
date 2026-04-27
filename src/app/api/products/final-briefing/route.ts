@@ -289,21 +289,16 @@ REQUIREMENTS:
 
 Generate the blueprint now.`;
 
-    const actionableNudgeInstruction = `CRITICAL: Add an Actionable Nudges section to the deliverable.
+    const actionableNudgeInstruction = `CRITICAL: Your response must contain TWO parts in this exact order — no preamble, no checklist, no "Input Requirements" section.
 
-Review all insights from each step. Identify the 5-7 MOST actionable nudges — insights that are:
-- Concrete and specific (not abstract or theoretical)
-- Immediately implementable (can be acted on this week)
-- Directly tied to something the user shared
-- Framed as an action, not an observation
-
-Place this section BEFORE Section 1, using EXACTLY this header on its own line:
+PART 1 — OPENING NUDGES (output this first):
+Use this exact header on its own line:
 **OPENING: Your Actionable Nudges (This Week)**
 
-Then list the nudges numbered 1–7, one per line. Keep each to 1–2 sentences: [specific action] — because [specific thing from their responses].
+Review all step insights and list the 5-7 MOST actionable nudges — numbered 1–7, one per line. Each 1–2 sentences: [specific action] — because [specific thing from their responses]. Distill; do not copy verbatim. Criteria: concrete, implementable this week, tied to something the user shared, framed as an action.
 
-DO NOT copy step insights verbatim. Distill them into the most impactful, implementable actions.
-DO NOT output an "Input Requirements" section or any checklist — begin with the OPENING header immediately.`;
+PART 2 — FULL DELIVERABLE (output this immediately after Part 1):
+Generate the complete deliverable per the instructions above. Include every section in full. Do not skip or abbreviate any section.`;
 
     // Generate final briefing using AIRequestService
     let briefing = '';

@@ -159,6 +159,12 @@ export default function Navbar({ showProductCTA = false, productCTAText = "Get Y
                   }))
                 );
 
+                const triggerChevron = (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true" style={{ marginLeft: 4 }}>
+                    <path d="M6 9L1 4h10z" />
+                  </svg>
+                );
+
                 return (
                   <li
                     key={item.label}
@@ -167,12 +173,15 @@ export default function Navbar({ showProductCTA = false, productCTAText = "Get Y
                     onMouseEnter={() => handleMouseEnter(item.label)}
                     onMouseLeave={handleMouseLeave}
                   >
-                    <button className={styles.navLink}>
-                      {item.label}
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true" style={{ marginLeft: 4 }}>
-                        <path d="M6 9L1 4h10z" />
-                      </svg>
-                    </button>
+                    {"href" in item && item.href ? (
+                      <Link href={item.href} className={`${styles.navLink} ${isActive(item.href) ? styles.active : ""}`}>
+                        {item.label}{triggerChevron}
+                      </Link>
+                    ) : (
+                      <button className={styles.navLink}>
+                        {item.label}{triggerChevron}
+                      </button>
+                    )}
 
                     {activeDropdown === item.label && (
                       <DropdownPortal>

@@ -1,781 +1,110 @@
 ---
-title: "MVP Development Strategy: Build, Test, and Validate Faster"
-description: "Learn MVP frameworks, validation tests, and launch workflows to validate product ideas quickly and reduce risk. Templates included."
-slug: "mvp-development-strategy"
-date: "2025-01-15"
+title: "MVP Development Strategy: Validate Signal Before You Build"
+description: "Most MVPs fail because founders test the wrong thing at the wrong time. The framework for running experiments that generate real signal."
+slug: "mvp-strategy"
+date: "2026-04-27"
 author: "Austin Santos"
 category: "Product Development"
+stage: "MOF"
 keywords: ["MVP development strategy", "minimum viable product", "MVP framework", "build MVP", "concierge MVP", "smoke test", "product validation"]
 ---
 
-# MVP Development Strategy: Validate Before You Build
+# MVP Development Strategy: Validate Signal Before You Build
 
-## Introduction: The Purpose of an MVP Is Not to Launch Quickly—It's to Learn Quickly
+Most founders treat an MVP as a stripped-down product launch. It is not. It is a diagnostic tool — a controlled experiment designed to test the riskiest assumption in your business model before you commit capital to it.
 
-Most founders get MVP wrong.
+The goal is not speed to market. The goal is signal fidelity. You are trying to get clean data on whether the problem is real, whether your solution resolves it, and whether someone will pay.
 
-They think MVP means "ship fast." So they cut corners, rush to market, and launch half-baked products. Then they wonder why nobody uses it.
+## TL;DR
 
-Here's what they missed: The purpose of an MVP is not to launch quickly. It's to learn quickly.
+- An MVP is a learning instrument, not a product. Its output is validated truth, not a user base.
+- Test your riskiest assumption first. Everything else is secondary until that resolves.
+- Willingness to pay is the only meaningful demand signal. Free signups validate curiosity, not market fit.
+- Retention, not acquisition, determines when you scale.
 
-MVP is not about speed. It's about removing guesswork from product building by testing core assumptions with the smallest viable experience.
+## 1. Problem Frequency and Pain Amplitude
 
-You're not building a product. You're building a learning engine that reveals truth:
+Before any build decision, understand the waveform of the problem itself.
 
-- Is this problem real?
-- Is it urgent enough that people will pay?
-- Does our solution actually solve it?
-- Will they use it repeatedly?
-- Can we acquire customers efficiently?
+Ask: How often does this problem repeat? How much pain does it generate each cycle? What does the person do instead?
 
-Every dollar and hour you invest should generate validated learning—proof that moves you closer to product-market fit or reveals you need to pivot.
+Frequency and amplitude together determine urgency. A problem that repeats daily at high intensity generates action. A problem that shows up quarterly and produces mild friction does not. You are looking for high-frequency, high-amplitude pain — the kind that causes people to already be spending money or time on a workaround.
 
-Modern MVP strategy blends lean experimentation, buyer insight, willingness-to-pay signals, and iterative product evolution. This guide outlines a structured path to build what matters, test what matters, and scale what works.
+Score candidates this way:
 
-## What Is an MVP? (And What It's Not)
+- Frequency — how often it repeats (daily = 10, monthly = 5, yearly = 1)
+- Intensity — how disruptive it is (critical = 10, annoying = 5, minor = 1)
+- Willingness to pay — what they'd spend to eliminate it ($1000+/month = 10, $100 = 5, $10 = 1)
 
-### Definition
+Multiply those three numbers. A score below 100 is noise. Above 200, you have a real signal worth pursuing.
 
-A Minimum Viable Product (MVP) is the smallest version of your product that delivers enough value to real users to validate core assumptions about problem, solution, and market demand.
+Talk to 20–30 people in the target segment before you design anything. You are not asking them to validate your idea. You are asking them to describe a repeating experience. Listen for specific stories, active workarounds, and quantified cost. Vague answers indicate low amplitude. Someone who has already built a spreadsheet to manage the problem is already paying — just not to you.
 
-Eric Ries (The Lean Startup) defined it as: "That version of a new product which allows a team to collect the maximum amount of validated learning about customers with the least effort."
+The ICP for an MVP is narrower than the eventual market. You are looking for people who feel the pain acutely, are already seeking solutions, and can say yes without a six-month approval chain. Start there.
 
-Translation: An MVP is a learning tool, not a product launch.
+## 2. Hypothesis Design Before Build
 
-### What an MVP Is NOT
+An MVP without a defined hypothesis is a product launch with extra steps. You cannot learn from an undefined experiment.
 
-**A bad product**
+Write the hypothesis in this structure: "We believe that [segment] has [problem] and will [specific behavior] if we provide [solution]."
 
-"Minimum" doesn't mean low quality. It means minimum scope. The experience must still deliver real value.
+Example: "We believe that solo consultants spend 4+ hours per month chasing unpaid invoices and will pay $40/month for automated follow-up sequences that integrate with their existing project tools."
 
-**A beta with all features**
+That one sentence defines the segment, the problem, the behavior you need to observe, the pricing, and the feature scope. Everything you build should be derived from that sentence.
 
-An MVP focuses on ONE core job-to-be-done. Not a dozen features. One.
+From the hypothesis, extract the riskiest assumption — the one that, if false, makes the business unviable. Rank assumptions by two criteria: consequence if wrong, and current confidence level. The highest-consequence, lowest-confidence assumption gets tested first.
 
-**A quick launch to "see what happens"**
+Set success thresholds before you launch. Write down the numbers that constitute success, inconclusive, and failure — and commit to the decision rules in advance. Without pre-commitment, humans rationalize mediocre results. If Week 2 retention is supposed to hit 30% and it lands at 12%, that is a failure signal, not a data point to revisit with optimism.
 
-An MVP is a structured experiment with defined hypotheses, metrics, and success criteria. Not hope.
+## 3. MVP Archetypes: Match the Test to the Assumption
 
-**A way to get users fast**
+Different questions require different instruments. Use the lightest experiment that generates a clear answer.
 
-If your goal is user growth, you're not ready for an MVP. You're ready for marketing.
+**Smoke test.** A landing page describing a product that does not exist, with a clear CTA. Tests demand before any build. A 10%+ visitor-to-signup rate is a meaningful signal. Use this when you have not yet validated that people want the category at all.
 
-**The final product**
+**Concierge MVP.** You manually deliver the output without automation, without software. You do the thing by hand and charge for it. This tests whether your solution actually resolves the problem and reveals what users value before you automate. It is the highest-signal MVP type because it puts real delivery in front of real customers for real money.
 
-An MVP is the beginning of a learning journey—not the destination.
+**Wizard-of-Oz MVP.** The front end looks automated; you operate it manually from behind. Users experience a product workflow; you fulfill it by hand. Zapier began this way. Use it when you need to validate user experience patterns before committing to infrastructure.
 
-### What an MVP IS
+**Prototype MVP.** A clickable simulation with no back-end. Tests navigation, comprehension, and workflow logic before a single line of functional code is written. Most B2B SaaS products should start here.
 
-**A hypothesis test**
+**Private beta.** A functional but feature-minimal product with a small cohort of real users. Use this only after you have already validated demand and solution fit. This tests retention and usage patterns at low scale.
 
-You have assumptions. An MVP tests whether they're true.
+Sequence from lightest to heaviest. A smoke test takes a week. A concierge MVP takes two to four weeks. A private beta takes six to twelve. Each step should only proceed when the previous test produced a clear signal.
 
-**A learning vehicle**
+## 4. The Signal That Authorizes Scale
 
-The goal is validated learning that informs the next iteration.
+Activation, retention, and willingness-to-pay govern the MVP loop.
 
-**Customer-value first**
+**Activation:** did users reach the core value moment? Target 40% or higher completing the primary action. Below 20%, the onboarding is broken or the value proposition is unclear.
 
-It solves a real job for a real user—even if manually or imperfectly.
+**Retention:** did they come back? Week 2 retention below 30% means users tried the product and did not find it worth returning to. That is a product problem, not a marketing problem. Scaling acquisition into a broken retention loop generates data about churn, not about market fit.
 
-**Retention-ready, not feature-full**
+**Willingness to pay:** is the value high enough to command price? Free signups cannot answer this. At minimum, capture payment information. Better, charge from day one. A 10% trial-to-paid conversion is the floor. Below 2% means the value is not landing at the stated price.
 
-Focus on delivering core value that makes users return—not a feature list.
+When all three metrics are above threshold, the signal is coherent. That is when you increase amplitude — more channels, more volume, more infrastructure. Not before.
 
-**Capital efficient**
+## 5. Iteration Cadence
 
-Reduces burn by validating demand before building infrastructure.
+The MVP is not a single event. It is a repeating loop: build the smallest test, measure the defined metrics, extract the learning, change one variable, run the loop again. Every 1–2 weeks.
 
-## Why Most MVPs Fail
+Manual operations are the right tool at this stage. Onboarding every user by hand teaches you what they actually need. Processing requests manually teaches you what to automate. The point of not scaling is that you learn faster close up. Automation comes after you know exactly what to wire.
 
-### Mistake 1: Building Too Much
+The wrong signal accelerates in the wrong direction. Run a tight loop at low amplitude until the signal clears.
 
-Founders confuse "viable" with "complete." They add features "just in case." They polish the UI. They build infrastructure for scale they don't have.
+## Key Takeaways
 
-The result: Six months of development. No users. No validation. Wasted capital.
+- Run the lightest test that answers the riskiest question. Do not build infrastructure for unvalidated assumptions.
+- Retention authorizes scale. Acquisition without Week 2 retention above 30% means fix the product, not add channels.
+- Willingness to pay is the only clean demand signal. Design for it from the first touchpoint.
 
-The fix: Build the absolute minimum needed to test your riskiest assumption. Nothing more.
+## Related Resources
 
-### Mistake 2: Building Without Hypotheses
+- [Customer Acquisition Foundations](/articles/customer-acquisition-foundations)
+- [Product-Market Fit Validation](/articles/product-market-fit)
+- [User Research Methods](/articles/user-research)
+- [VCAP Course](/courses/vcap)
 
-You can't learn if you don't know what you're testing.
+## Closing
 
-Most founders build an MVP and "see what happens." But without defined hypotheses and success criteria, you can't interpret results. You don't know if you succeeded or failed.
-
-The fix: Define what you're testing before you build. Set clear success thresholds.
-
-### Mistake 3: Targeting Everyone
-
-"Our product is for everyone!"
-
-No, it's not. And trying to serve everyone means serving no one well.
-
-The fix: Identify one specific early adopter segment. Build for them exclusively. Expand later.
-
-### Mistake 4: Ignoring Willingness to Pay
-
-Free signups don't validate demand. They validate curiosity.
-
-If people won't pay for your solution, it's not valuable enough—or you haven't proven the value yet.
-
-The fix: Test pricing from day one. Even if you offer a free trial, ask for payment info upfront. Measure conversion intent.
-
-### Mistake 5: Scaling Before Validation
-
-You get some traction. A few users. Some positive feedback. You assume it's working.
-
-So you scale. Hire. Spend. Build more features.
-
-Then retention collapses. You realize you never had product-market fit—you just had early adopter curiosity.
-
-The fix: Don't scale until you've validated retention, not just acquisition. Prove users stick before you grow.
-
-## The Core MVP Framework: 3 Pillars
-
-True MVP execution requires three interconnected systems:
-
-1. **Problem Discovery & Audience Clarity** (Prove the problem is real and urgent)
-2. **Hypothesis Design & Validation Planning** (Convert assumptions into testable experiments)
-3. **Lean Build & Experiment Execution** (Run the smallest experiment that generates learning)
-
-Let's break down each pillar.
-
-## Pillar 1: Problem Discovery & Audience Clarity
-
-Before you build anything, you need to validate that you're solving a real problem for a specific audience.
-
-### The Jobs-To-Be-Done (JTBD) Framework
-
-People don't buy products. They "hire" products to do a job.
-
-Your MVP must solve a specific job better than existing alternatives.
-
-**Framework:**
-
-- **Functional job:** What task are they trying to complete?
-- **Emotional job:** How do they want to feel?
-- **Social job:** How do they want to be perceived?
-
-**Example:**
-
-A freelancer doesn't hire invoicing software to "send invoices." They hire it to "get paid faster without looking unprofessional."
-
-### Problem Interview Script
-
-Talk to 20-30 people in your target segment. Ask:
-
-1. **"Tell me about the last time you experienced [problem]."**
-   (Get a specific story, not hypotheticals)
-
-2. **"How are you solving this today?"**
-   (Understand existing alternatives and workarounds)
-
-3. **"What's frustrating about your current solution?"**
-   (Identify pain points and friction)
-
-4. **"How much time/money do you lose because of this problem?"**
-   (Quantify urgency and willingness to pay)
-
-5. **"If I built [solution], would you pay $X for it?"**
-   (Test pricing and commitment)
-
-**Red flags:**
-
-- Vague answers ("I guess it's annoying sometimes")
-- No current solution ("I've never really thought about it")
-- Low urgency ("Maybe I'd try it if it were free")
-
-**Green flags:**
-
-- Specific stories with emotion
-- Expensive or painful workarounds (they're already paying to solve this)
-- Immediate interest and questions about when they can use it
-
-### Early Adopter Persona Clarity
-
-Not all users are equal. Early adopters have specific characteristics:
-
-**Early adopter traits:**
-
-- They feel the pain acutely (problem is urgent)
-- They're already seeking solutions (active, not passive)
-- They're willing to tolerate imperfection (forgiving of MVP rough edges)
-- They have budget or authority (can say yes without approval chains)
-- They're accessible (you can reach them through channels you control)
-
-**Example:**
-
-- Bad early adopter: "Fortune 500 companies" (long sales cycles, complex buying)
-- Good early adopter: "Sales managers at 10-50 person B2B companies" (accessible, urgent pain, can buy quickly)
-
-### Pain Intensity Scoring
-
-Not all problems are equal. Rank problems by intensity:
-
-**Pain Score = Frequency × Intensity × Willingness to Pay**
-
-- **Frequency:** How often does this problem occur? (Daily = 10, Monthly = 5, Yearly = 1)
-- **Intensity:** How painful is it? (Critical = 10, Annoying = 5, Minor = 1)
-- **Willingness to Pay:** How much would they pay to solve it? ($1000+ = 10, $100 = 5, $10 = 1)
-
-**Example:**
-
-- Problem A: Occurs daily (10), critical pain (10), willing to pay $500/month (8) = **Score: 280**
-- Problem B: Occurs monthly (5), annoying (5), willing to pay $20/month (3) = **Score: 75**
-
-Problem A is a much stronger MVP opportunity.
-
-### Competitor + Alternative Analysis
-
-Your competition isn't just other products. It's the status quo—what users do today.
-
-**Map alternatives:**
-
-- **Direct competitors:** Other products solving the same problem
-- **Indirect competitors:** Products solving adjacent problems
-- **Workarounds:** Spreadsheets, manual processes, duct-tape solutions
-- **Status quo:** Doing nothing
-
-Your MVP must be 10x better than the status quo for one specific use case.
-
-Not 10% better. 10x. Otherwise, switching costs are too high.
-
-## Pillar 2: Hypothesis Design & Validation Planning
-
-Now that you've validated the problem, you need to turn your assumptions into testable hypotheses.
-
-### The Hypothesis Framework
-
-Every MVP should test explicit hypotheses. Format:
-
-**"We believe that [target audience] has [problem] and will [desired behavior] if we provide [solution]."**
-
-**Example:**
-
-"We believe that freelance designers have trouble getting paid on time and will pay $30/month for automated invoicing that integrates with their project management tools."
-
-**Testable components:**
-
-- Target audience: Freelance designers
-- Problem: Getting paid on time
-- Desired behavior: Pay $30/month
-- Solution: Automated invoicing with PM integration
-
-### Riskiest Assumption First
-
-You have multiple assumptions. Don't test them all at once.
-
-Rank assumptions by:
-
-- **Risk:** If this is wrong, does the business fail?
-- **Uncertainty:** How confident are you it's true?
-
-The riskiest assumption = High risk + High uncertainty
-
-Test that first.
-
-**Example assumptions (ranked by risk):**
-
-1. **Highest risk:** Freelancers will pay $30/month for invoicing (tests willingness to pay)
-2. **Medium risk:** They want PM tool integration (tests feature priority)
-3. **Low risk:** They prefer email notifications (tests UX preference)
-
-Build an MVP that tests #1. Don't waste time on #2 and #3 until you've validated #1.
-
-### Success Metrics Definition
-
-Define what success looks like before you build.
-
-**Leading indicators (short-term):**
-
-- Signup rate from landing page
-- Activation rate (percent who complete core action)
-- Engagement rate (percent who return within 7 days)
-
-**Lagging indicators (long-term):**
-
-- Retention rate (percent who return Week 2, Week 4)
-- Conversion to paid (percent who convert from trial/free to paid)
-- Willingness-to-pay signals (did they provide payment info?)
-
-**Set thresholds:**
-
-- **Success:** 40%+ signup-to-activation, 30%+ Week 2 retention
-- **Inconclusive:** 20-40% signup-to-activation, 15-30% Week 2 retention
-- **Failure:** Under 20% signup-to-activation, under 15% Week 2 retention
-
-If you hit failure thresholds, pivot or kill the idea. Don't rationalize mediocre results.
-
-### Pricing + Willingness-to-Pay Signals
-
-Price is a signal of value. If people won't pay, the problem isn't urgent enough—or your solution doesn't solve it well enough.
-
-**Test pricing in your MVP:**
-
-- Display pricing on your landing page (even if you're not charging yet)
-- Require payment info for trials (measure conversion intent)
-- Offer paid-only features in your MVP (see who upgrades)
-
-**Pricing validation thresholds:**
-
-- **Strong signal:** 10%+ of trial users convert to paid
-- **Weak signal:** 2-10% convert (might work with better onboarding)
-- **No signal:** Under 2% convert (price is too high or value is too low)
-
-### Test Plan + Success Gate Criteria
-
-Create a one-page test plan:
-
-- **Test Name:** [e.g., "Freelance Invoicing MVP"]
-- **Hypothesis:** [e.g., "Freelancers will pay $30/month for automated invoicing"]
-- **MVP Type:** [e.g., "Concierge MVP"]
-- **Success Criteria:** [e.g., "20+ signups, 40%+ activation, 30%+ Week 2 retention, 10%+ trial-to-paid conversion"]
-- **Timeline:** [e.g., "4 weeks"]
-- **Budget:** [e.g., "$2,000 for ads + tools"]
-- **Decision:** [e.g., "If success → build product. If failure → pivot to different segment."]
-
-## Pillar 3: Lean Build & Experiment Execution
-
-Now you're ready to build. But build the minimum needed to test your hypothesis—nothing more.
-
-### MVP Archetypes: Choose Your Experiment Type
-
-Different hypotheses require different MVP types. Here are the most common:
-
-### 1. Smoke Test MVP
-
-**What it is:** A landing page that describes your product (which doesn't exist yet) and captures interest.
-
-**When to use:** You want to test demand before building anything.
-
-**How it works:**
-
-1. Create a landing page explaining your product
-2. Add a "Sign Up" or "Get Early Access" button
-3. Drive traffic (ads, social, email, communities)
-4. Measure signup rate and qualitative feedback
-
-**Success signal:** 10%+ of visitors sign up
-
-**Example:** Dropbox's famous explainer video landing page validated demand before building the product.
-
-**Tools:** Webflow, Carrd, Unbounce, Mailchimp
-
-### 2. Concierge MVP
-
-**What it is:** You manually deliver the product's value to early users—before automating anything.
-
-**When to use:** You want to validate that your solution actually solves the problem (and learn how users want it delivered).
-
-**How it works:**
-
-1. Recruit 5-10 early users
-2. Manually perform the service (e.g., manually create their invoices, manually analyze their data)
-3. Charge them (even a small amount)
-4. Observe what they value most
-5. Iterate based on feedback
-
-**Success signal:** Users come back for more, refer others, and pay
-
-**Example:** Food on the Table (meal planning service) started by manually creating meal plans for each customer before automating.
-
-**Tools:** Google Sheets, Airtable, Zapier, email, phone calls
-
-### 3. Wizard-of-Oz MVP
-
-**What it is:** The product appears automated to users, but you're manually operating it behind the scenes.
-
-**When to use:** You want to validate the user experience before building infrastructure.
-
-**How it works:**
-
-1. Build a basic front-end (or use no-code tools)
-2. Users interact with it as if it's automated
-3. You manually process requests behind the scenes
-4. Users don't know you're doing it manually
-
-**Success signal:** Users use it repeatedly and the manual process is sustainable enough to validate demand
-
-**Example:** Zapier started by manually connecting apps for users before building automation infrastructure.
-
-**Tools:** Typeform, Airtable, Zapier, Webflow, manual processing
-
-### 4. Prototype MVP
-
-**What it is:** A clickable prototype that simulates the product experience (without back-end functionality).
-
-**When to use:** You want to validate UI/UX and user workflows before building infrastructure.
-
-**How it works:**
-
-1. Design the core user flows in a design tool
-2. Make it interactive (clickable prototype)
-3. Test with users and observe behavior
-4. Iterate based on usability feedback
-
-**Success signal:** Users complete core flows without confusion
-
-**Example:** Most B2B SaaS products start with Figma prototypes to validate workflows before coding.
-
-**Tools:** Figma, Framer, InVision, Webflow
-
-### 5. Private Beta MVP
-
-**What it is:** A functional (but limited) product released to a small group of early adopters.
-
-**When to use:** You've validated demand and now need to test actual product usage and retention.
-
-**How it works:**
-
-1. Build core functionality (one feature, not ten)
-2. Invite 20-50 early adopters
-3. Track activation, engagement, and retention
-4. Iterate based on usage data and feedback
-
-**Success signal:** 30%+ Week 2 retention, users completing core action repeatedly
-
-**Example:** Most SaaS products launch a private beta before public launch.
-
-**Tools:** Full product stack (but minimal features)
-
-### MVP Decision Tree: Which Type Should You Build?
-
-Use this decision tree to choose your MVP type:
-
-**Do you need to validate demand before building anything?**
-→ Yes: Smoke Test MVP
-
-**Do you need to validate that your solution actually works?**
-→ Yes: Concierge MVP
-
-**Do you need to validate the user experience?**
-→ Yes: Prototype MVP or Wizard-of-Oz MVP
-
-**Do you need to validate retention and usage patterns?**
-→ Yes: Private Beta MVP
-
-Start with the lightest test that answers your riskiest question.
-
-## "Do Things That Don't Scale" Methodology
-
-Paul Graham's famous advice: Do things that don't scale.
-
-In the MVP phase, don't worry about automation, infrastructure, or scale. Worry about learning.
-
-**Examples of things that don't scale (and that's OK):**
-
-- Manually onboarding every user (learn what they need)
-- Manually processing requests (learn what's valuable)
-- Recruiting users one-by-one (learn who's your best segment)
-- Over-serving early users (learn what "great" looks like)
-
-**Why this works:**
-
-You learn faster by doing things manually. Automation comes later—after you know what to automate.
-
-## No-Code Build Accelerators
-
-You don't need developers to build an MVP. No-code tools let you validate demand in days, not months.
-
-**Landing pages:**
-Webflow, Carrd, Unbounce
-
-**Prototypes:**
-Figma, Framer, Webflow
-
-**Databases + workflows:**
-Airtable, Google Sheets
-
-**Automation:**
-Zapier, Make (Integromat)
-
-**Forms + surveys:**
-Typeform, Google Forms, Tally
-
-**Email + communication:**
-Mailchimp, ConvertKit, Intercom
-
-**Payment:**
-Stripe, Gumroad, PayPal
-
-Use no-code until you hit constraints that require custom code. Then (and only then) build custom.
-
-## Time-to-Value Prioritization
-
-The faster users experience value, the better your retention.
-
-**Time-to-Value (TTV) benchmarks:**
-
-- Consumer apps: Under 5 minutes
-- Simple B2B SaaS: Under 1 day
-- Complex B2B SaaS: Under 1 week
-
-**How to reduce TTV:**
-
-- Cut onboarding steps (every field you ask for is friction)
-- Provide default data or templates (let them experience value before customizing)
-- Show immediate results (don't make them wait for value)
-
-**Example:**
-
-Slack's MVP had near-instant TTV. You could invite a teammate and start chatting within 60 seconds.
-
-## Iteration Cycle System
-
-MVP is not a one-time event. It's a learning loop.
-
-**The Build-Measure-Learn Loop:**
-
-1. **Build:** Create the smallest experiment to test your hypothesis
-2. **Measure:** Track activation, engagement, retention, and feedback
-3. **Learn:** Identify what worked, what didn't, and why
-4. **Iterate:** Make one change based on learning
-5. **Repeat:** Run the loop again
-
-**Cadence:** Run this loop every 1-2 weeks. Fast iteration = fast learning = faster PMF.
-
-## Why This MVP System Works
-
-### Evidence Over Assumptions
-
-Every build step ties to a learning outcome. You're not guessing. You're testing.
-
-### Customer-Value First
-
-You solve a proven job for a proven user group. No hypothetical features. No "nice-to-haves."
-
-### Retention-Ready, Not Feature-Full
-
-Focus on core value delivery and repeat behavior. One feature done excellently beats ten features done poorly.
-
-### Supports PMF Journey
-
-MVP transitions toward product-market fit measurement standards (activation, retention, must-have feedback). It's not a separate phase—it's the first step toward PMF.
-
-### Capital Efficient
-
-Reduces burn and accelerates truth-finding. You spend $5K on an MVP instead of $500K on a product nobody wants.
-
-### Evolves to MLP/MMP
-
-Clear graduation from MVP (validation) to MLP (Minimum Lovable Product) or MMP (Minimum Marketable Product).
-
-**MVP → MLP → MMP:**
-
-- **MVP:** Validates demand and core value
-- **MLP:** Adds delight and polish for early adopters
-- **MMP:** Ready for broader market launch
-
-## Common Questions About MVP Development
-
-### How long should an MVP take?
-
-Typically 2-12 weeks, depending on complexity and market signals required.
-
-**Factors that affect timeline:**
-
-- **Smoke test:** 1-2 weeks (landing page + traffic)
-- **Concierge MVP:** 2-4 weeks (recruiting + manual delivery)
-- **Prototype MVP:** 2-6 weeks (design + testing)
-- **Private beta MVP:** 6-12 weeks (build + test + iterate)
-
-The goal is speed-to-learning, not speed-to-launch.
-
-### Do I need to build software for an MVP?
-
-No. Many validated MVPs start as:
-
-- Landing pages (smoke tests)
-- Manual workflows (concierge MVPs)
-- Spreadsheets and Zapier automations (Wizard-of-Oz MVPs)
-- Clickable prototypes (prototype MVPs)
-
-Build software only after you've validated demand and retention.
-
-### What metrics prove MVP success?
-
-**Activation rate on core action:**
-Did users complete the core value-delivering action? Target: 40%+
-
-**Early retention:**
-Did users return? Week 2 retention target: 30%+
-
-**Conversion intent:**
-Did they provide payment info or convert to paid? Target: 10%+
-
-**Willingness-to-pay:**
-Did they pay (even a small amount) for your solution? If yes, you've validated demand.
-
-### What happens after MVP success?
-
-**Transition into MLP/MMP:**
-
-- Add polish and delight (move from "functional" to "lovable")
-- Scale onboarding (reduce manual work)
-- Refine positioning and messaging
-- Pursue product-market fit (40%+ "very disappointed" score, flat retention curve)
-
-**Then scale:**
-
-- Invest in growth channels
-- Build infrastructure for scale
-- Expand team
-
-### How do AI tools affect MVP building?
-
-AI accelerates research, prototyping, and testing velocity. Use AI to:
-
-- Generate landing page copy (ChatGPT, Claude)
-- Design prototypes faster (Figma with AI plugins)
-- Analyze qualitative feedback (summarize interview themes)
-- Automate workflows (Zapier + AI tools)
-
-But don't use AI to skip talking to users. No amount of AI can replace real customer conversations.
-
-### Can MVPs fail?
-
-Yes. And that's OK.
-
-Failure that reveals truth is progress. If your MVP fails, you've learned:
-
-- The problem isn't urgent enough
-- Your solution doesn't solve it well enough
-- You targeted the wrong segment
-- The market isn't ready
-
-Pivot or refine based on validated learning.
-
-The worst outcome isn't failure—it's wasting years building something nobody wants without testing it first.
-
-## Common MVP Mistakes & How to Avoid Them
-
-### Mistake 1: Building Too Much
-
-**The Problem:** You build a full product with multiple features. Six months later, nobody uses it.
-
-**The Fix:** Build ONE core feature. Test it. If it works, add more. If it doesn't, pivot.
-
-### Mistake 2: Skipping the Problem Validation Phase
-
-**The Problem:** You assume the problem is real without talking to users. You build a solution for a problem that doesn't exist (or isn't urgent).
-
-**The Fix:** Talk to 20-30 people in your target segment before you build anything. Validate the problem first.
-
-### Mistake 3: Targeting Everyone
-
-**The Problem:** You try to serve multiple segments and serve none well.
-
-**The Fix:** Pick ONE early adopter segment. Build for them exclusively. Expand later.
-
-### Mistake 4: No Clear Success Criteria
-
-**The Problem:** You launch an MVP but don't know what success looks like. You can't tell if it worked or not.
-
-**The Fix:** Define success metrics before you build. Set thresholds for success, inconclusive, and failure.
-
-### Mistake 5: Ignoring Retention
-
-**The Problem:** You get signups but nobody comes back. You assume it's a marketing problem when it's a product problem.
-
-**The Fix:** Track Week 2 retention. If it's below 30%, fix the product before scaling acquisition.
-
-### Mistake 6: Scaling Before Validation
-
-**The Problem:** You see some early traction and immediately scale—hiring, advertising, building features. Then retention collapses.
-
-**The Fix:** Don't scale until you've validated retention and "must-have" sentiment. Prove users stick before you grow.
-
-## MVP Tools & Templates
-
-Here's your toolkit for building and validating MVPs.
-
-### Landing Page Templates
-
-**Tools:**
-
-- Webflow (professional, custom)
-- Carrd (simple, fast)
-- Unbounce (high-converting)
-
-**Template structure:**
-
-- **Hero:** Clear value proposition (outcome-focused)
-- **Problem:** Describe the pain
-- **Solution:** How you solve it (not features—outcomes)
-- **Social proof:** Testimonials, case studies, logos
-- **CTA:** Sign up, join waitlist, pre-order
-
-### Problem Interview Template
-
-**Questions to ask (in order):**
-
-1. Tell me about the last time you experienced [problem].
-2. How are you solving this today?
-3. What's frustrating about your current solution?
-4. How much time/money do you lose because of this problem?
-5. If I built [solution], would you pay $X for it?
-
-**Goal:** Get specific stories, not hypotheticals. Understand urgency and willingness to pay.
-
-### Hypothesis Template
-
-**Format:**
-
-"We believe that [target audience] has [problem] and will [desired behavior] if we provide [solution]."
-
-**Example:**
-
-"We believe that freelance designers have trouble getting paid on time and will pay $30/month for automated invoicing that integrates with their project management tools."
-
-### MVP Metrics Dashboard
-
-**Track these metrics:**
-
-- Signup rate (percent of visitors who sign up)
-- Activation rate (percent who complete core action)
-- Week 1 retention (percent who return within 7 days)
-- Week 2 retention (percent who return within 14 days)
-- Trial-to-paid conversion (percent who upgrade to paid)
-
-**Tools:** Google Analytics, Mixpanel, Amplitude, or simple spreadsheet
-
-### Concierge MVP Workflow Template
-
-**Step-by-step:**
-
-1. Recruit 5-10 early users (personal outreach, communities)
-2. Onboard manually (1-on-1 calls, setup help)
-3. Deliver the service manually (don't automate yet)
-4. Charge (even $10/month validates willingness to pay)
-5. Collect feedback after every interaction
-6. Iterate weekly based on feedback
-
-**Tools:** Airtable, Google Sheets, Zapier, Calendly, Stripe
-
-## Conclusion: Build Smart. Validate Fast. Scale Only What Works.
-
-The purpose of an MVP is not to launch quickly. It's to learn quickly.
-
-Most startups fail because they build the wrong thing. They skip validation. They trust assumptions over evidence. They scale before proving retention.
-
-Don't make that mistake.
-
-**Build smart:**
-
-- Start with problem validation (talk to 20-30 users)
-- Define testable hypotheses (know what you're testing)
-- Choose the lightest MVP archetype (don't overbuild)
-
-**Validate fast:**
-
-- Launch in 2-12 weeks (not 6 months)
-- Track activation, retention, and willingness to pay
-- Iterate every 1-2 weeks based on data
-
-**Scale only what works:**
-
-- Don't scale until retention stabilizes (30%+ Week 2 retention)
-- Don't scale until you hit 40%+ "very disappointed" score
-- Don't scale until CAC and LTV are healthy
-
-MVP is not a product launch. It's a learning engine that reveals truth. The faster you learn, the faster you win.
+This week: write your MVP hypothesis in one sentence using the "We believe that..." structure. If you cannot finish the sentence cleanly, you are not ready to build. Clarify the hypothesis first. Everything downstream depends on it.
