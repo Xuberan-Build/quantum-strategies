@@ -81,21 +81,12 @@ function getProductEntries(): MetadataRoute.Sitemap {
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${base}/`, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
-    { url: `${base}/meet/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: `${base}/values/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: `${base}/resources/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/articles/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/articles/customer-acquisition/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/articles/operations/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/articles/product-development/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/articles/waveforms/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/the-rite-system/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${base}/courses/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: `${base}/courses/vcap/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: `${base}/whitepapers/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: `${base}/portfolio/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: `${base}/privacy/`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
-    { url: `${base}/terms/`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
+    { url: `${base}/meet/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${base}/the-rite-system/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
+    { url: `${base}/articles/`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+    { url: `${base}/whitepapers/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    // Omitted: category stubs, /values, /resources, /portfolio, /courses, /privacy, /terms
+    // These are thin pages that dilute crawl budget on a new domain
   ];
 
   const articles = getArticleEntries();

@@ -91,8 +91,8 @@ REGISTRY: list[tuple[str, str, str]] = [
     ("science", "ras_consciousness",   "scrapers.science.ras_consciousness"),
     ("science", "qs_canonical_references",    "scrapers.science.qs_canonical_references"),
     ("science", "qs_darkness_void_synthesis", "scrapers.science.qs_darkness_void_synthesis"),
-    # ("science", "qs_science_overlay",         "scrapers.science.qs_science_overlay"),           # pending
-    # ("science", "qs_tradition_venn_overlay",  "scrapers.science.qs_tradition_venn_overlay"),    # pending
+    ("science", "qs_science_overlay",         "scrapers.science.qs_science_overlay"),
+    ("science", "qs_tradition_venn_overlay",  "scrapers.science.qs_tradition_venn_overlay"),
 ]
 
 
