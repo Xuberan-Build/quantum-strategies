@@ -31,36 +31,25 @@ export const navigationConfig = {
       megaMenu: {
         sections: [
           {
-            title: "Pillars",
-            links: [
-              { label: "All Pillars", href: "/pillars", description: "Our five strategic content territories" },
-              { label: "The Self as Signal", href: "/pillars/the-self-as-signal", description: "Identity, perception, personal brand" },
-              { label: "The Architecture of Reality", href: "/pillars/the-architecture-of-reality", description: "Waveform physics meets strategy" },
-              { label: "Strategy as Alignment", href: "/pillars/strategy-as-alignment", description: "Quantum Business Framework + Three Rites" },
-              { label: "Network as Infrastructure", href: "/pillars/network-as-infrastructure", description: "Community, coordination, distribution" },
-              { label: "The Builder's Stack", href: "/pillars/the-builders-stack", description: "Demand generation, GTM, fundamentals" },
-            ],
-          },
-          {
             title: "Content",
             links: [
               {
                 label: "Articles",
                 href: "/articles",
                 submenu: [
-                  { label: "All Articles", href: "/articles", description: "Browse the full library" },
-                  { label: "The Self as Signal", href: "/pillars/the-self-as-signal", description: "Identity, perception, personal brand" },
-                  { label: "The Architecture of Reality", href: "/pillars/the-architecture-of-reality", description: "Waveform physics meets strategy" },
-                  { label: "Strategy as Alignment", href: "/pillars/strategy-as-alignment", description: "Quantum Business Framework + Three Rites" },
-                  { label: "Network as Infrastructure", href: "/pillars/network-as-infrastructure", description: "Community, coordination, distribution" },
-                  { label: "The Builder's Stack", href: "/pillars/the-builders-stack", description: "Demand generation, GTM, fundamentals" },
+                  { label: "All Articles", href: "/articles" },
+                  { label: "Identity & Brand", href: "/pillars/the-self-as-signal", description: "The Self as Signal" },
+                  { label: "Mindset & Worldview", href: "/pillars/the-architecture-of-reality", description: "The Architecture of Reality" },
+                  { label: "Business Strategy", href: "/pillars/strategy-as-alignment", description: "Strategy as Alignment" },
+                  { label: "Network & Community", href: "/pillars/network-as-infrastructure", description: "Network as Infrastructure" },
+                  { label: "Growth & Marketing", href: "/pillars/the-builders-stack", description: "The Builder's Stack" },
                 ],
               },
-              { label: "The Rite System", href: "/the-rite-system", description: "Perception, Orientation, Declaration" },
-              { label: "Quantum Glossary", href: "/quantum-glossary", description: "Core terms and concepts" },
               { label: "Courses", href: "/courses" },
               { label: "White Papers", href: "/whitepapers" },
               { label: "Case Studies", href: "/portfolio" },
+              { label: "The Rite System", href: "/the-rite-system" },
+              { label: "Quantum Glossary", href: "/quantum-glossary" },
             ],
           },
         ],

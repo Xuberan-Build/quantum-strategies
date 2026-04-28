@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import styles from "./pillar.module.css";
 
 export const metadata = {
   title: "Content Pillars | Quantum Strategies",
@@ -45,79 +46,72 @@ export default async function PillarsPage() {
   }, {});
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "4rem 1.25rem" }}>
-      <header style={{ marginBottom: "3.5rem", textAlign: "center" }}>
-        <p style={{ fontSize: "0.875rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--accent)", marginBottom: "0.75rem" }}>
-          Framework
-        </p>
-        <h1 style={{ fontSize: "clamp(2.5rem, 5vw, 3.5rem)", color: "#fff", marginBottom: "1rem" }}>
-          The Five Pillars
-        </h1>
-        <p style={{ fontSize: "1.2rem", color: "var(--ink-soft)", maxWidth: "640px", margin: "0 auto", lineHeight: 1.7 }}>
-          Five strategic territories where mystical intelligence meets business architecture. Every piece of content, every product, every Rite lives inside one of these.
-        </p>
-      </header>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-        {(pillars ?? []).map((pillar, i) => (
-          <Link
-            key={pillar.id}
-            href={`/pillars/${pillar.slug}`}
-            style={{ display: "block", textDecoration: "none" }}
-          >
-            <div style={{
-              padding: "2rem 2.5rem",
-              backgroundColor: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: "12px",
-              transition: "all 0.2s",
-            }}
-              className="pillar-card"
-            >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "2rem", flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "0.8125rem", color: "var(--accent)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                      Pillar {i + 1}
-                    </span>
-                    {(pillar.tradition_affinity ?? []).map((t: string) => (
-                      <span key={t} style={{
-                        fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase",
-                        letterSpacing: "0.08em", color: TRADITION_COLORS[t] ?? "#6b7280",
-                        padding: "2px 8px", border: `1px solid ${TRADITION_COLORS[t] ?? "#6b7280"}`,
-                        borderRadius: 4, opacity: 0.85,
-                      }}>
-                        {traditionLabel(t)}
-                      </span>
-                    ))}
-                  </div>
-                  <h2 style={{ fontSize: "1.625rem", fontWeight: 700, color: "#fff", marginBottom: "0.75rem" }}>
-                    {pillar.title}
-                  </h2>
-                  <p style={{ color: "var(--ink-soft)", fontSize: "1rem", lineHeight: 1.7, maxWidth: "72ch" }}>
-                    {pillar.description}
-                  </p>
-                </div>
-                <div style={{ flexShrink: 0, textAlign: "right", display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "flex-end" }}>
-                  {topicsByPillar[pillar.id] > 0 && (
-                    <span style={{ fontSize: "0.8125rem", color: "var(--ink-soft)" }}>
-                      {topicsByPillar[pillar.id]} topic{topicsByPillar[pillar.id] !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                  {articlesByPillar[pillar.id] > 0 && (
-                    <span style={{ fontSize: "0.8125rem", color: "var(--accent)" }}>
-                      {articlesByPillar[pillar.id]} article{articlesByPillar[pillar.id] !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                  <span style={{ fontSize: "0.875rem", color: "var(--accent)", marginTop: "0.25rem" }}>
-                    Explore →
-                  </span>
-                </div>
-              </div>
+    <div className={styles.page}>
+      <section className={styles.hero}>
+        <div className={styles.heroBg} />
+        <div className={styles.gridOverlay} />
+        <div className={styles.glowOrb} />
+        <div className={styles.heroInner}>
+          <div className={styles.container}>
+            <div className={styles.eyebrow}>
+              <span className={styles.eyebrowDot} />
+              Framework
             </div>
-          </Link>
-        ))}
-      </div>
+            <h1 className={styles.heroTitle}>The Five Pillars</h1>
+            <p className={styles.heroDesc}>
+              Five strategic territories where mystical intelligence meets business architecture.
+              Every piece of content, every product, every Rite lives inside one of these.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.container}>
+          <div className={styles.pillarList}>
+            {(pillars ?? []).map((pillar, i) => (
+              <Link key={pillar.id} href={`/pillars/${pillar.slug}`} className={styles.pillarCard}>
+                <div className={styles.pillarCardInner}>
+                  <div className={styles.pillarCardLeft}>
+                    <div className={styles.pillarNumber}>0{i + 1}</div>
+                    <h2 className={styles.pillarCardTitle}>{pillar.title}</h2>
+                    <p className={styles.pillarCardDesc}>{pillar.description}</p>
+                    {(pillar.tradition_affinity ?? []).length > 0 && (
+                      <div className={styles.traditions} style={{ marginTop: "1.25rem" }}>
+                        {(pillar.tradition_affinity as string[]).map((t) => (
+                          <span
+                            key={t}
+                            className={styles.traditionTag}
+                            style={{
+                              color: TRADITION_COLORS[t] ?? "#6b7280",
+                              borderColor: TRADITION_COLORS[t] ?? "#6b7280",
+                            }}
+                          >
+                            {traditionLabel(t)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.pillarCardMeta}>
+                    {topicsByPillar[pillar.id] > 0 && (
+                      <span className={styles.metaStat}>
+                        {topicsByPillar[pillar.id]} topic{topicsByPillar[pillar.id] !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {articlesByPillar[pillar.id] > 0 && (
+                      <span className={styles.metaStatAccent}>
+                        {articlesByPillar[pillar.id]} article{articlesByPillar[pillar.id] !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    <span className={styles.exploreLink}>Explore →</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

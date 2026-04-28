@@ -146,29 +146,35 @@ export default async function ArticlePage({ params }: PageProps) {
     };
 
     return (
-      <article className={styles.article}>
+      <div className={styles.page}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
-        <header className={styles.header}>
-          {pillar && (
-            <Link href={`/pillars/${pillar.slug}`} className={styles.category}>
-              {pillar.title}
-            </Link>
-          )}
-          <h1 className={styles.title}>{post.title}</h1>
-          {post.excerpt && <p className={styles.description}>{post.excerpt}</p>}
-          {post.published_at && (
-            <time className={styles.date}>
-              {new Date(post.published_at).toLocaleDateString("en-US", {
-                year: "numeric", month: "long", day: "numeric",
-              })}
-            </time>
-          )}
-        </header>
-        <div className={`article-prose ${styles.prose}`}>
+        <section className={styles.hero}>
+          <div className={styles.heroBg} />
+          <div className={styles.gridOverlay} />
+          <div className={styles.heroInner}>
+            <Link href="/articles" className={styles.back}>← Articles</Link>
+            {pillar && (
+              <Link href={`/pillars/${pillar.slug}`} className={styles.category}>
+                {pillar.title}
+              </Link>
+            )}
+            <h1 className={styles.title}>{post.title}</h1>
+            {post.excerpt && <p className={styles.description}>{post.excerpt}</p>}
+            {post.published_at && (
+              <time className={styles.date}>
+                {new Date(post.published_at).toLocaleDateString("en-US", {
+                  year: "numeric", month: "long", day: "numeric",
+                })}
+              </time>
+            )}
+          </div>
+        </section>
+        <div className={styles.divider} />
+        <article className={`article-prose ${styles.prose}`}>
           <MDXRemote source={post.body ?? ""} />
-        </div>
-      </article>
+        </article>
+      </div>
     );
   }
 
@@ -201,20 +207,30 @@ export default async function ArticlePage({ params }: PageProps) {
   };
 
   return (
-    <article className={styles.article}>
+    <div className={styles.page}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
-      <header className={styles.header}>
-        {data.category && <div className={styles.category}>{data.category}</div>}
-        <h1 className={styles.title}>{data.title}</h1>
-        {data.description && <p className={styles.description}>{data.description}</p>}
-        {data.date && (
-          <time className={styles.date}>{new Date(data.date).getFullYear()}</time>
-        )}
-      </header>
-      <div className={`article-prose ${styles.prose}`}>
+      <section className={styles.hero}>
+        <div className={styles.heroBg} />
+        <div className={styles.gridOverlay} />
+        <div className={styles.heroInner}>
+          <Link href="/articles" className={styles.back}>← Articles</Link>
+          {data.category && <div className={styles.category}>{data.category}</div>}
+          <h1 className={styles.title}>{data.title as string}</h1>
+          {data.description && <p className={styles.description}>{data.description as string}</p>}
+          {data.date && (
+            <time className={styles.date}>
+              {new Date(data.date as string).toLocaleDateString("en-US", {
+                year: "numeric", month: "long", day: "numeric",
+              })}
+            </time>
+          )}
+        </div>
+      </section>
+      <div className={styles.divider} />
+      <article className={`article-prose ${styles.prose}`}>
         <MDXRemote source={content} />
-      </div>
-    </article>
+      </article>
+    </div>
   );
 }

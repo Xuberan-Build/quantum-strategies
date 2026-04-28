@@ -186,10 +186,10 @@ export function DeliverableView({ deliverable, productName, instructions, action
 
           {instructions?.deliverable ? (
             <>
-              <h1 className="text-4xl font-bold text-[#F8F5FF] mb-4">
+              <h1 className="text-2xl md:text-4xl font-bold text-[#F8F5FF] mb-4">
                 {instructions.deliverable.title}
               </h1>
-              <div className="text-[#F8F5FF]/70 text-lg space-y-2">
+              <div className="text-[#F8F5FF]/70 text-base md:text-lg space-y-2">
                 {instructions.deliverable.description.split('\n').map((line, idx) => (
                   <p key={idx}>{line}</p>
                 ))}
@@ -197,10 +197,10 @@ export function DeliverableView({ deliverable, productName, instructions, action
             </>
           ) : (
             <>
-              <h1 className="text-4xl font-bold text-[#F8F5FF] mb-4">
+              <h1 className="text-2xl md:text-4xl font-bold text-[#F8F5FF] mb-4">
                 Your Blueprint is Ready!
               </h1>
-              <p className="text-[#F8F5FF]/70 text-lg">
+              <p className="text-[#F8F5FF]/70 text-base md:text-lg">
                 Congratulations on completing {productName}
               </p>
             </>
@@ -210,8 +210,8 @@ export function DeliverableView({ deliverable, productName, instructions, action
         {/* Deliverable Card */}
         <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-[#F8F5FF]/10 overflow-hidden">
           {/* Action Buttons */}
-          <div className="bg-white/5 border-b border-[#F8F5FF]/10 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-[#F8F5FF]">
+          <div className="bg-white/5 border-b border-[#F8F5FF]/10 px-4 md:px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-lg md:text-xl font-semibold text-[#F8F5FF]">
               {productName === 'Personal Alignment Orientation' ? 'Your Personal Alignment Blueprint' : 'Your Quantum Blueprint'}
             </h2>
             <div className="flex space-x-3">
@@ -277,7 +277,7 @@ export function DeliverableView({ deliverable, productName, instructions, action
           </div>
 
           {/* Deliverable Content */}
-          <div className="p-8 space-y-6">
+          <div className="p-4 md:p-8 space-y-6">
             {sections.length > 0 ? (
               sections.map((section, index) => (
                 <div

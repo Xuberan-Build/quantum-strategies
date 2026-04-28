@@ -29,7 +29,8 @@ export default function ProductActiveToggle({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update');
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error ?? `Failed to update (${response.status})`);
       }
 
       setIsActive(newValue);

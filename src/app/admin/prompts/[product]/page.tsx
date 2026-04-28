@@ -18,6 +18,22 @@ const SCOPE_DESCRIPTIONS: Record<string, string> = {
   final_briefing: 'The generation prompt for the final deliverable document.',
 };
 
+function getDefaultFallback(scope: string, productSlug: string): string {
+  const name = productSlug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  switch (scope) {
+    case 'system':
+      return `You are an AI assistant helping users with ${name}. Provide clear, helpful, and accurate responses.`;
+    case 'step_insight':
+      return `You are a strategic advisor for ${name}. Analyze the user's input and provide actionable insights based on their unique situation. Be specific, practical, and encouraging.`;
+    case 'followup':
+      return `Continue the conversation naturally. Answer the user's question with clarity and depth. Reference previous context when relevant. Keep responses concise but thorough.`;
+    case 'final_briefing':
+      return `Generate a comprehensive strategic briefing based on all the information provided. Create a clear, actionable plan that synthesizes the user's goals, challenges, and the insights discussed. Format with clear sections and specific next steps.`;
+    default:
+      return '';
+  }
+}
+
 export default async function ProductPromptsPage({
   params,
 }: {
@@ -85,10 +101,24 @@ export default async function ProductPromptsPage({
                     {SCOPE_DESCRIPTIONS[scope]}
                   </p>
                 </div>
-                {active && (
+                {active ? (
                   <span className={`${styles.badge} ${styles.badgeSuccess}`}>v{active.version} active</span>
+                ) : (
+                  <span className={`${styles.badge}`} style={{ background: 'var(--admin-bg-subtle)', color: 'var(--admin-text-muted)', border: '1px solid var(--admin-border)' }}>using default</span>
                 )}
               </div>
+
+              {!active && (
+                <div style={{ margin: '0 0 1rem', padding: '0.75rem 1rem', background: 'var(--admin-bg-subtle,#f8fafc)', border: '1px solid var(--admin-border)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>
+                  No custom prompt saved. The system is using a built-in default. Paste your prompt below and save to override it.
+                  <details style={{ marginTop: '0.5rem' }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 500 }}>View current default</summary>
+                    <pre style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.75rem', opacity: 0.7 }}>
+                      {getDefaultFallback(scope, productSlug)}
+                    </pre>
+                  </details>
+                </div>
+              )}
 
               <PromptEditor
                 productSlug={productSlug}

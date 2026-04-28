@@ -97,14 +97,13 @@ export default function RiteSystemPage() {
                   <li>Competence Mapping Scan</li>
                 </ul>
               </div>
-              <Link href="/products/perception" className={styles.riteButton}>
-                Coming Soon - Join Waitlist
+              <Link href="/products/perception" className={styles.riteButtonActive}>
+                Explore Perception
               </Link>
             </div>
 
             {/* Rite II: Orientation */}
-            <div className={`${styles.riteCard} ${styles.riteCardActive}`}>
-              <div className={styles.riteBadgeLive}>AVAILABLE NOW</div>
+            <div className={styles.riteCard}>
               <div className={styles.riteNumber}>II</div>
               <h3 className={styles.riteTitle}>Orientation</h3>
               <div className={styles.riteTransformation}>
@@ -141,13 +140,13 @@ export default function RiteSystemPage() {
               <div className={styles.riteProducts}>
                 <h4 className={styles.riteProductsTitle}>The 3 Declarations:</h4>
                 <ul className={styles.riteProductsList}>
-                  <li>Personal Direction Declaration</li>
-                  <li>Business Direction Declaration</li>
-                  <li>Ideal Life Direction Declaration</li>
+                  <li>Life Vision Declaration</li>
+                  <li>Business Model Declaration</li>
+                  <li>Strategic Path Declaration</li>
                 </ul>
               </div>
-              <Link href="/products/declaration" className={styles.riteButton}>
-                Coming Soon - Join Waitlist
+              <Link href="/products/declaration" className={styles.riteButtonActive}>
+                Explore Declaration
               </Link>
             </div>
           </div>
@@ -204,8 +203,8 @@ export default function RiteSystemPage() {
                 Start with <strong>Rite I: Perception</strong>. You're operating blind and need to develop
                 pattern recognition first.
               </p>
-              <Link href="/products/perception" className={styles.startButton}>
-                Join Waitlist for Rite I
+              <Link href="/products/perception" className={styles.startButtonActive}>
+                Explore Perception
               </Link>
             </div>
 
@@ -227,8 +226,8 @@ export default function RiteSystemPage() {
                 You'll need <strong>Rite III: Declaration</strong>. You have clarity on your position
                 but haven't committed to a direction yet.
               </p>
-              <Link href="/products/declaration" className={styles.startButton}>
-                Join Waitlist for Rite III
+              <Link href="/products/declaration" className={styles.startButtonActive}>
+                Explore Declaration
               </Link>
             </div>
           </div>
@@ -251,19 +250,18 @@ export default function RiteSystemPage() {
             </div>
 
             <div className={styles.faqItem}>
-              <h3 className={styles.faqQuestion}>Can I start with Rite II if Rite I isn't available yet?</h3>
+              <h3 className={styles.faqQuestion}>Can I start with Rite II without doing Rite I first?</h3>
               <p className={styles.faqAnswer}>
                 Yes. Rite II (Orientation) is the most common starting point and works perfectly standalone.
                 Most people have developed enough perception through experience—they just need help locating themselves.
-                When Rite I launches, you can circle back if needed.
+                You can always circle back to Rite I afterward.
               </p>
             </div>
 
             <div className={styles.faqItem}>
               <h3 className={styles.faqQuestion}>How long does each rite take?</h3>
               <p className={styles.faqAnswer}>
-                Each product within a rite takes 15-20 minutes to complete. Rite II has 3 products (60 minutes total if you do all three).
-                Rite I has 5 scans, Rite III has 3 declarations. You can complete them in one session or spread them out.
+                Each product within a rite takes 15–20 minutes to complete. Rite I has 5 scans, Rite II has 3 orientations, and Rite III has 3 declarations. You can work through them in one session or spread them out.
               </p>
             </div>
 
@@ -271,23 +269,14 @@ export default function RiteSystemPage() {
               <h3 className={styles.faqQuestion}>What's the difference between the rites and individual products?</h3>
               <p className={styles.faqAnswer}>
                 Each rite is a category containing multiple products. For example, Rite II (Orientation) contains
-                Personal Alignment, Business Alignment, and Brand Alignment. You can buy individual products or bundles for each rite.
-              </p>
-            </div>
-
-            <div className={styles.faqItem}>
-              <h3 className={styles.faqQuestion}>When will Rite I and Rite III be available?</h3>
-              <p className={styles.faqAnswer}>
-                We're launching them sequentially. Join the waitlist on their respective pages to be notified
-                when they're available. Waitlist members get early access and special pricing.
+                Personal Alignment, Business Alignment, and Brand Alignment. You can purchase individual products or the full bundle for each rite.
               </p>
             </div>
 
             <div className={styles.faqItem}>
               <h3 className={styles.faqQuestion}>Is there a bundle for all three rites?</h3>
               <p className={styles.faqAnswer}>
-                Not yet. Right now, you can purchase bundles within each rite (like the Orientation bundle for $17).
-                Once all three rites are available, we'll offer a complete system bundle.
+                Each rite has its own bundle. A complete three-rite bundle is coming — for now, start with the rite that matches where you are.
               </p>
             </div>
           </div>
@@ -300,13 +289,13 @@ export default function RiteSystemPage() {
           <div className={styles.ctaCard}>
             <h2 className={styles.ctaTitle}>Ready to Begin?</h2>
             <p className={styles.ctaDescription}>
-              Start with Rite II: Orientation. Three alignments, one framework, complete clarity.
+              All three rites are available now. Start where you are — perception, orientation, or declaration.
             </p>
             <Link href="/products/orientation" className={styles.ctaButton}>
-              Get Orientation Bundle for $17
+              Start with Orientation ($17)
             </Link>
             <div className={styles.ctaMeta}>
-              Available now • Instant access • 60 minutes total
+              All rites available • Instant access • 15–20 min per product
             </div>
           </div>
         </div>

@@ -44,7 +44,7 @@ export function MultiTextInput({
             onChange={(e) => onTextChange(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={step.text_input.placeholder || 'Type your answer here...'}
-            className="w-full h-48 bg-gray-900/50 border border-gray-700/50 rounded-xl px-6 py-4 text-white text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all resize-none"
+            className="w-full h-32 md:h-48 bg-gray-900/50 border border-gray-700/50 rounded-xl px-4 md:px-6 py-4 text-white text-base md:text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all resize-none"
             disabled={isSubmitting}
           />
           {textMinLength > 0 && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import styles from '../../admin-layout.module.css';
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function PromptEditor({ productSlug, scope, initialContent, currentVersion }: Props) {
+  const router = useRouter();
   const [content, setContent] = useState(initialContent);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -37,6 +39,7 @@ export default function PromptEditor({ productSlug, scope, initialContent, curre
       }
 
       setSaved(true);
+      router.refresh();
       setTimeout(() => setSaved(false), 3000);
     } catch (e: any) {
       setError(e.message);

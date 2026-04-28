@@ -33,14 +33,21 @@ export default function Navbar({ showProductCTA = false, productCTAText = "Get Y
     if (!element) return;
     const rect = element.getBoundingClientRect();
 
-    // Check if dropdown would overflow on the right side
-    const dropdownWidth = 280; // min-width from CSS
-    const wouldOverflow = rect.left + dropdownWidth > window.innerWidth;
+    const isMegaMenu = navigationConfig.main.some(
+      (i) => i.label === label && "megaMenu" in i
+    );
 
-    // If it would overflow, align to the right edge of the button instead
-    const left = wouldOverflow ? rect.right - dropdownWidth : rect.left;
-
-    setDropdownPosition({ top: rect.bottom + 8, left, width: rect.width });
+    if (isMegaMenu) {
+      const menuWidth = Math.min(900, window.innerWidth * 0.92);
+      const idealLeft = (window.innerWidth - menuWidth) / 2;
+      const left = Math.max(8, Math.min(idealLeft, window.innerWidth - menuWidth - 8));
+      setDropdownPosition({ top: rect.bottom + 8, left, width: menuWidth });
+    } else {
+      const dropdownWidth = 280;
+      const wouldOverflow = rect.left + dropdownWidth > window.innerWidth;
+      const left = wouldOverflow ? rect.right - dropdownWidth : rect.left;
+      setDropdownPosition({ top: rect.bottom + 8, left, width: rect.width });
+    }
   };
 
   const handleMouseEnter = (label: string) => {
@@ -186,7 +193,7 @@ export default function Navbar({ showProductCTA = false, productCTAText = "Get Y
                     {activeDropdown === item.label && (
                       <DropdownPortal>
                         <div
-                          style={{ position: "fixed", top: `${dropdownPosition.top}px`, left: "50%", transform: "translateX(-50%)", zIndex: 999999 }}
+                          style={{ position: "fixed", top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px`, width: `${dropdownPosition.width}px`, zIndex: 999999 }}
                           onMouseEnter={handleDropdownEnter}
                           role="menu"
                         >

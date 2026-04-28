@@ -265,18 +265,18 @@ ${textValue}`.trim();
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 via-gray-900 to-black p-6 md:p-8">
       <div className="w-full max-w-4xl flex flex-col">
         {/* Step Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-6 md:mb-12">
           <div className="text-teal-400 text-sm font-semibold mb-3 tracking-wide uppercase">
             Step {stepNumber} of {totalSteps}
           </div>
-          <h1 className="text-5xl font-bold text-white mb-4">{step.title || step.question}</h1>
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">{step.title || step.question}</h1>
           {step.subtitle && (
-            <p className="text-xl text-gray-400">{step.subtitle}</p>
+            <p className="text-base md:text-xl text-gray-400">{step.subtitle}</p>
           )}
         </div>
 
         {/* Question Card */}
-        <div className="bg-gray-800/40 backdrop-blur-md border border-gray-700/50 rounded-2xl p-8 shadow-2xl mb-6">
+        <div className="bg-gray-800/40 backdrop-blur-md border border-gray-700/50 rounded-2xl p-4 md:p-8 shadow-2xl mb-6">
           {assistantReply && (
             <div className="mb-6 rounded-2xl border border-gray-700/50 bg-gray-800/60 p-4 relative">
               {isSubmitting && (
@@ -373,7 +373,7 @@ ${textValue}`.trim();
               onChange={(e) => onResponseChange(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Type your answer here..."
-              className="w-full h-64 bg-gray-900/50 border border-gray-700/50 rounded-xl px-6 py-4 text-white text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all resize-none"
+              className="w-full h-36 md:h-64 bg-gray-900/50 border border-gray-700/50 rounded-xl px-4 md:px-6 py-4 text-white text-base md:text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all resize-none"
               disabled={isSubmitting}
               autoFocus
             />
@@ -442,7 +442,7 @@ ${textValue}`.trim();
               Review chart data
             </button>
           )}
-          <p className="text-center text-gray-500 text-sm">
+          <p className="hidden md:block text-center text-gray-500 text-sm">
             Press <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs">⌘</kbd> + <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs">Enter</kbd> to continue
           </p>
         </div>

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Bodoni_Moda } from "next/font/google";
 import Script from "next/script";
 import Navbar from "@/components/navigation/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -15,7 +15,13 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const bodoniModa = Bodoni_Moda({
+  subsets: ["latin"],
+  variable: "--font-bodoni",
+  style: ["normal", "italic"],
+  weight: ["400", "500", "600", "700"],
+});
 const baseUrl = new URL("https://quantumstrategies.online");
 
 export const metadata: Metadata = {
@@ -105,7 +111,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${bodoniModa.variable} ${inter.className}`}>
         <noscript>
           <iframe
             src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}

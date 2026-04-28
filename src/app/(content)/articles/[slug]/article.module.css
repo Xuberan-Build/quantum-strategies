@@ -1,45 +1,131 @@
-.article {
-  max-width: 900px;
+/* ── Page shell ── */
+.page {
+  min-height: 100vh;
+  background: #04060d;
+  color: #F8F5FF;
+  overflow-x: hidden;
+}
+
+/* ── Hero header ── */
+.hero {
+  position: relative;
+  padding: 4rem 0 4.5rem;
+  overflow: hidden;
+}
+
+.heroBg {
+  position: absolute;
+  inset: -45%;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(20,184,166,0.18), transparent 35%),
+    radial-gradient(circle at 80% 30%, rgba(59,130,246,0.16), transparent 30%),
+    radial-gradient(circle at 50% 80%, rgba(16,185,129,0.12), transparent 32%);
+  filter: blur(3px);
+}
+
+.gridOverlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at center, black, transparent 75%);
+  opacity: 0.8;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  max-width: 820px;
   margin: 0 auto;
-  padding: 3rem 1.25rem 5rem;
+  padding: 0 1.5rem;
 }
 
-.header {
-  display: grid;
-  gap: 0.75rem;
+/* ── Breadcrumb / back link ── */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: rgba(204,251,241,0.5);
+  text-decoration: none;
   margin-bottom: 2rem;
+  transition: color 0.2s;
 }
+.back:hover { color: #2dd4bf; }
 
+/* ── Category / pillar label ── */
 .category {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.9rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.25em;
-  font-size: 0.8rem;
-  color: var(--accent);
+  color: rgba(204,251,241,0.8);
+  text-decoration: none;
+  margin-bottom: 1.25rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+.category:hover {
+  border-color: rgba(45,212,191,0.4);
+  color: #2dd4bf;
 }
 
+/* ── Title ── */
 .title {
-  font-size: clamp(2.4rem, 4vw, 3.4rem);
-  color: #fff;
-  margin: 0;
+  font-family: var(--font-bodoni), 'Bodoni Moda', Georgia, serif;
+  font-size: clamp(2.2rem, 4.5vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.25rem;
+  background: linear-gradient(135deg, #ffffff 0%, #ccfbf1 55%, #2dd4bf 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
+/* ── Excerpt / description ── */
 .description {
-  font-size: 1.2rem;
-  color: var(--ink-soft);
+  font-size: clamp(1rem, 1.8vw, 1.2rem);
+  color: rgba(226,232,240,0.75);
+  line-height: 1.8;
+  margin: 0 0 1.5rem;
+}
+
+/* ── Date ── */
+.date {
+  display: block;
+  font-size: 0.8rem;
+  color: #2dd4bf;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Prose divider ── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(45,212,191,0.25), transparent);
   margin: 0;
 }
 
-.date {
-  color: var(--ink-soft);
-  font-size: 0.95rem;
-}
-
+/* ── Prose container ── */
 .prose {
-  margin-top: 1rem;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 6rem;
 }
 
+/* ── Responsive ── */
 @media (max-width: 720px) {
-  .article {
-    padding: 2.5rem 1rem 4rem;
-  }
+  .hero { padding: 2.5rem 0 3rem; }
+  .heroInner { padding: 0 1.25rem; }
+  .prose { padding: 2.5rem 1.25rem 4rem; }
 }
