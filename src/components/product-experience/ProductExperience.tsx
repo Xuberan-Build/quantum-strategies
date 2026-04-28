@@ -1,7 +1,6 @@
 'use client';
 
-import { ReactNode, useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { ReactNode } from 'react';
 import { ProgressBar } from './ProgressBar';
 import { StepView } from './StepView';
 import { FollowUpChat } from './FollowUpChat';
@@ -9,8 +8,10 @@ import { DeliverableView } from './DeliverableView';
 import { WelcomeBanner } from './WelcomeBanner';
 import { supabase } from '@/lib/supabase/client';
 import { isPlacementsEmpty } from '@/lib/utils/placements';
-import { chartAnalysisModel, conversationalModel } from '@/lib/ai/models';
 import { useStep1StateMachine } from './useStep1StateMachine';
+import { useProductPlacements } from './useProductPlacements';
+import { useProductDeliverable } from './useProductDeliverable';
+import { useProductSession } from './useProductSession';
 import { THREE_RITES_PRODUCTS } from '@/lib/beta/constants';
 import ScanFeedbackForm from '@/components/beta/ScanFeedbackForm';
 import BlueprintFeedbackForm from '@/components/beta/BlueprintFeedbackForm';
@@ -30,151 +31,87 @@ export default function ProductExperience({
   session,
   userId,
 }: ProductExperienceProps) {
-  const [currentStep, setCurrentStep] = useState(session.current_step);
-  const [stepResponse, setStepResponse] = useState('');
-  const [showFollowUp, setShowFollowUp] = useState(false);
-  const [followUpCount, setFollowUpCount] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deliverable, setDeliverable] = useState<string | null>(null);
-  const [deliverableError, setDeliverableError] = useState<string | null>(null);
-  const [isGeneratingDeliverable, setIsGeneratingDeliverable] = useState(false);
-  const [actionableNudges, setActionableNudges] = useState<string[]>([]);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [placements, setPlacements] = useState<any>(session.placements || null);
-  const [placementsConfirmed, setPlacementsConfirmed] = useState<boolean>(
-    !!session.placements_confirmed
-  );
-  const [uploadsLoaded, setUploadsLoaded] = useState<boolean>(false);
-  const [userPlacements, setUserPlacements] = useState<any>(null);
-  const [currentSection, setCurrentSection] = useState<number>(
-    session.current_section || 1
-  );
-  const [followupCounts, setFollowupCounts] = useState<Record<number, number>>(
-    session.followup_counts || {}
-  );
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [placementsError, setPlacementsError] = useState<string | null>(null);
-  const [placementNotes, setPlacementNotes] = useState<string>('');
-  const searchParams = useSearchParams();
-  const [assistantReply, setAssistantReply] = useState<string>('');
-  const [showIntroReply, setShowIntroReply] = useState<boolean>(false);
-  const [seedInsightShown, setSeedInsightShown] = useState(false);
-  const [isBetaParticipant, setIsBetaParticipant] = useState(false);
-
-  // Step 1 State Machine - replaces fragile boolean flags
-  const hasPlacementData = !isPlacementsEmpty(placements);
+  // Step 1 state machine — initialized from session values; all transitions are called
+  // explicitly in handlers, so initial values are sufficient for correct behavior.
   const step1Machine = useStep1StateMachine({
     hasInstructions: !!product.instructions,
-    hasPlacementsData: hasPlacementData,
-    placementsConfirmed,
-    isExtracting,
-    currentStep,
+    hasPlacementsData: !isPlacementsEmpty(session.placements),
+    placementsConfirmed: !!session.placements_confirmed,
+    isExtracting: false,
+    currentStep: session.current_step,
   });
 
-  const appendConversation = async (stepNumber: number, newMessages: Array<{ role: string; content: string; type?: string }>) => {
-    const { data } = await supabase
-      .from('conversations')
-      .select('messages')
-      .eq('session_id', session.id)
-      .eq('step_number', stepNumber)
-      .maybeSingle();
-    const existing = (data?.messages as any[]) || [];
-    const updated = [
-      ...existing,
-      ...newMessages.map((m) => ({
-        ...m,
-        created_at: new Date().toISOString(),
-      })),
-    ];
-    await supabase
-      .from('conversations')
-      .upsert(
-        {
-          session_id: session.id,
-          step_number: stepNumber,
-          messages: updated,
-        },
-        { onConflict: 'session_id,step_number' }
-      );
-  };
-  useEffect(() => {
-    console.log(
-      '[PX] initial mount',
-      JSON.stringify(
-        {
-          sessionId: session.id,
-          sessionCurrentStep: session.current_step,
-          sessionPlacementsConfirmed: session.placements_confirmed,
-          sessionPlacementsEmpty: isPlacementsEmpty(session.placements),
-          stateCurrentStep: currentStep,
-          statePlacementsConfirmed: placementsConfirmed,
-          statePlacementsEmpty: isPlacementsEmpty(placements),
-        },
-        null,
-        2
-      )
-    );
-  }, []); // log once on mount
+  const {
+    placements,
+    setPlacements,
+    placementsConfirmed,
+    setPlacementsConfirmed,
+    userPlacements,
+    setUserPlacements,
+    isExtracting,
+    placementsError,
+    setPlacementsError,
+    placementNotes,
+    setPlacementNotes,
+    uploadedFiles,
+    setUploadedFiles,
+    uploadError,
+    setUploadError,
+    handleFileUpload,
+    handleRemoveFile,
+    handleExtractPlacements,
+    formatPlacementsForChat,
+  } = useProductPlacements({
+    sessionId: session.id,
+    userId,
+    initialPlacements: session.placements || null,
+    initialPlacementsConfirmed: !!session.placements_confirmed,
+    step1MachineTransitions: step1Machine.transitions,
+  });
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    setStepResponse('');
-  }, [currentStep, showFollowUp]);
+  const {
+    deliverable,
+    deliverableError,
+    isGeneratingDeliverable,
+    actionableNudges,
+    generateDeliverable,
+  } = useProductDeliverable({
+    sessionId: session.id,
+    productSlug: product.product_slug,
+    productName: product.name,
+    placements,
+    sessionCompletedAt: session.completed_at ?? null,
+  });
 
-  // Fetch user's profile placements on mount
-  useEffect(() => {
-    const fetchUserPlacements = async () => {
-      try {
-        const response = await fetch('/api/profile/placements');
-        if (response.ok) {
-          const data = await response.json();
-          setUserPlacements(data.placements);
-        }
-      } catch (error) {
-        console.error('Failed to fetch user profile placements:', error);
-      }
-    };
-    fetchUserPlacements();
-  }, []);
+  const {
+    currentStep,
+    setCurrentStep,
+    stepResponse,
+    setStepResponse,
+    showFollowUp,
+    followUpCount,
+    setFollowUpCount,
+    isSubmitting,
+    setIsSubmitting,
+    assistantReply,
+    isBetaParticipant,
+    handleStepSubmit,
+    handleFollowUpComplete,
+    handleReviewCharts,
+  } = useProductSession({
+    session,
+    product,
+    userId,
+    placements,
+    uploadedFiles,
+    placementsConfirmed,
+    generateDeliverable,
+    handleExtractPlacements,
+    step1MachineTransitions: step1Machine.transitions,
+    setPlacementsConfirmed,
+    setUploadError,
+  });
 
-  useEffect(() => {
-    const fetchBetaStatus = async () => {
-      try {
-        const { data } = await supabase
-          .from('beta_participants')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
-        setIsBetaParticipant(Boolean(data?.id));
-      } catch (error) {
-        console.error('Failed to fetch beta participant status:', error);
-      }
-    };
-
-    fetchBetaStatus();
-  }, [userId]);
-
-  useEffect(() => {
-    console.log(
-      '[PX] state change',
-      JSON.stringify(
-        {
-          currentStep,
-          placementsConfirmed,
-          step1State: step1Machine.state,
-          placementsEmpty: isPlacementsEmpty(placements),
-          uploadedFiles: uploadedFiles.length,
-          showFollowUp,
-        },
-        null,
-        2
-      )
-    );
-  }, [placementsConfirmed, currentStep, step1Machine.state, placements, uploadedFiles.length, showFollowUp]);
-
-  // Use steps directly from product (now stored in Supabase), sorted by explicit order when present.
   const steps = (product.steps || []).slice().sort((a: any, b: any) => {
     const orderA = typeof a?.order === 'number' ? a.order : Number.POSITIVE_INFINITY;
     const orderB = typeof b?.order === 'number' ? b.order : Number.POSITIVE_INFINITY;
@@ -184,682 +121,6 @@ export default function ProductExperience({
   const currentStepData = steps[currentStep - 1];
   const isLastStep = currentStep === steps.length;
   const completionPercentage = Math.round((currentStep / steps.length) * 100);
-
-  // Check if session is complete and load deliverable
-  useEffect(() => {
-    if (session.completed_at) {
-      loadDeliverable();
-    }
-  }, [session.completed_at]);
-
-  // REMOVED: Legacy boolean flag useEffects (now handled by state machine)
-  // - Force user back to step 1 if placements not confirmed
-  // - Erasure logic that deleted auto-copied placements
-  // - Query param confirm=1 handling
-
-  // Extract actionable nudges from conversations when deliverable is ready
-  useEffect(() => {
-    const extractNudges = async () => {
-      if (!deliverable) return;
-
-      const { data, error } = await supabase
-        .from('conversations')
-        .select('messages, step_number')
-        .eq('session_id', session.id)
-        .order('step_number', { ascending: true });
-
-      if (error || !data) return;
-
-      const nudges: string[] = [];
-
-      // Extract actionable insights from assistant responses
-      data.forEach((conversation: any) => {
-        const messages = conversation.messages || [];
-
-        // Only process messages that follow user input (actual AI responses, not prompts)
-        for (let i = 1; i < messages.length; i++) {
-          const msg = messages[i];
-          const prevMsg = messages[i - 1];
-
-          // Skip if not an assistant message following a user message
-          if (msg.role !== 'assistant' || prevMsg.role !== 'user') continue;
-          if (!msg.content) continue;
-
-          // PRIORITY 1: Extract explicit "Actionable alignment nudge" blocks (can span multiple lines)
-          // Capture content until a blank line or a new header-style line.
-          const content = String(msg.content);
-          const blockMatches = content.match(
-            /(?:^|\n)\s*(Actionable (?:alignment )?nudge(?:\s*\([^)]*\))?|One (?:alignment|micro-action|identity-shift|powerful) (?:nudge|action|step))\s*:\s*([\s\S]*?)(?=\n\s*\n|\n\s*(?:\*\*|#{1,3}\s)|$)/gi
-          );
-          if (blockMatches) {
-            blockMatches.forEach((block: string) => {
-              const cleaned = block
-                .replace(/\*\*/g, '')
-                .replace(/^\s+|\s+$/g, '')
-                .replace(/\n{3,}/g, '\n\n');
-              if (cleaned.length > 40) {
-                nudges.push(cleaned);
-              }
-            });
-          }
-
-          // PRIORITY 2: Extract end-of-response nudges/next steps
-          // Pattern: Sentences at end that start with action verbs
-          const endNudges = content.match(/(?:^|\n)(?:This week|Next step|Try this|Start by|Begin with)[^.!?]{20,250}[.!]/gi);
-          if (endNudges) {
-            endNudges.forEach((nudge: string) => {
-              const trimmed = nudge.trim();
-              if (trimmed.length > 30 && trimmed.length < 250) {
-                nudges.push(trimmed);
-              }
-            });
-          }
-
-          // Extract specific insights/observations about them
-          // Pattern: "Your [chart thing] says/means/shows [insight]"
-          const insights = content.match(/Your [^.!?]{10,80}(?:says|means|shows|suggests|confirms|reveals)[^.!?]{20,120}[.!]/gi);
-          if (insights) {
-            insights.forEach((insight: string) => {
-              const trimmed = insight.trim();
-              if (!trimmed.includes('Example:') &&
-                  !trimmed.includes('Step ') &&
-                  trimmed.length > 50 &&
-                  trimmed.length < 200) {
-                nudges.push(trimmed);
-              }
-            });
-          }
-
-          // Extract actionable next steps (imperative statements with action verbs)
-          // Expanded verb list to catch more actionable advice
-          const actions = content.match(/(?:^|\n)(?:Choose|Write|Pick|Post|Add|Send|Reach out|Schedule|Plan|Draft|Review|Try|Start|Begin|Consider|Focus on|Design|Build|Create|Shift to|Release|Let go of|Lean into|Explore|Test|Practice|Run|Launch|Set up|Configure|Update|Refine)[^.!?]{30,200}[.!]/gi);
-          if (actions) {
-            actions.forEach((action: string) => {
-              const trimmed = action.trim();
-              // Filter out questions disguised as actions and template content
-              const lower = trimmed.toLowerCase();
-              const isQuestion = trimmed.includes('?') ||
-                                 lower.includes(': are you') ||
-                                 lower.includes(': do you') ||
-                                 lower.includes(': can you') ||
-                                 lower.includes(': would you');
-
-              if (!isQuestion &&
-                  !trimmed.includes('Example:') &&
-                  !trimmed.includes('Step ') &&
-                  trimmed.length > 40 &&
-                  trimmed.length < 250) {
-                nudges.push(trimmed);
-              }
-            });
-          }
-        }
-      });
-
-      // Deduplicate, remove generic statements and clarifying questions, limit to top 6
-      const unique = [...new Set(nudges)]
-        .filter(n => {
-          const lower = n.toLowerCase();
-          // Filter out overly generic, template-like content, and clarifying questions
-          return !lower.includes('looking at') &&
-                 !lower.includes('based on') &&
-                 !lower.includes('let me show') &&
-                 !lower.includes('quick clarifier') &&
-                 !lower.includes('let me ask') &&
-                 !lower.includes('i need to know') &&
-                 !lower.includes('help me understand') &&
-                 !lower.includes('can you tell me') &&
-                 !lower.startsWith('you ') &&
-                 !lower.startsWith('question:') &&
-                 !n.includes('?'); // Exclude any remaining questions
-        })
-        .slice(0, 6);
-
-      setActionableNudges(unique);
-    };
-
-    extractNudges();
-  }, [deliverable, session.id]);
-
-  // Preload any existing uploaded documents (handles refresh)
-  useEffect(() => {
-    const loadUploads = async () => {
-      const { data, error } = await supabase
-        .from('uploaded_documents')
-        .select('storage_path')
-        .eq('session_id', session.id);
-      if (!error && data) {
-        const paths = data.map((d: any) => d.storage_path).filter(Boolean);
-        if (paths.length) {
-          setUploadedFiles(paths);
-          setUploadsLoaded(true);
-          return;
-        }
-      }
-
-      // Fallback: reuse latest confirmed session uploads for this user
-      const { data: sourceSession } = await supabase
-        .from('product_sessions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('placements_confirmed', true)
-        .not('placements', 'is', null)
-        .neq('id', session.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (sourceSession?.id) {
-        const { data: sourceDocs } = await supabase
-          .from('uploaded_documents')
-          .select('storage_path,file_name,file_type,file_size')
-          .eq('session_id', sourceSession.id)
-          .order('created_at', { ascending: false });
-
-        if (sourceDocs && sourceDocs.length > 0) {
-          const insertRows = sourceDocs.map((doc: any) => ({
-            user_id: userId,
-            session_id: session.id,
-            step_number: 1,
-            file_name: doc.file_name,
-            storage_path: doc.storage_path,
-            file_type: doc.file_type,
-            file_size: doc.file_size,
-          }));
-          await supabase.from('uploaded_documents').insert(insertRows);
-          const paths = sourceDocs.map((doc: any) => doc.storage_path).filter(Boolean);
-          if (paths.length) setUploadedFiles(paths);
-        }
-      }
-
-      setUploadsLoaded(true);
-    };
-    loadUploads();
-  }, [session.id]);
-
-  // REMOVED: Legacy confirmation gate useEffects (now handled by state machine)
-  // - Force confirmation gate on first load
-  // - Force reset if placements empty but confirmed
-
-  // Auto intro reply after placements confirmed
-  useEffect(() => {
-    const sendIntro = async () => {
-      if (placementsConfirmed && !assistantReply && currentStep === 1 && !showIntroReply) {
-        try {
-          // Product-specific intro prompts
-          const isPersonalAlignment = product.product_slug === 'personal-alignment';
-          const introQuestion = isPersonalAlignment
-            ? 'Acknowledge placements and core identity/values themes using Sun/Moon/Rising, Venus, and HD type.'
-            : 'Acknowledge placements and money/creation themes.';
-
-          const res = await fetch('/api/products/step-insight', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              stepNumber: 0,
-              stepData: { title: 'Chart Read', question: introQuestion },
-              mainResponse: 'Confirmed chart placements.',
-              placements,
-              sessionId: session.id,
-              userId,
-              productSlug: product.product_slug,
-              systemPrompt: product.system_prompt,
-              productName: product.name,
-            }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setAssistantReply(data.aiResponse || '');
-            setShowIntroReply(true);
-          }
-        } catch (e) {
-          console.error('Intro reply failed', e);
-        }
-      }
-    };
-    sendIntro();
-  }, [placementsConfirmed, assistantReply, currentStep, showIntroReply, placements, product.system_prompt, product.name]);
-
-  // Seed an initial chart insight when the user first lands on step 2
-  useEffect(() => {
-    console.log('[PX] seedInsight effect check:', {
-      placementsConfirmed,
-      currentStep,
-      seedInsightShown,
-      shouldTrigger: placementsConfirmed && currentStep === 2 && !seedInsightShown
-    });
-
-    const seedInsight = async () => {
-      if (placementsConfirmed && currentStep === 2 && !seedInsightShown) {
-        console.log('[PX] Triggering seed insight for step 2');
-        try {
-          // Product-specific seed prompts
-          const isPersonalAlignment = product.product_slug === 'personal-alignment';
-          const seedTitle = isPersonalAlignment
-            ? 'Initial chart + identity clarity'
-            : 'Initial chart + money clarity';
-          const seedQuestion = isPersonalAlignment
-            ? 'Give 2-3 sentences on their core identity, natural energy design, and value system using confirmed placements only. Reference Sun/Moon/Rising for core self, Venus for values, Mars for action style, and HD type/strategy/authority for energy design. Include one actionable alignment nudge. No speculation on unknowns.'
-            : 'Give 2-3 sentences on money/self-worth/creation using confirmed placements only. Include: 2nd house sign+ruler+its location; if 2nd is empty, say what that means; note key money houses (2/8/10/11) only when known; one actionable business/money takeaway. No speculation on unknowns.';
-
-          const res = await fetch('/api/products/step-insight', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              stepNumber: 0,
-              stepData: {
-                title: seedTitle,
-                question: seedQuestion,
-              },
-              mainResponse: 'Use confirmed placements to orient the user before Q&A.',
-              placements,
-              sessionId: session.id,
-              userId,
-              productSlug: product.product_slug,
-              systemPrompt: product.system_prompt,
-              productName: product.name,
-            }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            console.log('[PX] Seed insight full data:', data);
-            console.log('[PX] Seed insight response:', data.aiResponse?.slice(0, 100));
-            console.log('[PX] Setting assistantReply to:', data.aiResponse ? 'CONTENT PRESENT' : 'EMPTY');
-            setAssistantReply(data.aiResponse || '');
-          } else {
-            const errorData = await res.json();
-            console.error('[PX] Seed insight API error:', res.status, errorData);
-          }
-        } catch (e) {
-          console.error('[PX] Seed insight failed:', e);
-        } finally {
-          setSeedInsightShown(true);
-        }
-      }
-    };
-    seedInsight();
-  }, [placementsConfirmed, currentStep, seedInsightShown, placements, product.system_prompt, product.name]);
-
-  const formatPlacementsForChat = (pl: any) => {
-    if (!pl) return 'No placements extracted yet.';
-    const astro = pl.astrology || {};
-    const hd = pl.human_design || {};
-    const astroLines = [
-      `Sun: ${astro.sun || 'UNKNOWN'}`,
-      `Moon: ${astro.moon || 'UNKNOWN'}`,
-      `Rising: ${astro.rising || 'UNKNOWN'}`,
-      `Mercury: ${astro.mercury || 'UNKNOWN'}`,
-      `Venus: ${astro.venus || 'UNKNOWN'}`,
-      `Mars: ${astro.mars || 'UNKNOWN'}`,
-      `Jupiter: ${astro.jupiter || 'UNKNOWN'}`,
-      `Saturn: ${astro.saturn || 'UNKNOWN'}`,
-      `Uranus: ${astro.uranus || 'UNKNOWN'}`,
-      `Neptune: ${astro.neptune || 'UNKNOWN'}`,
-      `Pluto: ${astro.pluto || 'UNKNOWN'}`,
-      `Houses: ${astro.houses || 'UNKNOWN'}`,
-    ];
-    const hdLines = [
-      `Type: ${hd.type || 'UNKNOWN'}`,
-      `Strategy: ${hd.strategy || 'UNKNOWN'}`,
-      `Authority: ${hd.authority || 'UNKNOWN'}`,
-      `Profile: ${hd.profile || 'UNKNOWN'}`,
-      `Centers: ${hd.centers || 'UNKNOWN'}`,
-      `Gifts: ${hd.gifts || 'UNKNOWN'}`,
-    ];
-    return `Astrology:\n${astroLines.join('\n')}\n\nHuman Design:\n${hdLines.join('\n')}`;
-  };
-
-  const loadDeliverable = async () => {
-    const { data } = await supabase
-      .from('product_sessions')
-      .select('deliverable_content')
-      .eq('id', session.id)
-      .single();
-
-    if (data?.deliverable_content) {
-      setDeliverable(data.deliverable_content);
-    }
-  };
-
-  const handleStepSubmit = async () => {
-    const isUploadStep = currentStepData?.allow_file_upload && !currentStepData?.question;
-
-    // Require files for upload steps, text for others
-    if (isUploadStep) {
-      if (uploadedFiles.length === 0) {
-        setUploadError('Please attach at least one file to continue.');
-        return;
-      }
-      // For step 1, trigger extraction when files are ready
-      if (currentStep === 1) {
-        setUploadError(null);
-        await handleExtractPlacements(); // This will trigger state machine transitions
-        return;
-      }
-    } else {
-      if (!stepResponse.trim()) return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Persist step response in product_sessions.step_data for structured scans
-      try {
-        const stepKey = `step_${currentStep}`;
-        const { data: stepDataRecord } = await supabase
-          .from('product_sessions')
-          .select('step_data')
-          .eq('id', session.id)
-          .single();
-        const existingStepData = (stepDataRecord?.step_data as Record<string, any>) || {};
-        const nextStepData = {
-          ...existingStepData,
-          [stepKey]: {
-            answer: isUploadStep
-              ? `Uploaded files: ${uploadedFiles.join(', ')}`
-              : stepResponse,
-            completed_at: new Date().toISOString(),
-          },
-        };
-
-        await supabase
-          .from('product_sessions')
-          .update({ step_data: nextStepData, last_activity_at: new Date().toISOString() })
-          .eq('id', session.id)
-          .eq('user_id', userId);
-      } catch (e) {
-        console.error('[step-data] Failed to persist step data', e);
-      }
-
-      // Save conversation to database (append to messages array)
-      await appendConversation(currentStep, [
-        {
-          role: 'user',
-          content: isUploadStep
-            ? `Uploaded files: ${uploadedFiles.join(', ')}`
-            : stepResponse,
-          type: 'main_response',
-        },
-      ]);
-
-      // Check if step allows follow-up questions
-      if (currentStepData.allow_followup && followUpCount < 3) {
-        setShowFollowUp(true);
-      } else {
-        await moveToNextStep();
-      }
-
-      // Generate assistant reply for this step (inline chat)
-      if (!isUploadStep) {
-        try {
-          const insightRes = await fetch('/api/products/step-insight', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              stepNumber: currentStep,
-              stepData: currentStepData,
-              mainResponse: stepResponse,
-              placements,
-              sessionId: session.id,
-              userId,
-              productSlug: product.product_slug,
-              systemPrompt: product.system_prompt,
-              productName: product.name,
-            }),
-          });
-          if (insightRes.ok) {
-            const data = await insightRes.json();
-            setAssistantReply(data.aiResponse || '');
-          }
-        } catch (e) {
-          console.error('Assistant reply failed', e);
-        }
-      }
-    } catch (error) {
-      console.error('Error submitting step:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const moveToNextStep = async () => {
-    setIsSubmitting(true);
-
-    try {
-      // Move to next step or complete
-      const nextStep = currentStep + 1;
-      const isComplete = nextStep > steps.length;
-
-      if (isComplete) {
-        // Generate final deliverable
-        await generateDeliverable();
-      } else {
-        // Update session progress
-        await supabase
-          .from('product_sessions')
-          .update({
-            current_step: nextStep,
-            current_section: Math.max(currentSection, 1),
-            followup_counts: followupCounts,
-          })
-          .eq('id', session.id)
-          .eq('user_id', userId);
-
-        // Reset state for next step
-        setCurrentStep(nextStep);
-        setStepResponse('');
-        setShowFollowUp(false);
-        setFollowUpCount(0);
-        setAssistantReply(''); // Clear previous assistant reply for new step
-        setSeedInsightShown(false); // Reset so GPT can respond at each step
-        setShowIntroReply(false); // Reset intro reply flag
-      }
-    } catch (error) {
-      console.error('Error moving to next step:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const generateDeliverable = async () => {
-    setIsGeneratingDeliverable(true);
-    setDeliverableError(null);
-
-    try {
-      console.log('[generateDeliverable] Called with placements:', JSON.stringify(placements, null, 2));
-
-      const response = await fetch('/api/products/final-briefing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: session.id,
-          placements,
-          productSlug: product.product_slug,
-          productName: product.name,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[generateDeliverable] API error:', response.status, errorText);
-        throw new Error(`Failed to generate your report (${response.status}). Please try again.`);
-      }
-
-      const responseData = await response.json();
-      const { briefing: generatedDeliverable } = responseData;
-
-      if (!generatedDeliverable) {
-        throw new Error('No report content returned. Please try again.');
-      }
-
-      // Single save — deliverable_content is the canonical column read by loadDeliverable
-      await supabase
-        .from('product_sessions')
-        .update({
-          deliverable_content: generatedDeliverable,
-          deliverable_generated_at: new Date().toISOString(),
-          is_complete: true,
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', session.id);
-
-      console.log('[generateDeliverable] Deliverable saved, length:', generatedDeliverable.length);
-      setDeliverable(generatedDeliverable);
-    } catch (error: any) {
-      console.error('[generateDeliverable] Error:', error);
-      setDeliverableError(error?.message || 'Something went wrong generating your report. Please try again.');
-    } finally {
-      setIsGeneratingDeliverable(false);
-    }
-  };
-
-  const handleFollowUpComplete = () => {
-    setShowFollowUp(false);
-    moveToNextStep();
-  };
-
-  const handleReviewCharts = async () => {
-    // Reset to step 1 to review/edit placements
-    // Setting placementsConfirmed=false triggers REVIEW state in state machine
-    setPlacementsConfirmed(false); // Client-side triggers state machine REVIEW state
-    setCurrentStep(1);
-    setStepResponse('');
-    setShowFollowUp(false);
-    await supabase
-      .from('product_sessions')
-      .update({ current_step: 1 }) // Don't reset placements_confirmed in DB
-      .eq('id', session.id)
-      .eq('user_id', userId)
-      .throwOnError();
-  };
-
-  const handleFileUpload = async (files: File[]) => {
-    setUploadError(null);
-    const uploadedUrls: string[] = [];
-    // If user uploads new files, force re-confirmation
-    if (placementsConfirmed) {
-      console.log('[PX] new upload - resetting placementsConfirmed false');
-      setPlacementsConfirmed(false); // Triggers state machine UPLOAD state
-      await supabase
-        .from('product_sessions')
-        .update({ placements_confirmed: false })
-        .eq('id', session.id)
-        .eq('user_id', userId)
-        .throwOnError();
-    }
-
-    for (const file of files) {
-      const fileName = `${userId}/${session.id}/${Date.now()}_${file.name}`;
-
-      const { data, error } = await supabase.storage
-        .from('user-uploads')
-        .upload(fileName, file);
-
-      if (!error && data) {
-        // Save to database
-        await supabase.from('uploaded_documents').insert({
-          user_id: userId,
-          session_id: session.id,
-          step_number: currentStep,
-          file_name: file.name,
-          storage_path: data.path,
-          file_type: file.type,
-          file_size: file.size,
-        });
-
-        uploadedUrls.push(data.path);
-      } else if (error) {
-        console.error('File upload error', error);
-        const detail = (error as any)?.message || 'Unknown storage error';
-        setUploadError(`Upload failed: ${detail}. Ensure bucket "user-uploads" exists and storage policies allow inserts for authenticated users.`);
-        return;
-      }
-    }
-
-    setUploadedFiles([...uploadedFiles, ...uploadedUrls]);
-  };
-
-  const handleRemoveFile = async (path: string) => {
-    // Remove from state immediately
-    setUploadedFiles((prev) => prev.filter((p) => p !== path));
-    // Clean up DB entry
-    await supabase
-      .from('uploaded_documents')
-      .delete()
-      .eq('session_id', session.id)
-      .eq('storage_path', path);
-  };
-
-  const handleExtractPlacements = async () => {
-    if (uploadedFiles.length === 0) {
-      setUploadError('Please attach at least one file to continue.');
-      return;
-    }
-    console.log('=== CLIENT: EXTRACTION STARTED ===');
-    console.log('[PX] extract placements trigger', {
-      uploadedFiles,
-      placementsConfirmed,
-      currentStep,
-    });
-    console.log('Calling extraction API with:', {
-      sessionId: session.id,
-      storagePaths: uploadedFiles,
-      fileCount: uploadedFiles.length
-    });
-
-    setPlacementsError(null);
-    setIsExtracting(true);
-    step1Machine.transitions.uploadComplete(); // Trigger EXTRACTING state
-
-    try {
-      const startTime = Date.now();
-      console.log('Fetching /api/products/extract-placements...');
-
-      const response = await fetch('/api/products/extract-placements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, storagePaths: uploadedFiles }),
-      });
-
-      const elapsed = Date.now() - startTime;
-      console.log(`API response received after ${elapsed}ms, status: ${response.status}`);
-
-      if (!response.ok) {
-        const text = await response.text();
-        console.error('API error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: text
-        });
-        throw new Error(text || 'Extraction failed');
-      }
-
-      const responseData = await response.json();
-      console.log('API success response:', responseData);
-      console.log('Extracted placements:', JSON.stringify(responseData.placements, null, 2));
-
-      const { placements: extracted } = responseData;
-      setPlacements(extracted);
-      console.log('=== CLIENT: EXTRACTION COMPLETED ===');
-      step1Machine.transitions.extractionComplete(); // Trigger REVIEW state
-    } catch (err: any) {
-      console.error('=== CLIENT: EXTRACTION FAILED ===');
-      console.error('Error details:', {
-        message: err?.message,
-        name: err?.name,
-        stack: err?.stack
-      });
-      setPlacementsError(err?.message || 'Failed to extract placements. Please try again.');
-      // Stay in current state on error (don't transition)
-    } finally {
-      setIsExtracting(false);
-    }
-  };
-
-  // REMOVED: Legacy gate and auto-advance useEffects (now handled by state machine)
-  // - Show confirmation gate after files uploaded
-  // - Auto-advance to step 2 if placements confirmed
-  // - Guard effect to normalize state
 
   // Generating deliverable — show loading screen
   if (isGeneratingDeliverable) {
@@ -979,7 +240,6 @@ export default function ProductExperience({
 
     // CONFIRMATION STATE (show "Use existing placements?" screen)
     if (step1Machine.shouldShowConfirmation) {
-      console.log('[PX] showing confirmation gate');
       return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 via-gray-900 to-black p-6 md:p-10">
           <div className="w-full max-w-3xl space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 md:p-8 backdrop-blur-xl shadow-[0_25px_120px_-40px_rgba(0,0,0,0.75)]">
@@ -1105,19 +365,16 @@ export default function ProductExperience({
 
     // UPLOAD STATE - show upload interface (falls through to StepView)
     if (step1Machine.shouldShowUpload) {
-      console.log('[PX] showing upload state');
       // Falls through to StepView which has upload UI
     }
 
     // REVIEW STATE - show review/edit placements gate
     if (step1Machine.shouldShowReview) {
-      console.log('[PX] showing review state');
       // Continue to confirmation gate below (existing review UI)
     }
 
     // READY STATE - auto-advance to step 2
     if (step1Machine.isReadyForStep2) {
-      console.log('[PX] auto-advancing to step 2');
       supabase
         .from('product_sessions')
         .update({ current_step: 2, current_section: 1 })
@@ -1130,7 +387,6 @@ export default function ProductExperience({
 
   // REVIEW STATE RENDER: Placements confirmation/edit gate (after extraction)
   if (currentStep === 1 && step1Machine.shouldShowReview) {
-    console.log('[PX] showing review/edit placements gate');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 via-gray-900 to-black p-6 md:p-10">
         <div className="w-full max-w-3xl space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 md:p-8 backdrop-blur-xl shadow-[0_25px_120px_-40px_rgba(0,0,0,0.75)]">

@@ -18,7 +18,7 @@ export default async function StrategyPage() {
       .order('created_at', { ascending: false })
       .limit(20),
     supabaseAdmin.from('content_posts')
-      .select('id, pillar_id')
+      .select('id, slug, title, pillar_id')
       .eq('is_published', true),
   ]);
 
@@ -31,9 +31,12 @@ export default async function StrategyPage() {
   const posts       = postsRes.data    ?? [];
 
   // Published posts per pillar (for awareness coverage)
-  const postsByPillar: Record<string, number> = {};
+  const postsByPillar: Record<string, typeof posts> = {};
   for (const p of posts) {
-    if (p.pillar_id) postsByPillar[p.pillar_id] = (postsByPillar[p.pillar_id] ?? 0) + 1;
+    if (p.pillar_id) {
+      postsByPillar[p.pillar_id] ??= [];
+      postsByPillar[p.pillar_id].push(p);
+    }
   }
 
   // Build coverage matrix
@@ -62,9 +65,10 @@ export default async function StrategyPage() {
 
   const matrix = pillars.map((pillar) => {
     const pts = topicsByPillar[pillar.id] ?? [];
+    const pillarPosts = postsByPillar[pillar.id] ?? [];
     const hasTopics   = pts.length > 0;
-    const hasPosts    = (postsByPillar[pillar.id] ?? 0) > 0;
-    const postCount   = postsByPillar[pillar.id] ?? 0;
+    const hasPosts    = pillarPosts.length > 0;
+    const postCount   = pillarPosts.length;
     const totalAngles = pts.reduce((n, t) => n + (anglesByTopic[t.id]?.length ?? 0), 0);
     const totalPieces = pieces.filter((p) =>
       angles.some((a) => a.id === p.angle_id && pts.some((t) => t.id === a.topic_id))
@@ -73,14 +77,19 @@ export default async function StrategyPage() {
     const stages = PLG_STAGES.map((stage) => {
       const pillarProds = productsByPillarStage[pillar.id]?.[stage] ?? [];
       const unlinkedProds = productsByPillarStage['unlinked']?.[stage] ?? [];
-      const hasProduct = pillarProds.length > 0 || unlinkedProds.length > 0;
-      const productNames = [...pillarProds, ...unlinkedProds].map((p) => p.name);
+      const stageProducts = [...pillarProds, ...unlinkedProds];
+      const hasProduct = stageProducts.length > 0;
+      const productNames = stageProducts.map((p) => p.name);
       const hasPending = suggestions.some(
         (s) => s.pillar_id === pillar.id && s.funnel_stage === stage && s.status === 'pending'
       );
-      // Awareness uses published post count; other stages use topic tree
       const hasContent = stage === 'awareness' ? (hasPosts || hasTopics) : hasTopics;
-      return { stage, hasContent, hasProduct, productNames, hasPending, postCount: stage === 'awareness' ? postCount : 0 };
+      return {
+        stage, hasContent, hasProduct, productNames, hasPending,
+        postCount: stage === 'awareness' ? postCount : 0,
+        posts: stage === 'awareness' ? pillarPosts : [],
+        products: stageProducts.map((p) => ({ id: p.id, slug: p.product_slug, name: p.name, price: p.price })),
+      };
     });
 
     return { pillar, topics: pts, totalAngles, totalPieces, stages };
