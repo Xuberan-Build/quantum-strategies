@@ -88,6 +88,9 @@ export default function ProductExperience({
     setCurrentStep,
     stepResponse,
     setStepResponse,
+    stepInitialValue,
+    handleResponseChange,
+    handleBack,
     showFollowUp,
     followUpCount,
     setFollowUpCount,
@@ -628,21 +631,9 @@ export default function ProductExperience({
           stepNumber={currentStep}
           totalSteps={steps.length}
           response={stepResponse}
-          onResponseChange={setStepResponse}
+          onResponseChange={handleResponseChange}
           onSubmit={handleStepSubmit}
-          onBack={() => {
-            if (currentStep > 1) {
-              const prev = currentStep - 1;
-              setCurrentStep(prev);
-              supabase
-                .from('product_sessions')
-                .update({
-                  current_step: prev,
-                })
-                .eq('id', session.id)
-                .eq('user_id', userId);
-            }
-          }}
+          onBack={currentStep > 1 ? handleBack : undefined}
           onReviewCharts={handleReviewCharts}
           showReviewCharts={Boolean(steps[0]?.allow_file_upload && placementsConfirmed && currentStep > 1)}
           onFileUpload={handleFileUpload}
@@ -652,6 +643,7 @@ export default function ProductExperience({
           isSubmitting={isSubmitting}
           onRemoveFile={handleRemoveFile}
           processingMessages={product.instructions?.processing}
+          initialValue={stepInitialValue}
         />
       ) : (
         <FollowUpChat

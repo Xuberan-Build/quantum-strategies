@@ -23,6 +23,7 @@ export default function StrategyDashboard({
   const [analyzeResult, setAnalyzeResult]  = useState<string | null>(null);
   const [error, setError]                  = useState<string | null>(null);
   const [selected, setSelected]            = useState<SelectedCell | null>(null);
+  const [createdDrafts, setCreatedDrafts]  = useState<Record<string, { type: 'product' | 'content'; slug: string }>>({});
 
   const pending = localSuggestions.filter((s) => s.status === 'pending');
 
@@ -44,7 +45,24 @@ export default function StrategyDashboard({
     }
   }
 
-  async function acceptSuggestion(id: string) {
+  async function saveIdea(id: string) {
+    setAccepting(id);
+    try {
+      const res = await fetch(`/api/admin/strategy/suggestions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'accepted' }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setSuggestions((prev) => prev.map((s) => s.id === id ? { ...s, status: 'accepted' } : s));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setAccepting(null);
+    }
+  }
+
+  async function draftProduct(id: string) {
     setAccepting(id);
     try {
       const res = await fetch(`/api/admin/strategy/suggestions/${id}`, {
@@ -55,8 +73,13 @@ export default function StrategyDashboard({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSuggestions((prev) => prev.map((s) => s.id === id ? { ...s, status: 'created' } : s));
+      if (data.type === 'content' && data.content_post?.slug) {
+        setCreatedDrafts((prev) => ({ ...prev, [id]: { type: 'content', slug: data.content_post.slug } }));
+      } else if (data.type === 'product' && data.product?.product_slug) {
+        setCreatedDrafts((prev) => ({ ...prev, [id]: { type: 'product', slug: data.product.product_slug } }));
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to accept');
+      setError(err instanceof Error ? err.message : 'Failed to draft');
     } finally {
       setAccepting(null);
     }
@@ -211,7 +234,7 @@ export default function StrategyDashboard({
             <div className={styles.cardHeader}>
               <h2 className={styles.cardTitle}>Product Suggestions</h2>
               <span style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>
-                {pending.length} pending
+                {pending.length} pending · these are ideas, not committed drafts
               </span>
             </div>
             <div style={{ padding: '0 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -219,68 +242,122 @@ export default function StrategyDashboard({
                 const stageMeta  = STAGE_META[s.funnel_stage as Stage] ?? { label: s.funnel_stage, color: '#6b7280', desc: '' };
                 const statusMeta = STATUS_META[s.status] ?? { label: s.status, color: '#6b7280' };
                 const isPending  = s.status === 'pending';
+                const isAccepted = s.status === 'accepted';
+                const isWorking  = accepting === s.id;
+                const pillarTitle = (s.content_pillars as { title?: string } | null)?.title;
+                const themes = Array.isArray(s.corpus_themes) ? s.corpus_themes : [];
 
                 return (
                   <div
                     key={s.id}
                     style={{
                       padding: '1rem 1.25rem', borderRadius: 8,
-                      border: '1px solid var(--admin-border)',
+                      border: `1px solid ${(isPending || isAccepted) ? stageMeta.color + '40' : 'var(--admin-border)'}`,
+                      borderLeft: `3px solid ${stageMeta.color}`,
                       background: isPending ? 'var(--admin-bg-subtle,#f8fafc)' : 'none',
                       opacity: s.status === 'created' ? 0.7 : 1,
                     }}
                   >
+                    {/* Header row */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.375rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{s.title}</span>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: stageMeta.color }}>{stageMeta.label}</span>
-                          {s.format && <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>{s.format}</span>}
-                          <span style={{ fontSize: '0.75rem', color: statusMeta.color, fontWeight: 500 }}>{statusMeta.label}</span>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: stageMeta.color, background: stageMeta.color + '18', padding: '1px 7px', borderRadius: 99 }}>
+                            {stageMeta.label}
+                          </span>
+                          {s.format && (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--admin-text-muted)', background: 'var(--admin-bg-subtle)', padding: '1px 7px', borderRadius: 99, border: '1px solid var(--admin-border)' }}>
+                              {s.format}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '0.7rem', color: statusMeta.color, fontWeight: 500 }}>{statusMeta.label}</span>
                         </div>
+
+                        {/* Price + gap context */}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginBottom: '0.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                          <span>💰 {stageMeta.desc}</span>
+                          {pillarTitle && <span>Pillar: <strong style={{ color: 'var(--admin-text)' }}>{pillarTitle}</strong></span>}
+                        </div>
+
                         {s.tagline && (
-                          <div style={{ fontSize: '0.875rem', color: 'var(--admin-text-muted)', fontStyle: 'italic', marginBottom: '0.5rem' }}>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--admin-text-muted)', fontStyle: 'italic', marginBottom: '0.625rem' }}>
                             {s.tagline}
                           </div>
                         )}
+
                         {s.rationale && (
-                          <div style={{ fontSize: '0.8125rem', lineHeight: 1.65 }}>{s.rationale}</div>
+                          <div style={{ fontSize: '0.8125rem', lineHeight: 1.65, marginBottom: themes.length > 0 ? '0.625rem' : 0 }}>
+                            {s.rationale}
+                          </div>
                         )}
-                        {(s.content_pillars as { title?: string } | null)?.title && (
-                          <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>
-                            Pillar: {(s.content_pillars as { title: string }).title}
+
+                        {themes.length > 0 && (
+                          <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--admin-text-muted)', alignSelf: 'center' }}>Themes:</span>
+                            {themes.map((t) => (
+                              <span key={t} style={{ fontSize: '0.7rem', padding: '1px 8px', borderRadius: 99, background: 'var(--admin-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text-muted)' }}>
+                                {t}
+                              </span>
+                            ))}
                           </div>
                         )}
                       </div>
-                      {isPending && (
-                        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
-                            disabled={accepting === s.id}
-                            onClick={() => acceptSuggestion(s.id)}
-                          >
-                            {accepting === s.id ? 'Drafting…' : 'Accept → Draft Product'}
-                          </button>
-                          <button
-                            type="button"
-                            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}
-                            disabled={dismissing === s.id}
-                            onClick={() => dismissSuggestion(s.id)}
-                          >
-                            Dismiss
-                          </button>
-                        </div>
-                      )}
-                      {s.status === 'created' && (
-                        <Link
-                          href="/admin/products"
-                          className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}
-                          style={{ flexShrink: 0 }}
-                        >
-                          View in Products →
-                        </Link>
-                      )}
+
+                      {/* Actions */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', flexShrink: 0, alignItems: 'flex-end' }}>
+                        {(isPending || isAccepted) && (
+                          <>
+                            <button
+                              type="button"
+                              className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
+                              disabled={isWorking}
+                              onClick={() => draftProduct(s.id)}
+                              title="Generate a full product definition with AI"
+                            >
+                              {isWorking ? 'Drafting…' : 'Draft with AI →'}
+                            </button>
+                            {isPending && (
+                              <button
+                                type="button"
+                                className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}
+                                disabled={isWorking}
+                                onClick={() => saveIdea(s.id)}
+                                title="Mark as a planned idea without generating yet"
+                              >
+                                Save Idea
+                              </button>
+                            )}
+                            {isAccepted && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--admin-text-muted)' }}>idea saved</span>
+                            )}
+                            <button
+                              type="button"
+                              className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}
+                              disabled={dismissing === s.id}
+                              onClick={() => dismissSuggestion(s.id)}
+                              style={{ fontSize: '0.7rem', opacity: 0.7 }}
+                            >
+                              Dismiss
+                            </button>
+                          </>
+                        )}
+                        {s.status === 'created' && (() => {
+                          const draft = createdDrafts[s.id];
+                          if (draft?.type === 'content') {
+                            return (
+                              <Link href="/admin/studio" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}>
+                                Open in Studio →
+                              </Link>
+                            );
+                          }
+                          return (
+                            <Link href={draft?.slug ? `/admin/products/${draft.slug}` : '/admin/products'} className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}>
+                              View Product →
+                            </Link>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
                 );

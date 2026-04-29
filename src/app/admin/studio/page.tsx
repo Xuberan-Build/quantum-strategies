@@ -19,16 +19,16 @@ const STATUS_META: Record<string, { label: string; badge: string }> = {
 };
 
 export default async function StudioPage() {
-  const { data: pillars } = await supabaseAdmin
+  const { data: pieces } = await supabaseAdmin
     .from('content_angles')
     .select(`
-      id, title, format, audience, status, created_at, updated_at,
+      id, title, format, audience, status, metadata, created_at, updated_at,
       content_sections(count),
       content_pieces(count)
     `)
     .order('updated_at', { ascending: false });
 
-  const all = pillars ?? [];
+  const all = pieces ?? [];
   const byStatus = {
     draft:     all.filter((p) => ['brief', 'research', 'outline', 'draft'].includes(p.status)),
     review:    all.filter((p) => p.status === 'review'),
@@ -42,11 +42,11 @@ export default async function StudioPage() {
           <div>
             <h1 className={styles.pageTitle}>Content Studio</h1>
             <p className={styles.pageDescription}>
-              Build long-form pillars · distribute to blog, social, email, and GPT products
+              Long-form content pieces (ebooks, whitepapers, ecourses) — each linked to a strategic pillar
             </p>
           </div>
           <Link href="/admin/studio/new" className={`${styles.btn} ${styles.btnPrimary}`}>
-            + New Pillar
+            + New Content Piece
           </Link>
         </div>
       </header>
@@ -54,7 +54,7 @@ export default async function StudioPage() {
       {/* Stats */}
       <div className={styles.statsGrid} style={{ marginBottom: '2rem' }}>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>Total Pillars</div>
+          <div className={styles.statLabel}>Total Pieces</div>
           <div className={styles.statValue}>{all.length}</div>
         </div>
         <div className={styles.statCard}>
@@ -78,24 +78,25 @@ export default async function StudioPage() {
       {all.length === 0 ? (
         <div className={styles.card}>
           <div className={styles.emptyState}>
-            <p className={styles.emptyTitle}>No pillars yet</p>
+            <p className={styles.emptyTitle}>No content pieces yet</p>
             <p className={styles.emptyDescription}>
-              Create your first long-form content pillar and let the studio distribute it everywhere.
+              Create your first long-form content piece — each one must be linked to one of the 5 strategic pillars.
             </p>
             <Link href="/admin/studio/new" className={`${styles.btn} ${styles.btnPrimary}`} style={{ marginTop: '1rem' }}>
-              Create First Pillar
+              Create First Piece
             </Link>
           </div>
         </div>
       ) : (
         <div className={styles.card}>
           <div className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>All Pillars</h2>
+            <h2 className={styles.cardTitle}>All Content Pieces</h2>
           </div>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Pillar</th>
+                <th>Title</th>
+                <th>Strategic Pillar</th>
                 <th>Format</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Sections</th>
@@ -109,7 +110,10 @@ export default async function StudioPage() {
                 const fmt = FORMAT_META[p.format] ?? { label: p.format, color: '#6b7280' };
                 const st = STATUS_META[p.status] ?? { label: p.status, badge: styles.badgeNeutral };
                 const sections = Array.isArray(p.content_sections) ? p.content_sections[0]?.count ?? 0 : 0;
-                const pieces   = Array.isArray(p.content_pieces)   ? p.content_pieces[0]?.count   ?? 0 : 0;
+                const piecesCount = Array.isArray(p.content_pieces) ? p.content_pieces[0]?.count ?? 0 : 0;
+                const meta = (p.metadata ?? {}) as Record<string, string>;
+                const pillarTitle = meta.pillar_title ?? null;
+
                 return (
                   <tr key={p.id}>
                     <td>
@@ -118,6 +122,13 @@ export default async function StudioPage() {
                         <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: 2 }}>
                           {p.audience}
                         </div>
+                      )}
+                    </td>
+                    <td>
+                      {pillarTitle ? (
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>{pillarTitle}</span>
+                      ) : (
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--admin-warning)' }}>⚠ unlinked</span>
                       )}
                     </td>
                     <td>
@@ -132,7 +143,7 @@ export default async function StudioPage() {
                       {sections}
                     </td>
                     <td style={{ textAlign: 'right', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}>
-                      {pieces}
+                      {piecesCount}
                     </td>
                     <td style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
                       {new Date(p.updated_at).toLocaleDateString()}

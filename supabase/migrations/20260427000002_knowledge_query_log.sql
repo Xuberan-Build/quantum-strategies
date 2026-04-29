@@ -27,10 +27,15 @@ CREATE INDEX IF NOT EXISTS knowledge_query_log_tradition_idx
 -- Admin-only: no user-facing RLS needed (queries come from admin panel)
 ALTER TABLE knowledge_query_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role full access"
-  ON knowledge_query_log
-  USING (true)
-  WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'knowledge_query_log' AND policyname = 'Service role full access'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Service role full access" ON knowledge_query_log USING (true) WITH CHECK (true)';
+  END IF;
+END $$;
 
 COMMENT ON TABLE knowledge_query_log IS
   'Append-only log of every RAG corpus query. Tracks query text, retrieval params, sources hit, and synthesized answer.';

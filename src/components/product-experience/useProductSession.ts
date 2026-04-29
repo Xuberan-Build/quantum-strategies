@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useStep1StateMachine } from './useStep1StateMachine';
+import { useStepPersistence } from './useStepPersistence';
 
 interface UseProductSessionParams {
   session: any;
@@ -45,6 +46,28 @@ export function useProductSession({
   const [seedInsightShown, setSeedInsightShown] = useState(false);
   const [isBetaParticipant, setIsBetaParticipant] = useState(false);
 
+  // Live step data — starts from server-loaded step_data, updated per submit so Back nav pre-fills correctly
+  const [liveStepData, setLiveStepData] = useState<Record<string, any>>(session.step_data || {});
+
+  const getStepInitialValue = (step: number): string => {
+    if (typeof window === 'undefined') return '';
+    const draft = localStorage.getItem(`qs:draft:${session.id}:${step}`) || '';
+    const prior = (liveStepData as any)?.[`step_${step}`]?.answer || '';
+    return draft || prior;
+  };
+
+  const [stepInitialValue, setStepInitialValue] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    const draft = localStorage.getItem(`qs:draft:${session.id}:${session.current_step}`) || '';
+    const prior = (session.step_data as any)?.[`step_${session.current_step}`]?.answer || '';
+    return draft || prior;
+  });
+
+  const { restoredReply, isLoaded, setDraft, clearDraft } = useStepPersistence({
+    sessionId: session.id,
+    currentStep,
+  });
+
   const steps = (product.steps || []).slice().sort((a: any, b: any) => {
     const orderA = typeof a?.order === 'number' ? a.order : Number.POSITIVE_INFINITY;
     const orderB = typeof b?.order === 'number' ? b.order : Number.POSITIVE_INFINITY;
@@ -68,15 +91,24 @@ export function useProductSession({
     fetchBetaStatus();
   }, [userId]);
 
+  // Restore persisted AI reply from conversations cache once loaded
+  useEffect(() => {
+    if (!isLoaded || !restoredReply || assistantReply) return;
+    setAssistantReply(restoredReply);
+    // Block auto-triggers so the restored reply isn't overwritten by a fresh API call
+    if (currentStep === 1) setShowIntroReply(true);
+    if (currentStep === 2) setSeedInsightShown(true);
+  }, [isLoaded, restoredReply]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    setStepResponse('');
+    // stepResponse reset is handled by StepView's reset effect via initialValue
   }, [currentStep, showFollowUp]);
 
   useEffect(() => {
     const sendIntro = async () => {
-      if (placementsConfirmed && !assistantReply && currentStep === 1 && !showIntroReply) {
+      if (placementsConfirmed && !assistantReply && currentStep === 1 && !showIntroReply && isLoaded) {
         try {
           const isPersonalAlignment = product.product_slug === 'personal-alignment';
           const introQuestion = isPersonalAlignment
@@ -109,11 +141,11 @@ export function useProductSession({
       }
     };
     sendIntro();
-  }, [placementsConfirmed, assistantReply, currentStep, showIntroReply, placements, product.system_prompt, product.name]);
+  }, [placementsConfirmed, assistantReply, currentStep, showIntroReply, isLoaded, placements, product.system_prompt, product.name]);
 
   useEffect(() => {
     const seedInsight = async () => {
-      if (placementsConfirmed && currentStep === 2 && !seedInsightShown) {
+      if (placementsConfirmed && currentStep === 2 && !seedInsightShown && isLoaded) {
         try {
           const isPersonalAlignment = product.product_slug === 'personal-alignment';
           const seedTitle = isPersonalAlignment
@@ -153,7 +185,7 @@ export function useProductSession({
       }
     };
     seedInsight();
-  }, [placementsConfirmed, currentStep, seedInsightShown, placements, product.system_prompt, product.name]);
+  }, [placementsConfirmed, currentStep, seedInsightShown, isLoaded, placements, product.system_prompt, product.name]);
 
   const appendConversation = async (
     stepNumber: number,
@@ -203,7 +235,9 @@ export function useProductSession({
           .eq('id', session.id)
           .eq('user_id', userId);
 
+        clearDraft();
         setCurrentStep(nextStep);
+        setStepInitialValue(getStepInitialValue(nextStep));
         setStepResponse('');
         setShowFollowUp(false);
         setFollowUpCount(0);
@@ -262,6 +296,8 @@ export function useProductSession({
           .update({ step_data: nextStepData, last_activity_at: new Date().toISOString() })
           .eq('id', session.id)
           .eq('user_id', userId);
+
+        setLiveStepData(nextStepData);
       } catch (e) {
         console.error('[step-data] Failed to persist step data', e);
       }
@@ -332,11 +368,33 @@ export function useProductSession({
       .throwOnError();
   };
 
+  // Wraps setStepResponse to also autosave draft to localStorage
+  const handleResponseChange = useCallback((value: string) => {
+    setStepResponse(value);
+    setDraft(value);
+  }, [setDraft]);
+
+  // Navigates back one step and pre-fills from draft or prior answer
+  const handleBack = useCallback(async () => {
+    if (currentStep <= 1) return;
+    const prev = currentStep - 1;
+    setCurrentStep(prev);
+    setStepInitialValue(getStepInitialValue(prev));
+    await supabase
+      .from('product_sessions')
+      .update({ current_step: prev })
+      .eq('id', session.id)
+      .eq('user_id', userId);
+  }, [currentStep, session.id, userId, liveStepData]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return {
     currentStep,
     setCurrentStep,
     stepResponse,
     setStepResponse,
+    stepInitialValue,
+    handleResponseChange,
+    handleBack,
     showFollowUp,
     setShowFollowUp,
     followUpCount,

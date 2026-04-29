@@ -28,6 +28,7 @@ interface StepViewProps {
   onRemoveFile?: (path: string) => void;
   processingMessages?: string[];
   showReviewCharts?: boolean;
+  initialValue?: string;
 }
 
 export function StepView({
@@ -47,6 +48,7 @@ export function StepView({
   onRemoveFile,
   processingMessages,
   showReviewCharts,
+  initialValue,
 }: StepViewProps) {
   const [currentProcessingMessage, setCurrentProcessingMessage] = useState(0);
   const [wheelRatings, setWheelRatings] = useState<Record<string, number>>({});
@@ -118,10 +120,10 @@ ${textValue}`.trim();
     setWheelRatings({});
     setStructuredValue('');
     setStructuredOther('');
-    setTextValue('');
+    setTextValue(initialValue || '');
     setMultiTextValues({});
     setDutyCycleValues({});
-    onResponseChange('');
+    onResponseChange(initialValue || '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepNumber]);
 

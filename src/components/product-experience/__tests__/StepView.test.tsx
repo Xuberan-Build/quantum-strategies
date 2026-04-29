@@ -143,10 +143,9 @@ describe('StepView', () => {
       const textarea = screen.getByPlaceholderText('Type your answer here...');
       await user.type(textarea, 'Test');
 
-      // Should be called for each character typed
+      // Should be called for each character typed (plus once on mount from step-reset effect)
       expect(defaultProps.onResponseChange).toHaveBeenCalled();
-      // Verify it was called multiple times (once per character)
-      expect(defaultProps.onResponseChange).toHaveBeenCalledTimes(4);
+      expect(defaultProps.onResponseChange).toHaveBeenCalledTimes(5);
     });
 
     it('should display current response value', () => {

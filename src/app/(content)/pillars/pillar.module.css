@@ -1,0 +1,406 @@
+/* ── Page shell ── */
+.page {
+  min-height: 100vh;
+  background: #04060d;
+  color: #F8F5FF;
+  overflow-x: hidden;
+}
+
+/* ── Hero ── */
+.hero {
+  position: relative;
+  padding: 5rem 0 4.5rem;
+  overflow: hidden;
+}
+
+.heroBg {
+  position: absolute;
+  inset: -45%;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(20,184,166,0.2), transparent 35%),
+    radial-gradient(circle at 80% 30%, rgba(59,130,246,0.18), transparent 30%),
+    radial-gradient(circle at 50% 75%, rgba(16,185,129,0.16), transparent 32%);
+  filter: blur(3px);
+}
+
+.gridOverlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at center, black, transparent 75%);
+  opacity: 0.8;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Breadcrumb ── */
+.breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: rgba(204,251,241,0.5);
+  text-decoration: none;
+  margin-bottom: 2rem;
+  transition: color 0.2s;
+}
+.breadcrumb:hover { color: #2dd4bf; }
+
+/* ── Eyebrow badge ── */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 1rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(204,251,241,0.8);
+  margin-bottom: 1.5rem;
+}
+
+.eyebrowDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2dd4bf;
+  animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Title ── */
+.heroTitle {
+  font-family: var(--font-bodoni), 'Bodoni Moda', Georgia, serif;
+  font-size: clamp(2.8rem, 5vw, 4.5rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.5rem;
+  background: linear-gradient(135deg, #ffffff 0%, #ccfbf1 55%, #2dd4bf 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.heroDesc {
+  font-size: clamp(1.05rem, 1.8vw, 1.25rem);
+  color: rgba(226,232,240,0.8);
+  line-height: 1.8;
+  max-width: 680px;
+  margin: 0;
+}
+
+/* ── Tradition tags ── */
+.traditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.75rem;
+}
+
+.traditionTag {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border-style: solid;
+  border-width: 1px;
+}
+
+/* ── Container ── */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* ── Sections ── */
+.section {
+  padding: 4rem 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.sectionLabel {
+  font-size: 0.72rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #2dd4bf;
+  margin: 0 0 0.5rem;
+}
+
+.sectionTitle {
+  font-family: var(--font-bodoni), 'Bodoni Moda', Georgia, serif;
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 600;
+  color: #F8F5FF;
+  margin: 0 0 2rem;
+  line-height: 1.2;
+}
+
+/* ── Article cards ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.articleCard {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.5rem;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  text-decoration: none;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.articleCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(45,212,191,0.35);
+  background: rgba(20,184,166,0.08);
+  box-shadow: 0 12px 40px rgba(20,184,166,0.12);
+}
+
+.articleDate {
+  font-size: 0.72rem;
+  color: #2dd4bf;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.articleTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #F8F5FF;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.articleExcerpt {
+  font-size: 0.875rem;
+  color: rgba(226,232,240,0.6);
+  line-height: 1.65;
+  margin: 0;
+}
+
+.articleArrow {
+  font-size: 0.85rem;
+  color: #2dd4bf;
+  margin-top: 0.25rem;
+}
+
+/* ── Product cards ── */
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.productCard {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.5rem;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  text-decoration: none;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.productCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(59,130,246,0.4);
+  box-shadow: 0 12px 40px rgba(59,130,246,0.15);
+}
+
+.plgBadge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #2dd4bf;
+}
+
+.productName {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #F8F5FF;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.productDesc {
+  font-size: 0.875rem;
+  color: rgba(226,232,240,0.6);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.productPrice {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #F8F5FF;
+  margin-top: 0.25rem;
+}
+
+/* ── Topic list ── */
+.topicList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.topicCard {
+  padding: 1.25rem 1.5rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-left: 3px solid rgba(20,184,166,0.55);
+  border-radius: 0 10px 10px 0;
+}
+
+.topicTitle {
+  font-weight: 600;
+  color: #F8F5FF;
+  font-size: 0.975rem;
+  margin-bottom: 0.25rem;
+}
+
+.topicDesc {
+  font-size: 0.875rem;
+  color: rgba(226,232,240,0.6);
+  line-height: 1.6;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.6rem;
+}
+
+.tag {
+  font-size: 0.6875rem;
+  color: rgba(204,251,241,0.4);
+  padding: 2px 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+}
+
+/* ── Pillar index cards ── */
+.pillarList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pillarCard {
+  display: block;
+  text-decoration: none;
+  padding: 2rem 2.5rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  backdrop-filter: blur(20px);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pillarCard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(45,212,191,0.3);
+  background: rgba(20,184,166,0.07);
+  box-shadow: 0 16px 50px rgba(20,184,166,0.1);
+}
+
+.pillarCardInner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.pillarCardLeft { flex: 1; min-width: 0; }
+
+.pillarNumber {
+  font-family: var(--font-bodoni), 'Bodoni Moda', Georgia, serif;
+  font-size: 0.875rem;
+  color: rgba(45,212,191,0.45);
+  letter-spacing: 0.15em;
+  margin-bottom: 0.5rem;
+}
+
+.pillarCardTitle {
+  font-family: var(--font-bodoni), 'Bodoni Moda', Georgia, serif;
+  font-size: clamp(1.4rem, 2.5vw, 1.875rem);
+  font-weight: 700;
+  color: #F8F5FF;
+  margin: 0 0 0.75rem;
+  line-height: 1.2;
+}
+
+.pillarCardDesc {
+  font-size: 1rem;
+  color: rgba(226,232,240,0.65);
+  line-height: 1.75;
+  max-width: 68ch;
+  margin: 0;
+}
+
+.pillarCardMeta {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.metaStat {
+  font-size: 0.8125rem;
+  color: rgba(226,232,240,0.45);
+}
+
+.metaStatAccent {
+  font-size: 0.8125rem;
+  color: #2dd4bf;
+}
+
+.exploreLink {
+  font-size: 0.875rem;
+  color: #2dd4bf;
+  margin-top: 0.5rem;
+}
+
+/* ── Empty state ── */
+.empty {
+  padding: 3rem 0;
+  color: rgba(226,232,240,0.35);
+  font-size: 0.95rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .hero { padding: 3rem 0 3rem; }
+  .container { padding: 0 1.25rem; }
+  .heroInner { padding: 0 1.25rem; }
+  .pillarCard { padding: 1.5rem; }
+  .pillarCardMeta { display: none; }
+}

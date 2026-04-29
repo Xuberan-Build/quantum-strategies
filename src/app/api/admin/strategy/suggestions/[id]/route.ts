@@ -4,6 +4,24 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 
 type Params = { params: Promise<{ id: string }> };
 
+// Formats that are content pieces, not interactive AI products
+const CONTENT_FORMATS = new Set([
+  'ebook', 'e-book', 'whitepaper', 'white paper', 'white-paper',
+  'guide', 'field guide', 'field-guide', 'report', 'pdf', 'resource',
+  'primer', 'handbook', 'playbook', 'manifesto',
+]);
+
+function isContentFormat(format: string | null): boolean {
+  if (!format) return false;
+  return CONTENT_FORMATS.has(format.toLowerCase().trim());
+}
+
+function mapToPostType(format: string): 'whitepaper' | 'resource' {
+  const f = format.toLowerCase();
+  if (f.includes('whitepaper') || f.includes('white paper') || f.includes('report')) return 'whitepaper';
+  return 'resource';
+}
+
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json();
@@ -17,7 +35,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json({ suggestion: data });
 }
 
-// Accept a suggestion — draft a full product_definition from it
+// Accept a suggestion — routes to content_posts or product_definitions based on format
 export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const { action } = await req.json();
@@ -30,9 +48,72 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // Load pillar context
   const { data: pillar } = suggestion.pillar_id
-    ? await supabaseAdmin.from('content_pillars').select('title, tradition_affinity').eq('id', suggestion.pillar_id).single()
+    ? await supabaseAdmin.from('content_pillars').select('id, title, tradition_affinity').eq('id', suggestion.pillar_id).single()
     : { data: null };
 
+  // ── Content route (ebook, whitepaper, guide, etc.) ────────────────────────
+  if (isContentFormat(suggestion.format)) {
+    const prompt = `You are the content director for Quantum Strategies.
+
+Draft a structured ebook/guide outline for:
+Title: ${suggestion.title}
+Tagline: ${suggestion.tagline ?? ''}
+Format: ${suggestion.format ?? 'ebook'}
+Pillar: ${pillar?.title ?? 'QS Core'}
+Traditions: ${(pillar?.tradition_affinity ?? []).join(', ')}
+Rationale: ${suggestion.rationale ?? ''}
+
+Return JSON:
+{
+  "slug": "kebab-case-slug",
+  "title": "Full title",
+  "excerpt": "2-3 sentence description for the content library",
+  "post_type": "whitepaper" or "resource",
+  "tags": ["tag1", "tag2", "tag3"],
+  "body": "Full markdown outline. Use ## for chapters, ### for sections. Each chapter should have a 1-sentence objective and <!-- WRITING PROMPT: ... --> comment with specific writing instructions. 4-6 chapters. Make it immediately useful as a writing scaffold."
+}
+Return ONLY valid JSON.`;
+
+    const completion = await openai.chat.completions.create({
+      model: DEFAULT_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      max_completion_tokens: 3000,
+      temperature: 0.7,
+    });
+
+    if (completion.choices[0].finish_reason === 'length') {
+      return NextResponse.json({ error: 'Response truncated — try again.' }, { status: 500 });
+    }
+
+    const draft = JSON.parse(completion.choices[0].message.content ?? '{}');
+
+    const { data: post, error: insertError } = await supabaseAdmin
+      .from('content_posts')
+      .insert({
+        slug: draft.slug,
+        type: draft.post_type ?? mapToPostType(suggestion.format ?? ''),
+        title: draft.title,
+        excerpt: draft.excerpt,
+        body: draft.body ?? '',
+        author: 'Austin Santos',
+        tags: draft.tags ?? [],
+        pillar_id: suggestion.pillar_id ?? null,
+        is_published: false,
+      })
+      .select()
+      .single();
+
+    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
+
+    await supabaseAdmin.from('product_suggestions').update({
+      status: 'created',
+    }).eq('id', id);
+
+    return NextResponse.json({ type: 'content', content_post: post, suggestion_id: id });
+  }
+
+  // ── Product route (diagnostic, mini-course, declaration, etc.) ─────────────
   const prompt = `You are the product architect for Quantum Strategies.
 
 Draft a complete product definition for:
@@ -72,7 +153,6 @@ Return ONLY valid JSON.`;
   }
   const draft = JSON.parse(raw);
 
-  // Save to product_definitions (inactive draft)
   const { data: product, error: insertError } = await supabaseAdmin
     .from('product_definitions')
     .insert({
@@ -95,11 +175,10 @@ Return ONLY valid JSON.`;
 
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
 
-  // Update suggestion status
   await supabaseAdmin.from('product_suggestions').update({
     status: 'created',
     linked_product_id: product.id,
   }).eq('id', id);
 
-  return NextResponse.json({ product, draft, suggestion_id: id });
+  return NextResponse.json({ type: 'product', product, draft, suggestion_id: id });
 }

@@ -18,15 +18,19 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { title, format, audience, goal, angle, tone, tradition_filter } = body;
+  const { title, format, audience, goal, angle, tone, tradition_filter, metadata } = body;
 
   if (!title?.trim() || !format) {
     return NextResponse.json({ error: 'title and format are required' }, { status: 400 });
   }
 
+  if (!metadata?.pillar_id) {
+    return NextResponse.json({ error: 'A strategic pillar is required' }, { status: 400 });
+  }
+
   const { data, error } = await supabaseAdmin
     .from('content_angles')
-    .insert({ title: title.trim(), format, audience, goal, angle, tone, tradition_filter })
+    .insert({ title: title.trim(), format, audience, goal, angle, tone, tradition_filter, metadata })
     .select()
     .single();
 

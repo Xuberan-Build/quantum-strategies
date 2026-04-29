@@ -9,9 +9,10 @@ interface Props {
   scope: string;
   initialContent: string;
   currentVersion: number;
+  fallbackContent?: string;
 }
 
-export default function PromptEditor({ productSlug, scope, initialContent, currentVersion }: Props) {
+export default function PromptEditor({ productSlug, scope, initialContent, currentVersion, fallbackContent }: Props) {
   const router = useRouter();
   const [content, setContent] = useState(initialContent);
   const [saving, setSaving] = useState(false);
@@ -20,6 +21,8 @@ export default function PromptEditor({ productSlug, scope, initialContent, curre
 
   const isDirty = content !== initialContent;
   const charCount = content.length;
+  const tokenEstimate = Math.round(charCount / 4);
+  const isEmpty = !content.trim();
 
   async function handleSave() {
     if (!content.trim() || !isDirty) return;
@@ -48,24 +51,34 @@ export default function PromptEditor({ productSlug, scope, initialContent, curre
     }
   }
 
-  function handleReset() {
-    setContent(initialContent);
-    setError(null);
-  }
-
   return (
     <div>
+      {isEmpty && fallbackContent && (
+        <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.6rem 0.875rem', background: 'var(--admin-bg)', border: '1px dashed var(--admin-border)', borderRadius: 6 }}>
+          <span style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>
+            Start from the built-in default
+          </span>
+          <button
+            type="button"
+            onClick={() => setContent(fallbackContent)}
+            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}
+          >
+            Load default →
+          </button>
+        </div>
+      )}
+
       <textarea
         className={styles.formTextarea}
         value={content}
         onChange={(e) => { setContent(e.target.value); setSaved(false); }}
         rows={12}
-        placeholder={`Enter ${scope} prompt...`}
+        placeholder={`Enter ${scope.replace(/_/g, ' ')} prompt…`}
         style={{ fontFamily: 'monospace', fontSize: '0.8125rem', lineHeight: 1.6, resize: 'vertical' }}
       />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           {error && (
             <span style={{ fontSize: '0.8125rem', color: 'var(--admin-danger)' }}>{error}</span>
           )}
@@ -78,11 +91,11 @@ export default function PromptEditor({ productSlug, scope, initialContent, curre
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>
-            {charCount.toLocaleString()} chars
+            {charCount.toLocaleString()} chars · ~{tokenEstimate.toLocaleString()} tokens
           </span>
           {isDirty && (
             <button
-              onClick={handleReset}
+              onClick={() => setContent(initialContent)}
               className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}
               disabled={saving}
             >
@@ -92,7 +105,7 @@ export default function PromptEditor({ productSlug, scope, initialContent, curre
           <button
             onClick={handleSave}
             className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
-            disabled={!isDirty || saving || !content.trim()}
+            disabled={!isDirty || saving || isEmpty}
           >
             {saving ? 'Saving…' : `Save as v${currentVersion + 1}`}
           </button>

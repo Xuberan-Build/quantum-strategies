@@ -26,7 +26,24 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
       ],
     },
     {
-      section: 'Products',
+      section: 'Studio',
+      items: [
+        {
+          label: 'Ebooks & Long-form',
+          href: '/admin/studio',
+          icon: StudioIcon,
+          active: pathname?.startsWith('/admin/studio'),
+        },
+        {
+          label: 'Articles & Posts',
+          href: '/admin/content',
+          icon: ContentIcon,
+          active: pathname?.startsWith('/admin/content'),
+        },
+      ],
+    },
+    {
+      section: 'AI Products',
       items: [
         {
           label: 'Products',
@@ -43,7 +60,24 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
       ],
     },
     {
-      section: 'Users',
+      section: 'Intelligence',
+      items: [
+        {
+          label: 'Strategy',
+          href: '/admin/strategy',
+          icon: StrategyIcon,
+          active: pathname?.startsWith('/admin/strategy'),
+        },
+        {
+          label: 'Corpus',
+          href: '/admin/knowledge',
+          icon: KnowledgeIcon,
+          active: pathname?.startsWith('/admin/knowledge'),
+        },
+      ],
+    },
+    {
+      section: 'People',
       items: [
         {
           label: 'Users',
@@ -51,50 +85,11 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
           icon: UsersIcon,
           active: pathname?.startsWith('/admin/users'),
         },
-      ],
-    },
-    {
-      section: 'Community',
-      items: [
         {
           label: 'Discord',
           href: '/admin/discord',
           icon: DiscordIcon,
           active: pathname?.startsWith('/admin/discord'),
-        },
-      ],
-    },
-    {
-      section: 'Content',
-      items: [
-        {
-          label: 'Posts',
-          href: '/admin/content',
-          icon: ContentIcon,
-          active: pathname?.startsWith('/admin/content'),
-        },
-        {
-          label: 'Studio',
-          href: '/admin/studio',
-          icon: StudioIcon,
-          active: pathname?.startsWith('/admin/studio'),
-        },
-      ],
-    },
-    {
-      section: 'Knowledge',
-      items: [
-        {
-          label: 'Corpus',
-          href: '/admin/knowledge',
-          icon: KnowledgeIcon,
-          active: pathname?.startsWith('/admin/knowledge'),
-        },
-        {
-          label: 'Strategy',
-          href: '/admin/strategy',
-          icon: StrategyIcon,
-          active: pathname?.startsWith('/admin/strategy'),
         },
       ],
     },

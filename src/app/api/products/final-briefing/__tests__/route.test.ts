@@ -371,7 +371,7 @@ describe('POST /api/products/final-briefing', () => {
 
     const callArgs = vi.mocked(AIRequestService.request).mock.calls[0][0];
     expect(callArgs.messages[1].content).toContain('QBF WIZARD');
-    expect(callArgs.messages[1].content).toContain('Step 1 Insight: Actionable nudge here');
+    expect(callArgs.messages[1].content).toContain('Step 1 Insight:\nActionable nudge here');
   });
 
   it('should extract money-related notes for quantum-initiation', async () => {
@@ -436,7 +436,10 @@ describe('POST /api/products/final-briefing', () => {
     const mockConversations = [
       {
         step_number: 1,
-        messages: [{ role: 'user', content: 'I want to hit $10k MRR' }],
+        messages: [
+          { role: 'user', content: 'I want to hit $10k MRR' },
+          { role: 'assistant', content: 'Identity alignment nudge here', type: 'step_insight' },
+        ],
         created_at: '2024-01-01T00:00:00Z',
       },
     ];
@@ -618,6 +621,10 @@ describe('POST /api/products/final-briefing', () => {
               single: vi.fn().mockResolvedValue({ data: mockUser, error: null }),
             }),
           }),
+        } as any;
+      } else if (table === 'generation_log') {
+        return {
+          insert: vi.fn().mockReturnValue(Promise.resolve({ error: null })),
         } as any;
       }
       return {} as any;

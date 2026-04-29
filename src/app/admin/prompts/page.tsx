@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import Link from 'next/link';
 import styles from '../admin-layout.module.css';
 
+const SCOPES = ['system', 'step_insight', 'followup', 'final_briefing'] as const;
 const SCOPE_LABELS: Record<string, string> = {
   system: 'System',
   step_insight: 'Step Insight',
@@ -10,126 +11,165 @@ const SCOPE_LABELS: Record<string, string> = {
 };
 
 export default async function PromptsPage() {
-  const { data: prompts } = await supabaseAdmin
-    .from('prompts')
-    .select('id, product_slug, scope, step_number, version, is_active, updated_at, content')
-    .order('product_slug')
-    .order('scope')
-    .order('version', { ascending: false });
+  const [productsRes, promptsRes] = await Promise.all([
+    supabaseAdmin
+      .from('product_definitions')
+      .select('product_slug, name')
+      .eq('is_active', true)
+      .order('product_slug'),
+    supabaseAdmin
+      .from('prompts')
+      .select('product_slug, scope, version, updated_at, is_active')
+      .eq('is_active', true)
+      .order('product_slug'),
+  ]);
 
-  const allPrompts = prompts || [];
+  const products = productsRes.data ?? [];
+  const activePrompts = promptsRes.data ?? [];
 
-  // Group by product_slug, keep only the active (latest) version per scope
-  const byProduct = new Map<string, typeof allPrompts>();
-  for (const p of allPrompts) {
-    if (!byProduct.has(p.product_slug)) byProduct.set(p.product_slug, []);
-    byProduct.get(p.product_slug)!.push(p);
+  // Coverage map: slug → scope → { version, updated_at }
+  const coverage = new Map<string, Map<string, { version: number; updated_at: string }>>();
+  for (const p of activePrompts) {
+    if (!coverage.has(p.product_slug)) coverage.set(p.product_slug, new Map());
+    coverage.get(p.product_slug)!.set(p.scope, { version: p.version, updated_at: p.updated_at });
   }
 
-  // Dedupe: keep latest active per product+scope
-  const activeByProduct = new Map<string, Map<string, (typeof allPrompts)[0]>>();
-  for (const [slug, rows] of byProduct) {
-    const scopeMap = new Map<string, (typeof allPrompts)[0]>();
-    for (const row of rows) {
-      const key = `${row.scope}:${row.step_number ?? ''}`;
-      if (!scopeMap.has(key)) scopeMap.set(key, row); // already ordered version DESC
-    }
-    activeByProduct.set(slug, scopeMap);
-  }
+  // All slugs: known products first, then any orphaned prompt-only slugs
+  const knownSlugs = new Set(products.map((p) => p.product_slug));
+  for (const slug of coverage.keys()) knownSlugs.add(slug);
 
-  const productSlugs = Array.from(activeByProduct.keys()).sort();
-  const totalActive = Array.from(activeByProduct.values()).reduce((sum, m) => sum + m.size, 0);
-  const totalVersions = allPrompts.length;
+  const allSlugs = [
+    ...products.map((p) => p.product_slug),
+    ...[...coverage.keys()].filter((s) => !products.some((p) => p.product_slug === s)),
+  ];
+
+  const productNameMap = new Map(products.map((p) => [p.product_slug, p.name]));
+
+  // Stats
+  const totalProducts = allSlugs.length;
+  const fullyCustom = allSlugs.filter((s) => {
+    const c = coverage.get(s);
+    return c && SCOPES.every((scope) => c.has(scope));
+  }).length;
+  const usingDefaults = allSlugs.filter((s) => !coverage.has(s)).length;
+  const totalCustom = activePrompts.length;
 
   return (
     <div>
       <header className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Prompts</h1>
-        <p className={styles.pageDescription}>AI prompt management with version history</p>
+        <p className={styles.pageDescription}>
+          AI prompt management across all products — custom overrides take precedence over built-in defaults.
+        </p>
       </header>
 
       <div className={styles.statsGrid} style={{ marginBottom: '2rem' }}>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>Products with Prompts</div>
-          <div className={styles.statValue}>{productSlugs.length}</div>
+          <div className={styles.statLabel}>Total Products</div>
+          <div className={styles.statValue}>{totalProducts}</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>Active Prompts</div>
-          <div className={styles.statValue}>{totalActive}</div>
+          <div className={styles.statLabel}>Fully Customized</div>
+          <div className={styles.statValue} style={{ color: fullyCustom === totalProducts ? 'var(--admin-success)' : undefined }}>
+            {fullyCustom}/{totalProducts}
+          </div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>Total Versions</div>
-          <div className={styles.statValue}>{totalVersions}</div>
+          <div className={styles.statLabel}>Using All Defaults</div>
+          <div className={styles.statValue} style={{ color: usingDefaults > 0 ? 'var(--admin-warning)' : 'var(--admin-success)' }}>
+            {usingDefaults}
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>Custom Prompts Saved</div>
+          <div className={styles.statValue}>{totalCustom}</div>
         </div>
       </div>
 
-      {productSlugs.length === 0 ? (
-        <div className={styles.card}>
-          <div className={styles.emptyState}>
-            <p className={styles.emptyTitle}>No prompts yet</p>
-            <p className={styles.emptyDescription}>
-              Prompts are loaded from the database. Add your first prompt below.
-            </p>
-          </div>
+      <div className={styles.card}>
+        <div className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>Coverage Matrix</h2>
+          <span style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>
+            Click any row to edit that product's prompts
+          </span>
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {productSlugs.map((slug) => {
-            const scopeMap = activeByProduct.get(slug)!;
-            const rows = Array.from(scopeMap.values());
 
-            return (
-              <div key={slug} className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <h2 className={styles.cardTitle}>{formatSlug(slug)}</h2>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span className={`${styles.badge} ${styles.badgeNeutral}`}>
-                      {rows.length} prompt{rows.length !== 1 ? 's' : ''}
-                    </span>
-                    <Link
-                      href={`/admin/prompts/${slug}`}
-                      className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
-                    >
-                      Edit
-                    </Link>
-                  </div>
-                </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th style={{ minWidth: 200 }}>Product</th>
+                {SCOPES.map((s) => (
+                  <th key={s} style={{ textAlign: 'center', minWidth: 110 }}>
+                    {SCOPE_LABELS[s]}
+                  </th>
+                ))}
+                <th style={{ width: 80 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {allSlugs.map((slug) => {
+                const scopeMap = coverage.get(slug);
+                const name = productNameMap.get(slug) ?? formatSlug(slug);
+                const isKnown = knownSlugs.has(slug);
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {rows.map((row) => {
-                    const preview = row.content?.slice(0, 120).replace(/\n/g, ' ') ?? '';
-                    return (
-                      <div key={row.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', padding: '0.75rem', background: 'var(--admin-bg)', borderRadius: '0.375rem' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '4px' }}>
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
-                              {SCOPE_LABELS[row.scope] ?? row.scope}
-                            </span>
-                            {row.step_number != null && (
-                              <span className={`${styles.badge} ${styles.badgeNeutral}`} style={{ fontSize: '0.7rem' }}>
-                                Step {row.step_number}
-                              </span>
-                            )}
-                            <span className={`${styles.badge} ${styles.badgeSuccess}`} style={{ fontSize: '0.7rem' }}>
-                              v{row.version}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {preview}{row.content?.length > 120 ? '…' : ''}
-                          </div>
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
-                          {new Date(row.updated_at).toLocaleDateString()}
-                        </div>
+                return (
+                  <tr key={slug}>
+                    <td>
+                      <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', fontFamily: 'monospace' }}>
+                        {slug}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+                      {!isKnown && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--admin-warning)', marginTop: 2 }}>
+                          orphaned — not in product_definitions
+                        </div>
+                      )}
+                    </td>
+                    {SCOPES.map((scope) => {
+                      const entry = scopeMap?.get(scope);
+                      return (
+                        <td key={scope} style={{ textAlign: 'center' }}>
+                          {entry ? (
+                            <span className={`${styles.badge} ${styles.badgeSuccess}`} style={{ fontSize: '0.7rem' }}>
+                              v{entry.version}
+                            </span>
+                          ) : (
+                            <span
+                              className={styles.badge}
+                              style={{
+                                fontSize: '0.7rem',
+                                background: 'var(--admin-bg-subtle)',
+                                color: 'var(--admin-text-muted)',
+                                border: '1px solid var(--admin-border)',
+                              }}
+                            >
+                              default
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td>
+                      <Link
+                        href={`/admin/prompts/${slug}`}
+                        className={`${styles.btn} ${styles.btnSmall} ${scopeMap ? styles.btnSecondary : styles.btnPrimary}`}
+                      >
+                        {scopeMap ? 'Edit' : 'Configure'}
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      )}
+
+        <div style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid var(--admin-border)', display: 'flex', gap: '1.5rem', fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>
+          <span><span className={`${styles.badge} ${styles.badgeSuccess}`} style={{ fontSize: '0.65rem' }}>v2</span> Custom saved version</span>
+          <span><span className={styles.badge} style={{ fontSize: '0.65rem', background: 'var(--admin-bg-subtle)', border: '1px solid var(--admin-border)' }}>default</span> Using built-in fallback</span>
+        </div>
+      </div>
     </div>
   );
 }

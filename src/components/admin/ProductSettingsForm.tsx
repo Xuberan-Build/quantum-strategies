@@ -207,16 +207,16 @@ export default function ProductSettingsForm({ product }: ProductSettingsFormProp
             />
           </div>
           <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-            <label className={styles.formLabel}>Price (USD cents)</label>
+            <label className={styles.formLabel}>Price (USD)</label>
             <input
               type="number"
               className={styles.formInput}
               value={price}
               onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
               min={0}
-              placeholder="e.g. 9700 = $97"
+              placeholder="e.g. 97"
             />
-            <p className={styles.formHint}>Stored in cents. 9700 = $97.00</p>
+            <p className={styles.formHint}>Enter price in dollars (e.g. 97 = $97.00)</p>
           </div>
           <div className={styles.formGroup} style={{ marginBottom: 0 }}>
             <label className={styles.formLabel}>Estimated Duration</label>
