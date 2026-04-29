@@ -25,6 +25,7 @@ sercrets/
 !package-lock.json
 !tsconfig.json
 !next.config.json
+!vercel.json
 *-key.json
 *-credentials.json
 service-account*.json

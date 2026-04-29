@@ -36,6 +36,32 @@ export default async function DiscordMemberPage({
   const activity = activityResult.data || [];
   const linkedUser = linkedUserResult.data;
 
+  // CRM data — only available when a QS account is linked
+  let crmListNames: string[] = [];
+  let crmEnrollments: { id: string; current_step: number; next_send_at: string | null; campaign: { id: string; name: string } }[] = [];
+  if (linkedUser) {
+    const [listMembershipsResult, enrollmentsResult] = await Promise.all([
+      supabaseAdmin
+        .from('list_members')
+        .select('contact_lists(id, name, list_type)')
+        .eq('user_id', linkedUser.id),
+      supabaseAdmin
+        .from('campaign_enrollments')
+        .select('id, current_step, next_send_at, campaigns(id, name)')
+        .eq('user_id', linkedUser.id)
+        .eq('status', 'active'),
+    ]);
+    crmListNames = ((listMembershipsResult.data || []) as any[])
+      .map((m) => m.contact_lists?.name)
+      .filter(Boolean);
+    crmEnrollments = ((enrollmentsResult.data || []) as any[]).map((e) => ({
+      id: e.id,
+      current_step: e.current_step,
+      next_send_at: e.next_send_at,
+      campaign: e.campaigns,
+    }));
+  }
+
   const stageLabels: Record<number, string> = {
     0: 'Not started',
     1: 'Introduced',
@@ -220,65 +246,127 @@ export default async function DiscordMemberPage({
           )}
         </div>
 
-        {/* Activity Timeline */}
-        <div className={styles.card} style={{ position: 'sticky', top: '2rem' }}>
-          <div className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>Activity Log</h2>
-            <span className={`${styles.badge} ${styles.badgeNeutral}`}>{activity.length}</span>
+        {/* Right column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '2rem' }}>
+
+          {/* CRM */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>CRM</h2>
+              {linkedUser && (
+                <Link href={`/admin/users/${linkedUser.id}`} style={{ fontSize: '0.75rem', color: 'var(--admin-primary)' }}>
+                  View profile →
+                </Link>
+              )}
+            </div>
+
+            {!linkedUser ? (
+              <p style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>
+                No linked QS account — cannot enroll in campaigns.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--admin-text-muted)', marginBottom: '0.5rem' }}>
+                    Lists
+                  </div>
+                  {crmListNames.length === 0 ? (
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>Not on any lists</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                      {crmListNames.map((name) => (
+                        <span key={name} className={`${styles.badge} ${styles.badgeNeutral}`}>{name}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--admin-text-muted)', marginBottom: '0.5rem' }}>
+                    Active Campaigns
+                  </div>
+                  {crmEnrollments.length === 0 ? (
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>No active campaigns</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                      {crmEnrollments.map((enr) => (
+                        <div key={enr.id} style={{ fontSize: '0.8125rem' }}>
+                          <Link href={`/admin/campaigns/${enr.campaign.id}`} style={{ fontWeight: 500, color: 'var(--admin-text)' }}>
+                            {enr.campaign.name}
+                          </Link>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '1px' }}>
+                            Step {enr.current_step}
+                            {enr.next_send_at && ` · Next: ${new Date(enr.next_send_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {activity.length === 0 ? (
-            <div className={styles.emptyState}>
-              <p className={styles.emptyDescription}>No activity recorded yet.</p>
+          {/* Activity Timeline */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Activity Log</h2>
+              <span className={`${styles.badge} ${styles.badgeNeutral}`}>{activity.length}</span>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '700px', overflowY: 'auto' }}>
-              {activity.map((event, i) => (
-                <div key={event.id} style={{ display: 'flex', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: '50%',
-                      background: 'var(--admin-primary)',
-                      flexShrink: 0,
-                      marginTop: '3px',
-                    }} />
-                    {i < activity.length - 1 && (
-                      <div style={{ width: '2px', flex: 1, background: 'var(--admin-border)', marginTop: '4px' }} />
-                    )}
-                  </div>
-                  <div style={{ flex: 1, paddingBottom: '0.75rem' }}>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
-                      {event.event_type.replace(/_/g, ' ')}
-                    </div>
-                    {event.sequence_stage != null && (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>
-                        Stage {event.sequence_stage}
-                      </div>
-                    )}
-                    {event.event_data && Object.keys(event.event_data).length > 0 && (
+
+            {activity.length === 0 ? (
+              <div className={styles.emptyState}>
+                <p className={styles.emptyDescription}>No activity recorded yet.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto' }}>
+                {activity.map((event, i) => (
+                  <div key={event.id} style={{ display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                       <div style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--admin-text-muted)',
-                        marginTop: '4px',
-                        fontFamily: 'monospace',
-                        background: 'var(--admin-bg)',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                      }}>
-                        {JSON.stringify(event.event_data).slice(0, 120)}
-                        {JSON.stringify(event.event_data).length > 120 ? '…' : ''}
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '50%',
+                        background: 'var(--admin-primary)',
+                        flexShrink: 0,
+                        marginTop: '3px',
+                      }} />
+                      {i < activity.length - 1 && (
+                        <div style={{ width: '2px', flex: 1, background: 'var(--admin-border)', marginTop: '4px' }} />
+                      )}
+                    </div>
+                    <div style={{ flex: 1, paddingBottom: '0.75rem' }}>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+                        {event.event_type.replace(/_/g, ' ')}
                       </div>
-                    )}
-                    <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '2px' }}>
-                      {new Date(event.created_at).toLocaleString()}
+                      {event.sequence_stage != null && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>
+                          Stage {event.sequence_stage}
+                        </div>
+                      )}
+                      {event.event_data && Object.keys(event.event_data).length > 0 && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: 'var(--admin-text-muted)',
+                          marginTop: '4px',
+                          fontFamily: 'monospace',
+                          background: 'var(--admin-bg)',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                        }}>
+                          {JSON.stringify(event.event_data).slice(0, 120)}
+                          {JSON.stringify(event.event_data).length > 120 ? '…' : ''}
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '2px' }}>
+                        {new Date(event.created_at).toLocaleString()}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

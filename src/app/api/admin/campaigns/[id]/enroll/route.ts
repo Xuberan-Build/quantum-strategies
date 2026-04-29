@@ -10,15 +10,33 @@ export async function POST(
     const body = await request.json();
     const { list_id, user_ids: directUserIds = [] } = body;
 
-    // Resolve list members
+    // Resolve list members — handles both static and smart lists
     let listUserIds: string[] = [];
     if (list_id) {
-      const { data: members, error } = await supabaseAdmin
-        .from('list_members')
-        .select('user_id')
-        .eq('list_id', list_id);
-      if (error) throw error;
-      listUserIds = (members || []).map((m: any) => m.user_id);
+      const { data: list, error: listError } = await supabaseAdmin
+        .from('contact_lists')
+        .select('list_type, filter_criteria')
+        .eq('id', list_id)
+        .single();
+      if (listError) throw listError;
+
+      if (list.list_type === 'smart') {
+        const source = list.filter_criteria?.source;
+        let query = supabaseAdmin.from('users').select('id').not('email', 'is', null);
+        if (source === 'discord_linked') {
+          query = query.not('discord_id', 'is', null);
+        }
+        const { data: users, error: usersError } = await query;
+        if (usersError) throw usersError;
+        listUserIds = (users || []).map((u: any) => u.id);
+      } else {
+        const { data: members, error } = await supabaseAdmin
+          .from('list_members')
+          .select('user_id')
+          .eq('list_id', list_id);
+        if (error) throw error;
+        listUserIds = (members || []).map((m: any) => m.user_id);
+      }
     }
 
     const allUserIds = [...new Set([...listUserIds, ...directUserIds])];

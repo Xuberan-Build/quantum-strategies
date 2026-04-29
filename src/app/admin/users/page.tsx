@@ -3,7 +3,7 @@ import Link from 'next/link';
 import styles from '../admin-layout.module.css';
 
 export default async function UsersPage() {
-  const [usersResult, sessionsResult] = await Promise.all([
+  const [usersResult, sessionsResult, listMembersResult] = await Promise.all([
     supabaseAdmin
       .from('users')
       .select('id, name, email, is_affiliate, affiliate_opted_out, created_at, discord_id')
@@ -11,6 +11,9 @@ export default async function UsersPage() {
     supabaseAdmin
       .from('product_sessions')
       .select('user_id, completed_at'),
+    supabaseAdmin
+      .from('list_members')
+      .select('user_id'),
   ]);
 
   const users = usersResult.data || [];
@@ -23,6 +26,12 @@ export default async function UsersPage() {
     cur.total++;
     if (s.completed_at) cur.completed++;
     sessionMap.set(s.user_id, cur);
+  }
+
+  // Aggregate static list membership counts per user
+  const listMemberMap = new Map<string, number>();
+  for (const m of listMembersResult.data || []) {
+    listMemberMap.set(m.user_id, (listMemberMap.get(m.user_id) ?? 0) + 1);
   }
 
   const totalUsers = users.length;

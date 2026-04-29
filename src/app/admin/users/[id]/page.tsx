@@ -10,7 +10,7 @@ export default async function UserDetailPage({
 }) {
   const { id } = await params;
 
-  const [userResult, sessionsResult, accessResult, emailSeqResult] = await Promise.all([
+  const [userResult, sessionsResult, accessResult, emailSeqResult, listMembersResult, activeEnrollmentsResult, smartListsResult] = await Promise.all([
     supabaseAdmin
       .from('users')
       .select('*')
@@ -31,6 +31,19 @@ export default async function UserDetailPage({
       .select('id, sequence_type, email_status, scheduled_send_at, sent_at, failed_at, failure_reason, email_content')
       .eq('user_id', id)
       .order('scheduled_send_at', { ascending: false }),
+    supabaseAdmin
+      .from('list_members')
+      .select('list_id, contact_lists(id, name, list_type)')
+      .eq('user_id', id),
+    supabaseAdmin
+      .from('campaign_enrollments')
+      .select('id, campaign_id, current_step, next_send_at, campaigns(id, name)')
+      .eq('user_id', id)
+      .eq('status', 'active'),
+    supabaseAdmin
+      .from('contact_lists')
+      .select('id, name, list_type, filter_criteria')
+      .eq('list_type', 'smart'),
   ]);
 
   if (userResult.error || !userResult.data) notFound();
@@ -39,6 +52,25 @@ export default async function UserDetailPage({
   const sessions = sessionsResult.data || [];
   const access = accessResult.data || [];
   const emailSeqs = emailSeqResult.data || [];
+  const activeEnrollments = activeEnrollmentsResult.data || [];
+
+  // Static list memberships
+  const staticLists = (listMembersResult.data || [])
+    .map((m: any) => m.contact_lists)
+    .filter(Boolean)
+    .map((l: any) => ({ ...l, kind: 'static' as const }));
+
+  // Smart lists this user qualifies for
+  const smartLists = (smartListsResult.data || [])
+    .filter((list: any) => {
+      const source = list.filter_criteria?.source;
+      if (source === 'all_users') return true;
+      if (source === 'discord_linked') return !!user.discord_id;
+      return false;
+    })
+    .map((l: any) => ({ ...l, kind: 'smart' as const }));
+
+  const crmLists = [...staticLists, ...smartLists];
 
   // Fetch discord member separately (depends on user.discord_id)
   let discordMember: any = null;
@@ -317,6 +349,67 @@ export default async function UserDetailPage({
               </div>
             </div>
           )}
+
+          {/* CRM */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>CRM</h2>
+              {crmLists.length > 0 && (
+                <span className={`${styles.badge} ${styles.badgeNeutral}`}>{crmLists.length} lists</span>
+              )}
+            </div>
+
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+              Lists
+            </div>
+            {crmLists.length === 0 ? (
+              <p style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)', marginBottom: '1rem' }}>Not on any lists.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', marginBottom: '1rem' }}>
+                {crmLists.map((list) => (
+                  <div key={list.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                    <Link href={`/admin/lists/${list.id}`} style={{ color: 'var(--admin-primary)', textDecoration: 'none' }}>
+                      {list.name}
+                    </Link>
+                    <span className={`${styles.badge} ${styles.badgeNeutral}`} style={{ fontSize: '0.7rem' }}>
+                      {list.kind}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeEnrollments.length > 0 && (
+              <>
+                <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '1rem', marginBottom: '0.5rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                    Active Campaigns
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                    {activeEnrollments.map((enr: any) => (
+                      <div key={enr.id}>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 500 }}>
+                          <Link href={`/admin/campaigns/${enr.campaign_id}`} style={{ color: 'var(--admin-primary)', textDecoration: 'none' }}>
+                            {enr.campaigns?.name || 'Campaign'}
+                          </Link>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '1px' }}>
+                          Step {enr.current_step}
+                          {enr.next_send_at && ` · Next: ${new Date(enr.next_send_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '0.75rem', marginTop: activeEnrollments.length > 0 ? 0 : '0.25rem' }}>
+              <Link href="/admin/lists" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`} style={{ width: '100%', justifyContent: 'center' }}>
+                Manage Lists
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -337,7 +430,3 @@ function BackIcon() {
     </svg>
   );
 }
-
-const stageLabels: Record<number, string> = {
-  0: 'Not started', 1: 'Introduced', 2: 'Doctrine', 3: 'Rite link', 4: 'Day 10',
-};
