@@ -48,7 +48,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   if (merged.length === 0) {
-    return NextResponse.json({ links: [], message: 'No matches found — try a broader query or lower threshold' });
+    const { count } = await supabaseAdmin.from('knowledge_chunks').select('id', { count: 'exact', head: true });
+    const corpusTotal = count ?? 0;
+    const message = corpusTotal === 0
+      ? 'The corpus has not been ingested yet. Run the ingestion scripts to populate knowledge_chunks before searching.'
+      : 'No matching passages found. Try broader terms, different synonyms, or remove tradition filter.';
+    return NextResponse.json({ links: [], message, corpusTotal });
   }
 
   // Save corpus links (upsert — preserve curated state)
@@ -83,5 +88,5 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq('angle_id', id)
     .order('similarity', { ascending: false });
 
-  return NextResponse.json({ links: links ?? [], count: merged.length });
+  return NextResponse.json({ links: links ?? [], count: merged.length, corpusTotal: merged.length });
 }
