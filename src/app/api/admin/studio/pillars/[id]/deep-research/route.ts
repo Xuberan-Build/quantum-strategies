@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import { expandQuery, rerankChunks } from '@/lib/corpus/expand-query';
 
 const EMBED_MODEL = 'text-embedding-3-small';
-const VECTOR_THRESHOLD = 0.35;   // broader than default — expansion handles precision
+const VECTOR_THRESHOLD = 0.10;   // low threshold — HNSW + re-ranker handle precision
 const VECTOR_COUNT     = 12;     // per query; dedup reduces final set
 const KEYWORD_COUNT    = 10;
 const RERANK_THRESHOLD = 5;      // skip re-rank if fewer results than this

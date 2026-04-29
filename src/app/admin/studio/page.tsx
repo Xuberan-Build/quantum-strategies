@@ -15,6 +15,14 @@ interface StudioDef {
 
 const STUDIOS: StudioDef[] = [
   {
+    format: 'workshop',
+    label: 'Course Studio',
+    description: 'Slide-based courses with Vimeo video per module. Build modules, author slides, publish to the portal.',
+    color: '#10b981',
+    href: '/admin/studio/workshop',
+    newHref: null,
+  },
+  {
     format: 'ebook',
     label: 'Ebook Studio',
     description: 'Long-form guides and books grounded in the corpus. Full Brief → Research → Outline → Draft → Distribute pipeline.',
@@ -29,14 +37,6 @@ const STUDIOS: StudioDef[] = [
     color: '#f59e0b',
     href: '/admin/studio/whitepaper',
     newHref: '/admin/studio/new?format=whitepaper',
-  },
-  {
-    format: 'ecourse',
-    label: 'Course Studio',
-    description: 'E-courses and structured learning paths. Modules with objectives, exercises, and key takeaways.',
-    color: '#10b981',
-    href: '/admin/studio/ecourse',
-    newHref: '/admin/studio/new?format=ecourse',
   },
   {
     format: 'article',
@@ -67,28 +67,34 @@ const STUDIOS: StudioDef[] = [
   },
 ];
 
-const STUDIO_FORMATS = ['ebook', 'whitepaper', 'ecourse'] as const;
+const STUDIO_FORMATS = ['ebook', 'whitepaper'] as const;
 
 export default async function StudioHubPage() {
-  const { data: angles } = await supabaseAdmin
-    .from('content_angles')
-    .select('format, status');
+  const [anglesResult, articlesResult, workshopsResult] = await Promise.all([
+    supabaseAdmin.from('content_angles').select('format, status'),
+    supabaseAdmin.from('content_posts').select('id, is_published'),
+    supabaseAdmin.from('workshops').select('id, status'),
+  ]);
 
-  const { data: articles } = await supabaseAdmin
-    .from('content_posts')
-    .select('id, is_published');
+  const angles = anglesResult.data ?? [];
+  const articles = articlesResult.data ?? [];
+  const workshops = workshopsResult.data ?? [];
 
   const counts: Record<string, { total: number; published: number }> = {};
   for (const fmt of STUDIO_FORMATS) {
-    const rows = (angles ?? []).filter((a) => a.format === fmt);
+    const rows = angles.filter((a) => a.format === fmt);
     counts[fmt] = { total: rows.length, published: rows.filter((a) => a.status === 'published').length };
   }
   counts['article'] = {
-    total: (articles ?? []).length,
-    published: (articles ?? []).filter((a) => a.is_published).length,
+    total: articles.length,
+    published: articles.filter((a) => a.is_published).length,
+  };
+  counts['workshop'] = {
+    total: workshops.length,
+    published: workshops.filter((w) => w.status === 'published').length,
   };
 
-  const totalAngles = (angles ?? []).length;
+  const totalAngles = angles.length;
 
   return (
     <div>
@@ -117,7 +123,7 @@ export default async function StudioHubPage() {
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>Courses</div>
-          <div className={styles.statValue}>{counts.ecourse?.total ?? 0}</div>
+          <div className={styles.statValue}>{counts.workshop?.total ?? 0}</div>
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>Articles</div>
