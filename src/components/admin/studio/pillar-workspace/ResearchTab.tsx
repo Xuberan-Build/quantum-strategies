@@ -22,9 +22,19 @@ export function ResearchTab({
   const [suggestions, setSuggestions]   = useState<string[]>([]);
   const [loadingSugs, setLoadingSugs]   = useState(false);
   const [corpusTotal, setCorpusTotal]   = useState<number | null>(null);
+  const [relevance, setRelevance]       = useState<Record<string, { score: number; reason: string; matched_via: string[] }>>({});
+  const [expansionQueries, setExpansionQueries] = useState<string[]>([]);
 
   const curated   = corpusLinks.filter((l) => l.curated);
   const uncurated = corpusLinks.filter((l) => !l.curated);
+
+  const hasRelevance = Object.keys(relevance).length > 0;
+  const sortByScore = (links: CorpusLink[]) =>
+    hasRelevance
+      ? [...links].sort((a, b) =>
+          (relevance[b.knowledge_chunks.id]?.score ?? -1) - (relevance[a.knowledge_chunks.id]?.score ?? -1)
+        )
+      : links;
 
   // Load AI suggestions + corpus health on tab mount
   useEffect(() => {
@@ -51,7 +61,7 @@ export function ResearchTab({
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch(`/api/admin/studio/pillars/${pillar.id}/research`, {
+      const res = await fetch(`/api/admin/studio/pillars/${pillar.id}/deep-research`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q, tradition_filter: pillar.tradition_filter || undefined }),
@@ -62,6 +72,8 @@ export function ResearchTab({
       onPillarUpdate({ ...pillar, corpus_query: q, status: data.links.length > 0 ? 'research' : pillar.status });
       if (data.corpusTotal !== undefined) setCorpusTotal(data.corpusTotal);
       if (data.message) setMessage(data.message);
+      setRelevance(data.relevance ?? {});
+      setExpansionQueries(data.expansion_queries ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Research failed');
     } finally {
@@ -114,6 +126,13 @@ export function ResearchTab({
     const chunk = link.knowledge_chunks;
     const meta = TRADITION_META[chunk.tradition] ?? { label: chunk.tradition, color: '#6b7280' };
     const isOpen = expanded.has(link.id);
+    const rel = relevance[chunk.id];
+    const scoreColor = rel
+      ? rel.score >= 8 ? '#16a34a' : rel.score >= 6 ? '#d97706' : '#6b7280'
+      : undefined;
+    const scoreBg = rel
+      ? rel.score >= 8 ? '#f0fdf4' : rel.score >= 6 ? '#fef3c7' : '#f3f4f6'
+      : undefined;
     return (
       <div key={link.id} style={{ border: '1px solid var(--admin-border)', borderRadius: 8, overflow: 'hidden', marginBottom: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 1rem' }}>
@@ -151,8 +170,29 @@ export function ResearchTab({
           </button>
         </div>
         {isOpen && (
-          <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--admin-border)', fontSize: '0.8125rem', lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--admin-text-secondary, var(--admin-text))' }}>
-            {chunk.content.slice(0, 800)}{chunk.content.length > 800 ? '…' : ''}
+          <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--admin-border)' }}>
+            <div style={{ fontSize: '0.8125rem', lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--admin-text-secondary, var(--admin-text))' }}>
+              {chunk.content.slice(0, 800)}{chunk.content.length > 800 ? '…' : ''}
+            </div>
+            {rel && (
+              <div style={{ marginTop: '0.625rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.125rem 0.5rem', borderRadius: 4, background: scoreBg, color: scoreColor }}>
+                    {rel.score}/10
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>{rel.reason}</span>
+                </div>
+                {rel.matched_via.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                    {rel.matched_via.map((tag) => (
+                      <span key={tag} style={{ fontSize: '0.6875rem', color: 'var(--admin-text-muted)', background: 'var(--admin-bg)', border: '1px solid var(--admin-border)', borderRadius: 3, padding: '0.1rem 0.375rem' }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -260,6 +300,17 @@ export function ResearchTab({
             )}
           </div>
 
+          {expansionQueries.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>Searched for:</span>
+              {expansionQueries.map((q) => (
+                <span key={q} style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', border: '1px solid var(--admin-border)', borderRadius: 20, padding: '0.2rem 0.6rem' }}>
+                  {q}
+                </span>
+              ))}
+            </div>
+          )}
+
           {error && (
             <div style={{ background: 'var(--admin-danger-bg, #fef2f2)', border: '1px solid var(--admin-danger)', borderRadius: 6, padding: '0.625rem 0.875rem', color: 'var(--admin-danger)', fontSize: '0.875rem' }}>
               {error}
@@ -279,7 +330,7 @@ export function ResearchTab({
           <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--admin-success)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
             Curated ({curated.length})
           </div>
-          {curated.map(renderLink)}
+          {sortByScore(curated).map(renderLink)}
         </div>
       )}
 
@@ -289,7 +340,7 @@ export function ResearchTab({
           <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
             Retrieved ({uncurated.length})
           </div>
-          {uncurated.map(renderLink)}
+          {sortByScore(uncurated).map(renderLink)}
         </div>
       )}
     </div>
