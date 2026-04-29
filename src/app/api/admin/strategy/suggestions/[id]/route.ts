@@ -4,11 +4,12 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 
 type Params = { params: Promise<{ id: string }> };
 
-// Formats that are content pieces, not interactive AI products
+// Formats that are content pieces routed through the Studio pipeline
 const CONTENT_FORMATS = new Set([
   'ebook', 'e-book', 'whitepaper', 'white paper', 'white-paper',
   'guide', 'field guide', 'field-guide', 'report', 'pdf', 'resource',
   'primer', 'handbook', 'playbook', 'manifesto',
+  'ecourse', 'e-course', 'course', 'webinar',
 ]);
 
 function isContentFormat(format: string | null): boolean {
@@ -16,10 +17,13 @@ function isContentFormat(format: string | null): boolean {
   return CONTENT_FORMATS.has(format.toLowerCase().trim());
 }
 
-function mapToPostType(format: string): 'whitepaper' | 'resource' {
-  const f = format.toLowerCase();
+// Maps freeform suggestion formats to the Studio's canonical format values
+function mapToStudioFormat(format: string): 'ebook' | 'whitepaper' | 'ecourse' | 'webinar' {
+  const f = format.toLowerCase().trim();
   if (f.includes('whitepaper') || f.includes('white paper') || f.includes('report')) return 'whitepaper';
-  return 'resource';
+  if (f.includes('ecourse') || f.includes('e-course') || f.includes('course')) return 'ecourse';
+  if (f.includes('webinar')) return 'webinar';
+  return 'ebook';
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
@@ -51,55 +55,64 @@ export async function POST(req: NextRequest, { params }: Params) {
     ? await supabaseAdmin.from('content_pillars').select('id, title, tradition_affinity').eq('id', suggestion.pillar_id).single()
     : { data: null };
 
-  // ── Content route (ebook, whitepaper, guide, etc.) ────────────────────────
+  // ── Content route → Studio workspace (ebook, whitepaper, guide, course, etc.) ─
   if (isContentFormat(suggestion.format)) {
-    const prompt = `You are the content director for Quantum Strategies.
+    const studioFormat = mapToStudioFormat(suggestion.format ?? 'ebook');
 
-Draft a structured ebook/guide outline for:
+    // Use AI to infer a strong angle and audience from the suggestion rationale
+    const briefCompletion = await openai.chat.completions.create({
+      model: DEFAULT_MODEL,
+      messages: [{
+        role: 'user',
+        content: `You are a content strategist for Quantum Strategies, a mystical consciousness and transformation company.
+
+Given this content suggestion, extract a crisp content brief.
+
 Title: ${suggestion.title}
 Tagline: ${suggestion.tagline ?? ''}
-Format: ${suggestion.format ?? 'ebook'}
+Format: ${studioFormat}
 Pillar: ${pillar?.title ?? 'QS Core'}
-Traditions: ${(pillar?.tradition_affinity ?? []).join(', ')}
+Traditions: ${(pillar?.tradition_affinity ?? []).join(', ') || 'none specified'}
 Rationale: ${suggestion.rationale ?? ''}
 
 Return JSON:
 {
-  "slug": "kebab-case-slug",
-  "title": "Full title",
-  "excerpt": "2-3 sentence description for the content library",
-  "post_type": "whitepaper" or "resource",
-  "tags": ["tag1", "tag2", "tag3"],
-  "body": "Full markdown outline. Use ## for chapters, ### for sections. Each chapter should have a 1-sentence objective and <!-- WRITING PROMPT: ... --> comment with specific writing instructions. 4-6 chapters. Make it immediately useful as a writing scaffold."
+  "audience": "one sentence describing the ideal reader (be specific about their situation/desire)",
+  "goal": "one sentence: what transformation or outcome does this content deliver",
+  "angle": "2-3 sentences: the unique hook that makes this different — which traditions/concepts to weave, what the reader will see differently after",
+  "corpus_query": "5-10 keyword/phrase query to surface the best sacred text passages for this piece (e.g. 'ego dissolution fana wu wei non-self annihilation')"
 }
-Return ONLY valid JSON.`;
-
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
-      messages: [{ role: 'user', content: prompt }],
+Return ONLY valid JSON.`,
+      }],
       response_format: { type: 'json_object' },
-      max_completion_tokens: 3000,
-      temperature: 0.7,
+      max_completion_tokens: 600,
+      temperature: 0.6,
     });
 
-    if (completion.choices[0].finish_reason === 'length') {
-      return NextResponse.json({ error: 'Response truncated — try again.' }, { status: 500 });
-    }
+    let brief = { audience: '', goal: '', angle: '', corpus_query: '' };
+    try {
+      brief = JSON.parse(briefCompletion.choices[0].message.content ?? '{}');
+    } catch { /* use empty defaults */ }
 
-    const draft = JSON.parse(completion.choices[0].message.content ?? '{}');
-
-    const { data: post, error: insertError } = await supabaseAdmin
-      .from('content_posts')
+    const { data: angle, error: insertError } = await supabaseAdmin
+      .from('content_angles')
       .insert({
-        slug: draft.slug,
-        type: draft.post_type ?? mapToPostType(suggestion.format ?? ''),
-        title: draft.title,
-        excerpt: draft.excerpt,
-        body: draft.body ?? '',
-        author: 'Austin Santos',
-        tags: draft.tags ?? [],
-        pillar_id: suggestion.pillar_id ?? null,
-        is_published: false,
+        title: suggestion.title,
+        format: studioFormat,
+        audience: brief.audience || null,
+        goal: brief.goal || null,
+        angle: brief.angle || null,
+        tone: 'inspirational',
+        tradition_filter: (pillar?.tradition_affinity ?? [])[0] ?? null,
+        corpus_query: brief.corpus_query || null,
+        status: 'brief',
+        metadata: {
+          pillar_id: suggestion.pillar_id ?? null,
+          pillar_title: pillar?.title ?? null,
+          source: 'strategy_suggestion',
+          suggestion_id: id,
+          tagline: suggestion.tagline ?? null,
+        },
       })
       .select()
       .single();
@@ -110,7 +123,7 @@ Return ONLY valid JSON.`;
       status: 'created',
     }).eq('id', id);
 
-    return NextResponse.json({ type: 'content', content_post: post, suggestion_id: id });
+    return NextResponse.json({ type: 'studio', angle, suggestion_id: id });
   }
 
   // ── Product route (diagnostic, mini-course, declaration, etc.) ─────────────

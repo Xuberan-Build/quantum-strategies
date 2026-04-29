@@ -7,14 +7,14 @@ import styles from '../../admin-layout.module.css';
 
 interface Pillar { id: string; title: string }
 
-export default function NewContentPieceForm({ pillars }: { pillars: Pillar[] }) {
+export default function NewContentPieceForm({ pillars, defaultFormat }: { pillars: Pillar[]; defaultFormat?: string }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     pillar_id: '',
     title: '',
-    format: 'ebook',
+    format: defaultFormat || 'ebook',
     audience: '',
     goal: '',
     angle: '',

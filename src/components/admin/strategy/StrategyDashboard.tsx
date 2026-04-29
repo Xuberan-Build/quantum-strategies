@@ -23,7 +23,7 @@ export default function StrategyDashboard({
   const [analyzeResult, setAnalyzeResult]  = useState<string | null>(null);
   const [error, setError]                  = useState<string | null>(null);
   const [selected, setSelected]            = useState<SelectedCell | null>(null);
-  const [createdDrafts, setCreatedDrafts]  = useState<Record<string, { type: 'product' | 'content'; slug: string }>>({});
+  const [createdDrafts, setCreatedDrafts]  = useState<Record<string, { type: 'product' | 'content' | 'studio'; slug: string; angleId?: string }>>({});
 
   const pending = localSuggestions.filter((s) => s.status === 'pending');
 
@@ -73,7 +73,9 @@ export default function StrategyDashboard({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSuggestions((prev) => prev.map((s) => s.id === id ? { ...s, status: 'created' } : s));
-      if (data.type === 'content' && data.content_post?.slug) {
+      if (data.type === 'studio' && data.angle?.id) {
+        setCreatedDrafts((prev) => ({ ...prev, [id]: { type: 'studio', slug: '', angleId: data.angle.id } }));
+      } else if (data.type === 'content' && data.content_post?.slug) {
         setCreatedDrafts((prev) => ({ ...prev, [id]: { type: 'content', slug: data.content_post.slug } }));
       } else if (data.type === 'product' && data.product?.product_slug) {
         setCreatedDrafts((prev) => ({ ...prev, [id]: { type: 'product', slug: data.product.product_slug } }));
@@ -344,6 +346,13 @@ export default function StrategyDashboard({
                         )}
                         {s.status === 'created' && (() => {
                           const draft = createdDrafts[s.id];
+                          if (draft?.type === 'studio' && draft.angleId) {
+                            return (
+                              <Link href={`/admin/studio/${draft.angleId}`} className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}>
+                                Open in Studio →
+                              </Link>
+                            );
+                          }
                           if (draft?.type === 'content') {
                             return (
                               <Link href="/admin/studio" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}>
