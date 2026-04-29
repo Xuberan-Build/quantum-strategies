@@ -31,7 +31,7 @@ export default async function ListDetailPage({
   if (listResult.error || !listResult.data) notFound();
 
   const list = listResult.data;
-  const members = (membersResult.data || []) as Array<{
+  const members = (membersResult.data || []) as unknown as Array<{
     id: string;
     user_id: string;
     added_at: string;
