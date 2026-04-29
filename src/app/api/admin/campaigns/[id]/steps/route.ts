@@ -29,18 +29,18 @@ export async function POST(
     const body = await request.json();
     const { delay_hours = 0, subject, html_body, text_body } = body;
 
-    if (!subject || !html_body) {
-      return NextResponse.json({ error: 'subject and html_body are required' }, { status: 400 });
-    }
+    if (!subject) return NextResponse.json({ error: 'subject is required' }, { status: 400 });
+    if (!html_body) return NextResponse.json({ error: 'html_body is required' }, { status: 400 });
 
     const { data: existing } = await supabaseAdmin
       .from('campaign_steps')
       .select('step_number')
       .eq('campaign_id', campaign_id)
       .order('step_number', { ascending: false })
-      .limit(1);
+      .limit(1)
+      .single();
 
-    const step_number = (existing?.[0]?.step_number ?? 0) + 1;
+    const step_number = (existing?.step_number ?? 0) + 1;
 
     const { data, error } = await supabaseAdmin
       .from('campaign_steps')

@@ -24,19 +24,15 @@ export async function GET(
     if (campaignRes.error) throw campaignRes.error;
     if (!campaignRes.data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const enrollments = enrollmentRes.data || [];
-    const stats = {
-      total: enrollments.length,
-      active: enrollments.filter((e) => e.status === 'active').length,
-      completed: enrollments.filter((e) => e.status === 'completed').length,
-      unsubscribed: enrollments.filter((e) => e.status === 'unsubscribed').length,
-      failed: enrollments.filter((e) => e.status === 'failed').length,
-    };
+    const enrollmentCounts: Record<string, number> = {};
+    for (const row of enrollmentRes.data || []) {
+      enrollmentCounts[row.status] = (enrollmentCounts[row.status] ?? 0) + 1;
+    }
 
     return NextResponse.json({
       ...campaignRes.data,
       steps: stepsRes.data || [],
-      enrollment_stats: stats,
+      enrollment_counts: enrollmentCounts,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -50,20 +46,10 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, description, status, from_name, from_email, trigger_type, trigger_product_slug } = body;
-
-    const updates: Record<string, any> = {};
-    if (name !== undefined) updates.name = name;
-    if (description !== undefined) updates.description = description;
-    if (status !== undefined) updates.status = status;
-    if (from_name !== undefined) updates.from_name = from_name;
-    if (from_email !== undefined) updates.from_email = from_email;
-    if (trigger_type !== undefined) updates.trigger_type = trigger_type;
-    if (trigger_product_slug !== undefined) updates.trigger_product_slug = trigger_product_slug;
 
     const { data, error } = await supabaseAdmin
       .from('campaigns')
-      .update(updates)
+      .update(body)
       .eq('id', id)
       .select()
       .single();

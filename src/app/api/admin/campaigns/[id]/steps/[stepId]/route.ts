@@ -10,15 +10,9 @@ export async function PATCH(
     const body = await request.json();
     const { delay_hours, subject, html_body, text_body } = body;
 
-    const updates: Record<string, any> = {};
-    if (delay_hours !== undefined) updates.delay_hours = delay_hours;
-    if (subject !== undefined) updates.subject = subject;
-    if (html_body !== undefined) updates.html_body = html_body;
-    if (text_body !== undefined) updates.text_body = text_body;
-
     const { data, error } = await supabaseAdmin
       .from('campaign_steps')
-      .update(updates)
+      .update({ delay_hours, subject, html_body, text_body })
       .eq('id', stepId)
       .select()
       .single();
