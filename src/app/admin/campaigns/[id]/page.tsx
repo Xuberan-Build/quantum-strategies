@@ -26,8 +26,25 @@ export default async function CampaignDetailPage({
 
   const campaign = campaignResult.data;
   const steps = stepsResult.data || [];
-  const enrollments = enrollmentsResult.data || [];
   const lists = listsResult.data || [];
+
+  type EnrollmentUser = { name: string | null; email: string };
+  type Enrollment = {
+    id: string; user_id: string; status: string; current_step: number;
+    next_send_at: string | null; enrolled_at: string; completed_at: string | null;
+    users: EnrollmentUser | null;
+  };
+
+  const enrollments: Enrollment[] = (enrollmentsResult.data || []).map((e) => ({
+    id: e.id as string,
+    user_id: e.user_id as string,
+    status: e.status as string,
+    current_step: e.current_step as number,
+    next_send_at: e.next_send_at as string | null,
+    enrolled_at: e.enrolled_at as string,
+    completed_at: e.completed_at as string | null,
+    users: (Array.isArray(e.users) ? e.users[0] : e.users) as EnrollmentUser | null,
+  }));
 
   const enrollmentsByStatus = {
     active: enrollments.filter((e) => e.status === 'active').length,
@@ -175,7 +192,7 @@ export default async function CampaignDetailPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {enrollments.map((enr: any) => (
+                    {enrollments.map((enr) => (
                       <tr key={enr.id}>
                         <td>
                           <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{enr.users?.name || '—'}</div>

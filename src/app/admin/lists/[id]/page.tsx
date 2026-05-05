@@ -31,13 +31,18 @@ export default async function ListDetailPage({
   if (listResult.error || !listResult.data) notFound();
 
   const list = listResult.data;
-  const members = (membersResult.data || []) as unknown as Array<{
-    id: string;
-    user_id: string;
-    added_at: string;
-    added_by: string | null;
-    users: { id: string; name: string | null; email: string } | null;
-  }>;
+
+  type MemberUser = { id: string; name: string | null; email: string };
+  type Member = { id: string; user_id: string; added_at: string; added_by: string | null; users: MemberUser | null };
+
+  const members: Member[] = (membersResult.data || []).map((m) => ({
+    id: m.id as string,
+    user_id: m.user_id as string,
+    added_at: m.added_at as string,
+    added_by: m.added_by as string | null,
+    users: (Array.isArray(m.users) ? m.users[0] : m.users) as MemberUser | null,
+  }));
+
   const allUsers = allUsersResult.data || [];
 
   const memberUserIds = new Set(members.map((m) => m.user_id));
