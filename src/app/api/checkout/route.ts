@@ -18,7 +18,7 @@ import { getProductBySlug } from '@/lib/constants/products';
 import { APP_URL, MARKETING_URL } from '@/lib/config/urls';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY?.trim() || '', {
-  apiVersion: '2025-12-15.clover',
+  apiVersion: '2026-02-25.clover',
 });
 
 export async function POST(req: NextRequest) {
