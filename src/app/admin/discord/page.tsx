@@ -4,7 +4,7 @@ import styles from '../admin-layout.module.css';
 
 // Auth handled by middleware.ts
 export default async function DiscordPage() {
-  const [membersResult, escalationsResult, activityResult] = await Promise.all([
+  const [membersResult, escalationsResult, activityResult, linkedUsersResult] = await Promise.all([
     supabaseAdmin
       .from('member_sequences')
       .select('*')
@@ -19,11 +19,20 @@ export default async function DiscordPage() {
       .select('id, discord_id, event_type, sequence_stage, created_at, event_data')
       .order('created_at', { ascending: false })
       .limit(50),
+    supabaseAdmin
+      .from('users')
+      .select('id, name, email, discord_id')
+      .not('discord_id', 'is', null),
   ]);
 
   const members = membersResult.data || [];
   const escalations = escalationsResult.data || [];
   const activity = activityResult.data || [];
+
+  // Map discord_id → QS user for quick lookup
+  const qsUserByDiscordId = Object.fromEntries(
+    (linkedUsersResult.data || []).map((u: any) => [u.discord_id, u])
+  );
 
   const inSequence = members.filter((m) => m.sequence_stage > 0 && !m.sequence_complete);
   const atl = members.filter((m) => m.atl_member);
@@ -88,6 +97,10 @@ export default async function DiscordPage() {
           <div className={styles.statLabel}>Sequence Complete</div>
           <div className={styles.statValue}>{members.filter((m) => m.sequence_complete).length}</div>
         </div>
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>Linked to QS Account</div>
+          <div className={styles.statValue}>{Object.keys(qsUserByDiscordId).length}</div>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }}>
@@ -110,6 +123,7 @@ export default async function DiscordPage() {
                 <thead>
                   <tr>
                     <th>Member</th>
+                    <th>QS Account</th>
                     <th>Role</th>
                     <th>Stage</th>
                     <th>Type</th>
@@ -127,6 +141,18 @@ export default async function DiscordPage() {
                         <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', fontFamily: 'monospace' }}>
                           {member.discord_id}
                         </div>
+                      </td>
+                      <td>
+                        {qsUserByDiscordId[member.discord_id] ? (
+                          <Link
+                            href={`/admin/users/${qsUserByDiscordId[member.discord_id].id}`}
+                            style={{ fontSize: '0.8125rem', color: 'var(--admin-primary)', textDecoration: 'none', fontWeight: 500 }}
+                          >
+                            {qsUserByDiscordId[member.discord_id].name || qsUserByDiscordId[member.discord_id].email}
+                          </Link>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>Not linked</span>
+                        )}
                       </td>
                       <td>
                         <span className={`${styles.badge} ${styles.badgeNeutral}`}>

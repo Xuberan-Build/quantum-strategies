@@ -1,6 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
+async function resolveSmartListCount(source: string | undefined): Promise<number> {
+  switch (source) {
+    case 'discord_linked': {
+      const { count } = await supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).not('email', 'is', null).not('discord_id', 'is', null);
+      return count ?? 0;
+    }
+    case 'affiliates': {
+      const { count } = await supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).not('email', 'is', null).eq('is_affiliate', true);
+      return count ?? 0;
+    }
+    case 'placements_confirmed': {
+      const { count } = await supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).not('email', 'is', null).eq('placements_confirmed', true);
+      return count ?? 0;
+    }
+    case 'stripe_customers': {
+      const { count } = await supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).not('email', 'is', null).not('stripe_customer_id', 'is', null);
+      return count ?? 0;
+    }
+    case 'completed_product': {
+      const { count } = await supabaseAdmin.from('product_sessions').select('user_id', { count: 'exact', head: true }).not('completed_at', 'is', null);
+      return count ?? 0;
+    }
+    case 'beta_participants': {
+      const { count } = await supabaseAdmin.from('beta_participants').select('user_id', { count: 'exact', head: true });
+      return count ?? 0;
+    }
+    default: {
+      const { count } = await supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).not('email', 'is', null);
+      return count ?? 0;
+    }
+  }
+}
+
 export async function GET() {
   try {
     const { data: lists, error } = await supabaseAdmin
@@ -10,11 +43,17 @@ export async function GET() {
 
     if (error) throw error;
 
-    const result = (lists || []).map((l: any) => ({
-      ...l,
-      member_count: l.list_members?.[0]?.count ?? 0,
-      list_members: undefined,
-    }));
+    const result = await Promise.all(
+      (lists || []).map(async (l: any) => {
+        let memberCount = l.list_members?.[0]?.count ?? 0;
+
+        if (l.list_type === 'smart') {
+          memberCount = await resolveSmartListCount(l.filter_criteria?.source);
+        }
+
+        return { ...l, member_count: memberCount, list_members: undefined };
+      })
+    );
 
     return NextResponse.json(result);
   } catch (err: any) {

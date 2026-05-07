@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import styles from '../../admin-layout.module.css';
+import { RegenerateBriefingButton } from './UserSessionActions';
 
 export default async function UserDetailPage({
   params,
@@ -10,7 +11,7 @@ export default async function UserDetailPage({
 }) {
   const { id } = await params;
 
-  const [userResult, sessionsResult, accessResult, emailSeqResult, listMembersResult, activeEnrollmentsResult, smartListsResult] = await Promise.all([
+  const [userResult, sessionsResult, accessResult, emailSeqResult, listMembersResult, activeEnrollmentsResult, smartListsResult, conversationsResult, betaResult] = await Promise.all([
     supabaseAdmin
       .from('users')
       .select('*')
@@ -44,6 +45,23 @@ export default async function UserDetailPage({
       .from('contact_lists')
       .select('id, name, list_type, filter_criteria')
       .eq('list_type', 'smart'),
+    supabaseAdmin
+      .from('conversations')
+      .select('session_id, step_number, messages')
+      .in('session_id',
+        // will be filtered client-side; fetch all for this user's sessions
+        (await supabaseAdmin
+          .from('product_sessions')
+          .select('id')
+          .eq('user_id', id)
+          .then(({ data }) => (data || []).map((s: any) => s.id)))
+      )
+      .order('step_number', { ascending: true }),
+    supabaseAdmin
+      .from('beta_participants')
+      .select('id')
+      .eq('user_id', id)
+      .maybeSingle(),
   ]);
 
   if (userResult.error || !userResult.data) notFound();
@@ -53,6 +71,15 @@ export default async function UserDetailPage({
   const access = accessResult.data || [];
   const emailSeqs = emailSeqResult.data || [];
   const activeEnrollments = activeEnrollmentsResult.data || [];
+  const allConversations = conversationsResult.data || [];
+  const isBeta = !!betaResult.data;
+
+  // Group conversations by session_id for easy lookup
+  const convBySession: Record<string, any[]> = {};
+  for (const conv of allConversations) {
+    if (!convBySession[conv.session_id]) convBySession[conv.session_id] = [];
+    convBySession[conv.session_id].push(conv);
+  }
 
   // Static list memberships
   const staticLists = (listMembersResult.data || [])
@@ -60,12 +87,19 @@ export default async function UserDetailPage({
     .filter(Boolean)
     .map((l: any) => ({ ...l, kind: 'static' as const }));
 
+  const completedSessions = sessions.filter((s) => s.completed_at);
+
   // Smart lists this user qualifies for
   const smartLists = (smartListsResult.data || [])
     .filter((list: any) => {
       const source = list.filter_criteria?.source;
       if (source === 'all_users') return true;
       if (source === 'discord_linked') return !!user.discord_id;
+      if (source === 'affiliates') return !!user.is_affiliate;
+      if (source === 'placements_confirmed') return !!user.placements_confirmed;
+      if (source === 'stripe_customers') return !!user.stripe_customer_id;
+      if (source === 'completed_product') return completedSessions.length > 0;
+      if (source === 'beta_participants') return isBeta;
       return false;
     })
     .map((l: any) => ({ ...l, kind: 'smart' as const }));
@@ -83,7 +117,6 @@ export default async function UserDetailPage({
     discordMember = data;
   }
 
-  const completedSessions = sessions.filter((s) => s.completed_at);
   const totalInputTokens = sessions.reduce((sum, s) => sum + (s.deliverable_input_tokens ?? 0), 0);
   const totalOutputTokens = sessions.reduce((sum, s) => sum + (s.deliverable_output_tokens ?? 0), 0);
 
@@ -227,11 +260,47 @@ export default async function UserDetailPage({
                         </div>
                       )}
 
+                      {/* Conversation responses */}
+                      {convBySession[session.id]?.length > 0 && (() => {
+                        const userResponses = convBySession[session.id]
+                          .filter((c) => c.step_number !== 999)
+                          .flatMap((c) =>
+                            ((c.messages as any[]) || [])
+                              .filter((m: any) => m.role === 'user')
+                              .map((m: any) => ({ step: c.step_number, content: m.content }))
+                          );
+                        if (!userResponses.length) return null;
+                        return (
+                          <details style={{ borderTop: '1px solid var(--admin-border)' }}>
+                            <summary style={{ padding: '0.625rem 1rem', fontSize: '0.8125rem', cursor: 'pointer', color: 'var(--admin-primary)', fontWeight: 500, userSelect: 'none' }}>
+                              View responses ({userResponses.length})
+                            </summary>
+                            <div style={{ borderTop: '1px solid var(--admin-border)' }}>
+                              {userResponses.map((r, i) => (
+                                <div key={i} style={{ padding: '0.75rem 1rem', borderBottom: i < userResponses.length - 1 ? '1px solid var(--admin-border)' : undefined }}>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--admin-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                                    Step {r.step}
+                                  </div>
+                                  <div style={{ fontSize: '0.8125rem', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                                    {r.content}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        );
+                      })()}
+
                       {/* Deliverable preview */}
+                      {session.completed_at && (
+                        <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid var(--admin-border)', display: 'flex', justifyContent: 'flex-end' }}>
+                          <RegenerateBriefingButton userId={id} sessionId={session.id} />
+                        </div>
+                      )}
                       {session.deliverable_content && (
                         <details style={{ borderTop: '1px solid var(--admin-border)' }}>
                           <summary style={{ padding: '0.625rem 1rem', fontSize: '0.8125rem', cursor: 'pointer', color: 'var(--admin-primary)', fontWeight: 500, userSelect: 'none' }}>
-                            View deliverable
+                            View briefing
                           </summary>
                           <div style={{ padding: '1rem', background: 'var(--admin-bg)', fontSize: '0.8125rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', maxHeight: '400px', overflowY: 'auto', borderTop: '1px solid var(--admin-border)' }}>
                             {session.deliverable_content}

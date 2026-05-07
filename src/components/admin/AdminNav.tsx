@@ -123,11 +123,6 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
           icon: DiscordIcon,
           active: pathname?.startsWith('/admin/discord'),
         },
-      ],
-    },
-    {
-      section: 'CRM',
-      items: [
         {
           label: 'Lists',
           href: '/admin/lists',

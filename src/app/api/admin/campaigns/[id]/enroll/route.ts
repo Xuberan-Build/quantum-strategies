@@ -22,13 +22,27 @@ export async function POST(
 
       if (list.list_type === 'smart') {
         const source = list.filter_criteria?.source;
-        let query = supabaseAdmin.from('users').select('id').not('email', 'is', null);
-        if (source === 'discord_linked') {
-          query = query.not('discord_id', 'is', null);
+
+        if (source === 'completed_product') {
+          const { data, error: usersError } = await supabaseAdmin
+            .from('product_sessions').select('user_id').not('completed_at', 'is', null);
+          if (usersError) throw usersError;
+          listUserIds = [...new Set((data || []).map((r: any) => r.user_id))];
+        } else if (source === 'beta_participants') {
+          const { data, error: usersError } = await supabaseAdmin
+            .from('beta_participants').select('user_id');
+          if (usersError) throw usersError;
+          listUserIds = (data || []).map((r: any) => r.user_id);
+        } else {
+          let query = supabaseAdmin.from('users').select('id').not('email', 'is', null);
+          if (source === 'discord_linked') query = query.not('discord_id', 'is', null);
+          else if (source === 'affiliates') query = query.eq('is_affiliate', true);
+          else if (source === 'placements_confirmed') query = query.eq('placements_confirmed', true);
+          else if (source === 'stripe_customers') query = query.not('stripe_customer_id', 'is', null);
+          const { data: users, error: usersError } = await query;
+          if (usersError) throw usersError;
+          listUserIds = (users || []).map((u: any) => u.id);
         }
-        const { data: users, error: usersError } = await query;
-        if (usersError) throw usersError;
-        listUserIds = (users || []).map((u: any) => u.id);
       } else {
         const { data: members, error } = await supabaseAdmin
           .from('list_members')

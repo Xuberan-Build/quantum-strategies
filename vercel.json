@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/process-campaigns",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/send-affiliate-emails",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
