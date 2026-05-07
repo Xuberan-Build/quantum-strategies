@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import styles from '@/app/admin/admin-layout.module.css';
 import type { Pillar, CorpusLink } from './types';
 import { TRADITION_META } from './constants';
@@ -24,9 +25,35 @@ export function ResearchTab({
   const [corpusTotal, setCorpusTotal]   = useState<number | null>(null);
   const [relevance, setRelevance]       = useState<Record<string, { score: number; reason: string; matched_via: string[] }>>({});
   const [expansionQueries, setExpansionQueries] = useState<string[]>([]);
+  const [sendingToStrategy, setSendingToStrategy] = useState(false);
+  const [strategyResult, setStrategyResult] = useState<{ id: string; title: string; funnel_stage: string } | null>(null);
+  const [strategyError, setStrategyError]   = useState<string | null>(null);
 
   const curated   = corpusLinks.filter((l) => l.curated);
   const uncurated = corpusLinks.filter((l) => !l.curated);
+
+  const curatedTraditions = [...new Map(
+    curated.map((l) => {
+      const t    = l.knowledge_chunks.tradition;
+      const meta = TRADITION_META[t] ?? { label: t, color: '#6b7280' };
+      return [t, { key: t, label: meta.label, color: meta.color }];
+    })
+  ).values()];
+
+  async function sendToStrategy() {
+    setSendingToStrategy(true);
+    setStrategyError(null);
+    try {
+      const res = await fetch(`/api/admin/studio/pillars/${pillar.id}/send-to-strategy`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setStrategyResult({ id: data.suggestion_id, title: data.title, funnel_stage: data.funnel_stage });
+    } catch (err) {
+      setStrategyError(err instanceof Error ? err.message : 'Failed to send to strategy');
+    } finally {
+      setSendingToStrategy(false);
+    }
+  }
 
   const hasRelevance = Object.keys(relevance).length > 0;
   const sortByScore = (links: CorpusLink[]) =>
@@ -36,7 +63,7 @@ export function ResearchTab({
         )
       : links;
 
-  // Load AI suggestions + corpus health on tab mount
+  // Load AI suggestions on mount; if no corpus links yet, auto-run the first suggestion
   useEffect(() => {
     const load = async () => {
       setLoadingSugs(true);
@@ -44,11 +71,35 @@ export function ResearchTab({
         const res = await fetch(`/api/admin/studio/pillars/${pillar.id}/suggest-queries`);
         if (res.ok) {
           const data = await res.json();
-          setSuggestions(data.queries ?? []);
+          const qs: string[] = data.queries ?? [];
+          setSuggestions(qs);
           setCorpusTotal(data.corpusTotal ?? 0);
+          // Auto-research from brief if no corpus links exist and brief has enough context
+          if (qs.length > 0 && corpusLinks.length === 0 && (pillar.goal || pillar.angle)) {
+            setQuery(qs[0]);
+            setRes(true);
+            setMessage('Auto-researching based on your brief…');
+            try {
+              const r = await fetch(`/api/admin/studio/pillars/${pillar.id}/deep-research`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: qs[0] }),
+              });
+              const data = await r.json();
+              if (r.ok && data.links?.length > 0) {
+                onLinksUpdate(data.links);
+                onPillarUpdate({ ...pillar, corpus_query: qs[0], status: 'research' });
+                setRelevance(data.relevance ?? {});
+                setExpansionQueries(data.expansion_queries ?? []);
+                setMessage(null);
+              } else {
+                setMessage(data.message ?? 'No passages found for the first suggestion. Try a manual search.');
+              }
+            } catch { setMessage('Auto-research failed. Try running a manual search.'); }
+          }
         }
       } catch { /* suggestions are advisory — fail silently */ }
-      finally { setLoadingSugs(false); }
+      finally { setLoadingSugs(false); setRes(false); }
     };
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -341,6 +392,77 @@ export function ResearchTab({
             Retrieved ({uncurated.length})
           </div>
           {sortByScore(uncurated).map(renderLink)}
+        </div>
+      )}
+
+      {/* Strategy transition zone */}
+      {curated.length > 0 && (
+        <div style={{ marginTop: '2.5rem', borderTop: '1px dashed var(--admin-border)', paddingTop: '1.5rem' }}>
+          {strategyResult ? (
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem', padding: '1rem 1.25rem', borderRadius: 8, background: '#f0fdf4', border: '1px solid var(--admin-success)' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--admin-success)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.375rem' }}>
+                  ✓ Strategy suggestion created
+                </div>
+                <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.25rem' }}>{strategyResult.title}</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>
+                  {strategyResult.funnel_stage.charAt(0).toUpperCase() + strategyResult.funnel_stage.slice(1)} stage
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'flex-start' }}>
+                <Link href="/admin/strategy">
+                  <button type="button" className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}>
+                    View on Strategy →
+                  </button>
+                </Link>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}
+                  onClick={() => { setStrategyResult(null); setStrategyError(null); }}
+                >
+                  Send another
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
+                  Research is ready
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>
+                    {curated.length} passage{curated.length !== 1 ? 's' : ''} curated ·
+                  </span>
+                  {curatedTraditions.map((t) => (
+                    <span
+                      key={t.key}
+                      style={{
+                        fontSize: '0.75rem', padding: '1px 8px', borderRadius: 99, fontWeight: 600,
+                        background: t.color + '18', color: t.color, border: `1px solid ${t.color}40`,
+                      }}
+                    >
+                      {t.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                disabled={sendingToStrategy}
+                onClick={sendToStrategy}
+                style={{ flexShrink: 0 }}
+              >
+                {sendingToStrategy ? 'Synthesizing…' : 'Develop Strategy →'}
+              </button>
+            </div>
+          )}
+          {strategyError && (
+            <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--admin-danger)' }}>
+              {strategyError}
+            </div>
+          )}
         </div>
       )}
     </div>
