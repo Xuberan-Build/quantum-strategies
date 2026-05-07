@@ -70,12 +70,16 @@ function getProductEntries(): MetadataRoute.Sitemap {
   return fs
     .readdirSync(productsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_") && !excludedSlugs.has(entry.name))
-    .map((entry) => ({
-      url: `${base}/products/${entry.name}/`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.5,
-    }));
+    .map((entry) => {
+      const pagePath = path.join(productsDir, entry.name, "page.tsx");
+      const lastModified = fs.existsSync(pagePath) ? fs.statSync(pagePath).mtime : new Date("2026-04-01");
+      return {
+        url: `${base}/products/${entry.name}/`,
+        lastModified,
+        changeFrequency: "monthly" as const,
+        priority: 0.5,
+      };
+    });
 }
 
 export default function sitemap(): MetadataRoute.Sitemap {
