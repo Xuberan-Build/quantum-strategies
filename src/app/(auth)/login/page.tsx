@@ -24,19 +24,13 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted!', { email });
     setError('');
     setLoading(true);
 
     try {
-      console.log('Calling auth.signIn...');
-      const result = await auth.signIn(email, password);
-      console.log('Sign in successful:', result);
-
-      // Use window.location for full page reload to ensure auth state is fresh
+      await auth.signIn(email, password);
       window.location.href = redirectTo;
     } catch (err: any) {
-      console.error('Sign in error:', err);
       setError(err.message || 'Failed to sign in');
     } finally {
       setLoading(false);
