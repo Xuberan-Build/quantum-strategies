@@ -18,7 +18,7 @@ export default async function AdminLayout({
   const { data: { user: authUser } } = await supabase.auth.getUser();
 
   // Defense-in-depth: re-check auth independently of middleware
-  if (!authUser || !(BUSINESS.adminEmails as string[]).includes(authUser.email?.toLowerCase() ?? '')) {
+  if (!authUser || !(BUSINESS.adminEmails as readonly string[]).includes(authUser.email?.toLowerCase() ?? '')) {
     redirect('/login');
   }
 
