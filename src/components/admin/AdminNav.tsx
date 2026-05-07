@@ -59,6 +59,12 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
           active: pathname?.startsWith('/admin/content'),
         },
         {
+          label: 'Content Angles',
+          href: '/admin/studio/angles',
+          icon: AnglesIcon,
+          active: pathname?.startsWith('/admin/studio/angles'),
+        },
+        {
           label: 'Blog Calendar',
           href: '/admin/studio/blog-calendar',
           icon: CalendarIcon,
@@ -370,6 +376,16 @@ function InsightsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  );
+}
+
+function AnglesIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h10M4 18h6" />
+      <circle cx="19" cy="12" r="2" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="18" r="2" fill="currentColor" stroke="none" />
     </svg>
   );
 }
