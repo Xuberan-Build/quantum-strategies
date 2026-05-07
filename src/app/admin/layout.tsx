@@ -1,28 +1,33 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import AdminNav from '@/components/admin/AdminNav';
 import styles from './admin-layout.module.css';
+import { redirect } from 'next/navigation';
+import { BUSINESS } from '@/config/business.config';
 
 export const metadata = {
   title: 'Admin CMS - Quantum Strategies',
   description: 'Manage products, prompts, and content',
 };
 
-// Auth is handled by middleware.ts - this layout just renders
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const supabase = await createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
 
-  // Session is guaranteed by middleware, but TypeScript doesn't know that
-  const email = session?.user?.email || '';
+  // Defense-in-depth: re-check auth independently of middleware
+  if (!authUser || !(BUSINESS.adminEmails as string[]).includes(authUser.email?.toLowerCase() ?? '')) {
+    redirect('/login');
+  }
+
+  const email = authUser.email || '';
 
   const { data: user } = await supabase
     .from('users')
     .select('name')
-    .eq('id', session?.user?.id || '')
+    .eq('id', authUser.id)
     .single();
 
   return (

@@ -146,33 +146,9 @@ export async function middleware(request: NextRequest) {
   const isRsc = isRscRequest(request);
 
   // -------------------------------------------------------------------------
-  // DEBUG LOGGING - Remove after fixing CORS issue
-  // -------------------------------------------------------------------------
-  console.log('[Middleware]', {
-    method: request.method,
-    hostname,
-    pathname,
-    origin,
-    isRsc,
-    hasSubdomainSplit,
-    appHost,
-    marketingHost,
-    isMarketingHost: isMarketingHost(hostname),
-    isAppPath: isAppPath(pathname),
-    headers: {
-      rsc: request.headers.get('rsc'),
-      'next-router-prefetch': request.headers.get('next-router-prefetch'),
-      'next-router-state-tree': request.headers.get('next-router-state-tree'),
-      'next-router-segment-prefetch': request.headers.get('next-router-segment-prefetch'),
-      '_rsc': request.nextUrl.searchParams.get('_rsc'),
-    }
-  });
-
-  // -------------------------------------------------------------------------
   // 1. CORS PREFLIGHT
   // -------------------------------------------------------------------------
   if (request.method === 'OPTIONS') {
-    console.log('[Middleware] Handling OPTIONS preflight');
     const response = new NextResponse(null, { status: 204 });
     return addCorsHeaders(response, origin);
   }
@@ -216,8 +192,6 @@ export async function middleware(request: NextRequest) {
   }
   */
 
-  console.log('[Middleware] No routing match, continuing normally');
-
   // -------------------------------------------------------------------------
   // 3. CREATE RESPONSE & SUPABASE CLIENT
   // -------------------------------------------------------------------------
@@ -226,7 +200,7 @@ export async function middleware(request: NextRequest) {
   });
 
   const supabase = createSupabaseClient(request, response);
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
 
   // -------------------------------------------------------------------------
   // 4. REFERRAL CODE CAPTURE
@@ -253,19 +227,25 @@ export async function middleware(request: NextRequest) {
   // -------------------------------------------------------------------------
   // 5. ADMIN ROUTE PROTECTION
   // -------------------------------------------------------------------------
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+    const isApiRoute = pathname.startsWith('/api/admin');
+
     if (ADMIN_DISABLED) {
-      return NextResponse.rewrite(new URL('/not-found', request.url));
+      return isApiRoute
+        ? NextResponse.json({ error: 'Not found' }, { status: 404 })
+        : NextResponse.rewrite(new URL('/not-found', request.url));
     }
 
-    if (!session) {
+    if (!user) {
+      if (isApiRoute) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    const email = session.user.email?.toLowerCase() || '';
+    const email = user.email?.toLowerCase() || '';
     if (!ADMIN_EMAILS.includes(email)) {
+      if (isApiRoute) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       const dashboardUrl = new URL('/dashboard', request.url);
       dashboardUrl.searchParams.set('error', 'unauthorized');
       return NextResponse.redirect(dashboardUrl);
@@ -277,7 +257,7 @@ export async function middleware(request: NextRequest) {
   // -------------------------------------------------------------------------
   // 6. PROTECTED ROUTE AUTHENTICATION
   // -------------------------------------------------------------------------
-  if (isProtectedPath(pathname) && !session) {
+  if (isProtectedPath(pathname) && !user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
     loginUrl.searchParams.set('redirect', pathname);
@@ -287,7 +267,7 @@ export async function middleware(request: NextRequest) {
   // -------------------------------------------------------------------------
   // 7. AUTH PAGE REDIRECTS (already logged in)
   // -------------------------------------------------------------------------
-  if (session && (pathname === '/login' || pathname === '/signup')) {
+  if (user && (pathname === '/login' || pathname === '/signup')) {
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = '/dashboard';
     return NextResponse.redirect(dashboardUrl);
