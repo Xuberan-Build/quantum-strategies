@@ -5,6 +5,7 @@ import Navbar from "@/components/navigation/Navbar";
 import Footer from "@/components/layout/Footer";
 import FlashOverlay from "@/components/layout/FlashOverlay";
 import CookieConsent from "@/components/legal/CookieConsent";
+import AuthRefreshHandler from "@/components/auth/AuthRefreshHandler";
 import "./globals.css";
 
 const GTM_ID = "GTM-P79CLN9J";
@@ -128,6 +129,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
+        <AuthRefreshHandler />
         <FlashOverlay active={false} />
         {children}
         <CookieConsent />
