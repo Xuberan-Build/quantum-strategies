@@ -35,10 +35,10 @@ export default async function ListDetailPage({
       // These require a subquery — fetch user_ids then join users
       let userIds: string[] = [];
       if (source === 'completed_product') {
-        const { data } = await supabaseAdmin
-          .from('product_sessions')
-          .select('user_id')
-          .not('completed_at', 'is', null);
+        const productSlug = (list.filter_criteria as any)?.product_slug;
+        let q = supabaseAdmin.from('product_sessions').select('user_id').not('completed_at', 'is', null);
+        if (productSlug) q = q.eq('product_slug', productSlug);
+        const { data } = await q;
         userIds = [...new Set((data || []).map((r: any) => r.user_id))];
       } else {
         const { data } = await supabaseAdmin
@@ -51,6 +51,28 @@ export default async function ListDetailPage({
           .from('users')
           .select('id, name, email')
           .in('id', userIds)
+          .order('name', { ascending: true });
+        smartUsers = data || [];
+      }
+    } else if (source === 'hd_type') {
+      const hdType = (list.filter_criteria as any)?.hd_type;
+      if (hdType) {
+        const { data } = await supabaseAdmin
+          .from('users')
+          .select('id, name, email')
+          .not('email', 'is', null)
+          .filter('placements->human_design->>type', 'ilike', `%${hdType}%`)
+          .order('name', { ascending: true });
+        smartUsers = data || [];
+      }
+    } else if (source === 'sun_sign') {
+      const sunSign = (list.filter_criteria as any)?.sun_sign;
+      if (sunSign) {
+        const { data } = await supabaseAdmin
+          .from('users')
+          .select('id, name, email')
+          .not('email', 'is', null)
+          .filter('placements->astrology->>sun', 'ilike', `%${sunSign}%`)
           .order('name', { ascending: true });
         smartUsers = data || [];
       }
