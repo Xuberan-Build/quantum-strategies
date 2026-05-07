@@ -11,6 +11,9 @@ ALTER TABLE public.content_angles
   ALTER COLUMN format DROP NOT NULL;
 
 ALTER TABLE public.content_angles
+  DROP CONSTRAINT IF EXISTS content_angles_format_check;
+
+ALTER TABLE public.content_angles
   ADD CONSTRAINT content_angles_format_check CHECK (
     format IS NULL OR format IN (
       'blog_post',
