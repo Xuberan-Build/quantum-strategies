@@ -44,6 +44,10 @@ interface ProductDefinition {
   display_order: number | null;
   created_at: string;
   updated_at: string;
+  plg_stage: string | null;
+  pillar_id: string | null;
+  stripe_product_id: string | null;
+  stripe_price_id: string | null;
 }
 
 // Auth is handled by middleware.ts
@@ -54,12 +58,18 @@ export default async function ProductConfigurePage({
 }) {
   const { slug } = await params;
 
-  // Fetch product
-  const { data: product, error } = await supabaseAdmin
-    .from('product_definitions')
-    .select('*')
-    .eq('product_slug', slug)
-    .single();
+  // Fetch product and pillars in parallel
+  const [{ data: product, error }, { data: pillars }] = await Promise.all([
+    supabaseAdmin
+      .from('product_definitions')
+      .select('*')
+      .eq('product_slug', slug)
+      .single(),
+    supabaseAdmin
+      .from('content_pillars')
+      .select('id, name')
+      .order('name'),
+  ]);
 
   if (error || !product) {
     notFound();
@@ -91,6 +101,9 @@ export default async function ProductConfigurePage({
         </div>
         <p className={styles.pageDescription}>
           {typedProduct.product_slug} · {typedProduct.total_steps} steps · {typedProduct.model || 'gpt-4'}
+          {typedProduct.plg_stage && (
+            <> · <span style={{ textTransform: 'capitalize' }}>{typedProduct.plg_stage}</span></>
+          )}
         </p>
       </header>
 
@@ -117,7 +130,7 @@ export default async function ProductConfigurePage({
       </div>
 
       {/* Settings Form */}
-      <ProductSettingsForm product={typedProduct} />
+      <ProductSettingsForm product={typedProduct} pillars={pillars ?? []} />
     </div>
   );
 }

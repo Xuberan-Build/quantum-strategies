@@ -20,7 +20,7 @@ export async function GET(
 
   const { data: product, error: fetchError } = await supabaseAdmin
     .from('product_definitions')
-    .select('id, product_slug, name, description, price, estimated_duration, is_active, is_purchasable, model, steps, system_prompt, final_deliverable_prompt, total_steps, updated_at')
+    .select('id, product_slug, name, description, price, estimated_duration, is_active, is_purchasable, model, steps, system_prompt, final_deliverable_prompt, total_steps, updated_at, plg_stage, pillar_id, stripe_product_id, stripe_price_id')
     .eq('product_slug', slug)
     .single();
 
@@ -57,7 +57,7 @@ export async function PUT(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { is_active, is_purchasable, model, steps, system_prompt, final_deliverable_prompt, name, description, price, estimated_duration } = body;
+  const { is_active, is_purchasable, model, steps, system_prompt, final_deliverable_prompt, name, description, price, estimated_duration, plg_stage, pillar_id, stripe_product_id, stripe_price_id } = body;
 
   // Get current product state for audit log
   const { data: currentProduct, error: fetchError } = await supabaseAdmin
@@ -114,6 +114,31 @@ export async function PUT(
 
   if (typeof estimated_duration === 'string') {
     updateData.estimated_duration = estimated_duration.trim() || null;
+  }
+
+  const PLG_STAGES = ['awareness', 'interest', 'consideration', 'conversion', 'expansion'];
+  if (typeof plg_stage === 'string' && (PLG_STAGES.includes(plg_stage) || plg_stage === '')) {
+    updateData.plg_stage = plg_stage || null;
+  } else if (plg_stage === null) {
+    updateData.plg_stage = null;
+  }
+
+  if (typeof pillar_id === 'string') {
+    updateData.pillar_id = pillar_id || null;
+  } else if (pillar_id === null) {
+    updateData.pillar_id = null;
+  }
+
+  if (typeof stripe_product_id === 'string') {
+    updateData.stripe_product_id = stripe_product_id.trim() || null;
+  } else if (stripe_product_id === null) {
+    updateData.stripe_product_id = null;
+  }
+
+  if (typeof stripe_price_id === 'string') {
+    updateData.stripe_price_id = stripe_price_id.trim() || null;
+  } else if (stripe_price_id === null) {
+    updateData.stripe_price_id = null;
   }
 
   // Update product
