@@ -44,6 +44,22 @@ This is a production SaaS application with:
 - Stripe payment integration
 - User session data that cannot be recovered
 
+## WORKTREE CLEANUP RULES
+
+Agent worktrees accumulate in `.claude/worktrees/` and can slow the dev server to a crawl (each is a full copy of the source tree). After every agent task that used a worktree:
+
+1. Run `git worktree remove -f -f .claude/worktrees/<agent-id>` to deregister and delete it.
+2. Run `git branch -D worktree-<agent-id>` to delete the associated branch.
+3. Or to bulk-remove all stale ones at once:
+   ```bash
+   git worktree list --porcelain | grep "^worktree.*agent-" | awk '{print $2}' | xargs -I{} git worktree remove -f -f {}
+   git branch | grep "worktree-agent-" | xargs git branch -D
+   ```
+
+**Do NOT leave worktrees around.** They are watched by Next.js and compiled by TypeScript, adding seconds of latency per page load per worktree.
+
 ## INCIDENT HISTORY
 
 **2026-01-30**: Database was destroyed by running `supabase db reset --linked` without confirming backups existed. All customer data, beta participants, and user progress was lost. This must NEVER happen again.
+
+**2026-05-07**: 28 stale agent worktrees (3 GB) accumulated in `.claude/worktrees/`, making every admin page load extremely slow and causing Supabase query timeouts.

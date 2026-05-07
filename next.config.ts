@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
+  webpack(webpackConfig) {
+    webpackConfig.watchOptions = {
+      ...webpackConfig.watchOptions,
+      ignored: ["**/.claude/**", "**/node_modules/**"],
+    };
+    return webpackConfig;
+  },
   images: {
     unoptimized: true,
     remotePatterns: [{ protocol: "https", hostname: "i.ibb.co" }],
