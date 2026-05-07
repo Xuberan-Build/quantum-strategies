@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storeCustomerInsights, CustomerInsightData } from '@/lib/google-sheets/customer-sync';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 /**
  * API endpoint to receive and store customer insights from GPT product experiences
@@ -17,7 +18,17 @@ export async function POST(request: NextRequest) {
   console.log('📊 Customer insights submission received');
 
   try {
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
+
+    if (body.email && body.email.toLowerCase() !== user.email?.toLowerCase()) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Validate required fields
     if (!body.email || !body.product) {
