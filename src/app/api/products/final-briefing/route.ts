@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/server';
+import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
 import { PromptService } from '@/lib/services/PromptService';
 import { AIRequestService } from '@/lib/services/AIRequestService';
 import { EmailSequenceService, type EmailContent } from '@/lib/services/EmailSequenceService';
@@ -8,10 +8,25 @@ import { storeCustomerInsights } from '@/lib/google-sheets/customer-sync';
 
 export async function POST(req: Request) {
   try {
-    const { sessionId, placements, productName = 'Business Alignment Orientation', productSlug = 'business-alignment', userId } = await req.json();
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { sessionId, placements, productName = 'Business Alignment Orientation', productSlug = 'business-alignment' } = await req.json();
     if (!sessionId) {
       return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
     }
+
+    const { data: sessionRecord } = await supabaseAdmin
+      .from('product_sessions').select('id, user_id')
+      .eq('id', sessionId).eq('user_id', user.id).single();
+    if (!sessionRecord) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    const userId = user.id;
 
     // Pull conversations to summarize user input across steps
     const { data: conversations, error } = await supabaseAdmin

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/server';
+import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limit';
 import { validateUserInput, validateSessionOwnership } from '@/lib/security/input-validation';
 import { PromptService } from '@/lib/services/PromptService';
@@ -7,6 +7,12 @@ import { AIRequestService } from '@/lib/services/AIRequestService';
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const {
       stepNumber,
@@ -18,11 +24,10 @@ export async function POST(req: Request) {
       priorMessages = [],
       productSlug = 'business-alignment',
       sessionId,
-      userId,
     } = body || {};
 
     // Rate limiting check
-    const rateLimitKey = sessionId || 'anonymous';
+    const rateLimitKey = sessionId || user.id;
     const rateLimit = checkRateLimit(rateLimitKey, { maxRequests: 30, windowMs: 60 * 1000 });
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -31,9 +36,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validate session ownership if sessionId provided
-    if (sessionId && userId) {
-      const isOwner = await validateSessionOwnership(sessionId, userId, supabaseAdmin);
+    // Always verify session ownership using authenticated user id
+    if (sessionId) {
+      const isOwner = await validateSessionOwnership(sessionId, user.id, supabaseAdmin);
       if (!isOwner) {
         return NextResponse.json({ error: 'Unauthorized access to session' }, { status: 403 });
       }
