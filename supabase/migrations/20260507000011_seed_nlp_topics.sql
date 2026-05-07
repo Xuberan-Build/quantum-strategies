@@ -8,7 +8,7 @@ DECLARE
   v_pillar_id UUID;
   v_topic_id  UUID;
 BEGIN
-  SELECT id INTO v_pillar_id FROM content_pillars WHERE name = 'Self as Signal';
+  SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Self as Signal';
   IF v_pillar_id IS NULL THEN
     RAISE EXCEPTION 'Pillar "Self as Signal" not found — run pillar seed first';
   END IF;

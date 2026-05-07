@@ -16,7 +16,7 @@ DECLARE
   v_topic_9    UUID;
   v_topic_10   UUID;
 BEGIN
-  SELECT id INTO v_pillar_id FROM content_pillars WHERE name = 'Strategy as Alignment';
+  SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'Strategy as Alignment';
   IF v_pillar_id IS NULL THEN
     RAISE EXCEPTION 'Pillar "Strategy as Alignment" not found — run pillar seed first';
   END IF;

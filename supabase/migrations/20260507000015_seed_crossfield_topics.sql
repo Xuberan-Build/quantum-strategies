@@ -11,7 +11,7 @@ DECLARE
   v_topic_4   UUID;
   v_topic_5   UUID;
 BEGIN
-  SELECT id INTO v_pillar_id FROM content_pillars WHERE name = 'Builder''s Stack';
+  SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Builder''s Stack';
   IF v_pillar_id IS NULL THEN
     RAISE EXCEPTION 'Pillar "Builder''s Stack" not found — run pillar seed migration first';
   END IF;

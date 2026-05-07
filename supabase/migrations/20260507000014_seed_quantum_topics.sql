@@ -11,7 +11,7 @@ DECLARE
   v_topic_4   UUID;
   v_topic_5   UUID;
 BEGIN
-  SELECT id INTO v_pillar_id FROM content_pillars WHERE name = 'Architecture of Reality';
+  SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Architecture of Reality';
   IF v_pillar_id IS NULL THEN
     RAISE EXCEPTION 'Pillar "Architecture of Reality" not found — run pillar seed migration first';
   END IF;
