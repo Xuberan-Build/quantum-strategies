@@ -1,10 +1,12 @@
 /**
  * One-Click Email Opt-Out Endpoint
  * Allows users to unsubscribe from affiliate emails via link
- * No authentication required - uses signed user_id parameter
+ * URL format: ?user_id=<uuid>&token=HMAC-SHA256(user_id, AFFILIATE_OPTOUT_SECRET)
+ * Generate token: createHmac('sha256', AFFILIATE_OPTOUT_SECRET).update(userId).digest('hex')
  */
 
 import { NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { EmailSequenceService } from '@/lib/services/EmailSequenceService';
 import { APP_URL } from '@/lib/config/urls';
@@ -12,43 +14,35 @@ import { APP_URL } from '@/lib/config/urls';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const invalidHtml = (msg = 'This unsubscribe link is invalid or has expired.') => new Response(
+  `<!DOCTYPE html><html><head><title>Invalid Request</title><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:100px auto;padding:40px;text-align:center}h1{color:#dc2626}p{color:#6b7280;line-height:1.6}</style></head><body><h1>Invalid Request</h1><p>${msg}</p><p>If you'd like to manage your email preferences, please log in to your dashboard.</p></body></html>`,
+  { status: 400, headers: { 'Content-Type': 'text/html' } }
+);
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('user_id');
+    const token = searchParams.get('token');
 
-    if (!userId) {
-      return new Response(
-        `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Invalid Request</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      max-width: 600px;
-      margin: 100px auto;
-      padding: 40px;
-      text-align: center;
+    if (!userId || !token) {
+      return invalidHtml();
     }
-    h1 { color: #dc2626; }
-    p { color: #6b7280; line-height: 1.6; }
-  </style>
-</head>
-<body>
-  <h1>Invalid Request</h1>
-  <p>This unsubscribe link is invalid or has expired.</p>
-  <p>If you'd like to manage your email preferences, please log in to your dashboard.</p>
-</body>
-</html>
-        `,
-        {
-          status: 400,
-          headers: { 'Content-Type': 'text/html' },
-        }
-      );
+
+    const secret = process.env.AFFILIATE_OPTOUT_SECRET || process.env.CRON_SECRET;
+    if (!secret) {
+      console.error('[opt-out-email] AFFILIATE_OPTOUT_SECRET is not configured');
+      return new Response('Server error', { status: 500 });
     }
+
+    const expected = createHmac('sha256', secret).update(userId).digest('hex');
+    const isValid = token.length === expected.length &&
+      timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+
+    if (!isValid) {
+      return invalidHtml();
+    }
+
 
     // Update user to opt out of affiliate emails
     const { error: updateError } = await supabaseAdmin
