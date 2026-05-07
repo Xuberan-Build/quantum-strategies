@@ -32,6 +32,8 @@ export async function POST(
     if (!subject) return NextResponse.json({ error: 'subject is required' }, { status: 400 });
     if (!html_body) return NextResponse.json({ error: 'html_body is required' }, { status: 400 });
 
+    const { step_number: provided_step, content_angle_id, distribute_format } = body;
+
     const { data: existing } = await supabaseAdmin
       .from('campaign_steps')
       .select('step_number')
@@ -40,11 +42,15 @@ export async function POST(
       .limit(1)
       .single();
 
-    const step_number = (existing?.step_number ?? 0) + 1;
+    const step_number = provided_step ?? (existing?.step_number ?? 0) + 1;
 
     const { data, error } = await supabaseAdmin
       .from('campaign_steps')
-      .insert({ campaign_id, step_number, delay_hours, subject, html_body, text_body })
+      .insert({
+        campaign_id, step_number, delay_hours, subject, html_body, text_body,
+        ...(content_angle_id ? { content_angle_id } : {}),
+        ...(distribute_format ? { distribute_format } : {}),
+      })
       .select()
       .single();
 
