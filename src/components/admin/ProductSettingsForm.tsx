@@ -44,13 +44,23 @@ interface Product {
   is_active: boolean;
   is_purchasable: boolean;
   product_group: string | null;
+  plg_stage: string | null;
+  pillar_id: string | null;
+  stripe_product_id: string | null;
+  stripe_price_id: string | null;
+}
+
+interface Pillar {
+  id: string;
+  name: string;
 }
 
 interface ProductSettingsFormProps {
   product: Product;
+  pillars: Pillar[];
 }
 
-export default function ProductSettingsForm({ product }: ProductSettingsFormProps) {
+export default function ProductSettingsForm({ product, pillars }: ProductSettingsFormProps) {
   const [name, setName] = useState(product.name || '');
   const [description, setDescription] = useState(product.description || '');
   const [price, setPrice] = useState<number | ''>(product.price ?? '');
@@ -61,6 +71,12 @@ export default function ProductSettingsForm({ product }: ProductSettingsFormProp
   const [systemPrompt, setSystemPrompt] = useState(product.system_prompt || '');
   const [finalDeliverablePrompt, setFinalDeliverablePrompt] = useState(product.final_deliverable_prompt || '');
   const [steps, setSteps] = useState<ProductStep[]>(product.steps || []);
+  const [plgStage, setPlgStage] = useState(product.plg_stage || '');
+  const [pillarId, setPillarId] = useState(product.pillar_id || '');
+  const [stripeProductId, setStripeProductId] = useState(product.stripe_product_id || '');
+  const [stripePriceId, setStripePriceId] = useState(product.stripe_price_id || '');
+  const [stripeSyncing, setStripeSyncing] = useState(false);
+  const [stripeSyncStatus, setStripeSyncStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
@@ -89,6 +105,10 @@ export default function ProductSettingsForm({ product }: ProductSettingsFormProp
           system_prompt: systemPrompt,
           final_deliverable_prompt: finalDeliverablePrompt,
           steps,
+          plg_stage: plgStage || null,
+          pillar_id: pillarId || null,
+          stripe_product_id: stripeProductId || null,
+          stripe_price_id: stripePriceId || null,
         }),
       });
 
@@ -168,6 +188,27 @@ export default function ProductSettingsForm({ product }: ProductSettingsFormProp
       }
       return updated;
     });
+  };
+
+  const handleStripeSync = async () => {
+    if (!stripeProductId.trim()) return;
+    setStripeSyncing(true);
+    setStripeSyncStatus(null);
+    try {
+      const res = await fetch('/api/admin/products/stripe-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stripe_product_id: stripeProductId.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Sync failed');
+      if (data.default_price_id) setStripePriceId(data.default_price_id);
+      setStripeSyncStatus({ type: 'success', message: `Synced: ${data.product_name}${data.default_price_id ? ` · ${data.default_price_id}` : ' (no default price set)'}` });
+    } catch (err) {
+      setStripeSyncStatus({ type: 'error', message: err instanceof Error ? err.message : 'Sync failed' });
+    } finally {
+      setStripeSyncing(false);
+    }
   };
 
   const handleStepEditorSave = (stepIndex: number, updatedStep: ProductStep) => {
@@ -277,6 +318,89 @@ export default function ProductSettingsForm({ product }: ProductSettingsFormProp
               <option value="gpt-4o-mini">GPT-4o Mini</option>
             </select>
             <p className={styles.formHint}>OpenAI model for AI responses</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Distribution & PLG */}
+      <div className={styles.card} style={{ marginBottom: '1.5rem' }}>
+        <div className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>Distribution &amp; PLG</h2>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+            <label className={styles.formLabel}>PLG Stage</label>
+            <select
+              className={styles.formInput}
+              value={plgStage}
+              onChange={(e) => setPlgStage(e.target.value)}
+            >
+              <option value="">— Not set —</option>
+              <option value="awareness">Awareness</option>
+              <option value="interest">Interest</option>
+              <option value="consideration">Consideration</option>
+              <option value="conversion">Conversion</option>
+              <option value="expansion">Expansion</option>
+            </select>
+            <p className={styles.formHint}>Position in the product-led growth funnel. Determines where this product appears in the Funnel Map.</p>
+          </div>
+
+          <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+            <label className={styles.formLabel}>Content Pillar</label>
+            <select
+              className={styles.formInput}
+              value={pillarId}
+              onChange={(e) => setPillarId(e.target.value)}
+            >
+              <option value="">(No pillar)</option>
+              {pillars.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <p className={styles.formHint}>The content pillar this product serves. Links the product to content coverage tracking.</p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+            <label className={styles.formLabel}>Stripe Product ID</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                className={styles.formInput}
+                value={stripeProductId}
+                onChange={(e) => { setStripeProductId(e.target.value); setStripeSyncStatus(null); }}
+                placeholder="prod_..."
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={handleStripeSync}
+                disabled={stripeSyncing || !stripeProductId.trim()}
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {stripeSyncing ? 'Syncing…' : 'Sync Prices'}
+              </button>
+            </div>
+            {stripeSyncStatus && (
+              <p className={styles.formHint} style={{ color: stripeSyncStatus.type === 'success' ? 'var(--admin-success)' : 'var(--admin-danger)', marginTop: '0.25rem' }}>
+                {stripeSyncStatus.message}
+              </p>
+            )}
+          </div>
+
+          <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+            <label className={styles.formLabel}>Stripe Price ID</label>
+            <input
+              type="text"
+              className={styles.formInput}
+              value={stripePriceId}
+              onChange={(e) => setStripePriceId(e.target.value)}
+              placeholder="price_..."
+            />
+            <p className={styles.formHint}>Auto-populated from Stripe sync, or enter manually.</p>
           </div>
         </div>
       </div>
