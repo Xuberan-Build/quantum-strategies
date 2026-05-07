@@ -18,7 +18,11 @@ DECLARE
 BEGIN
   SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'Strategy as Alignment';
   IF v_pillar_id IS NULL THEN
-    RAISE EXCEPTION 'Pillar "Strategy as Alignment" not found — run pillar seed first';
+    INSERT INTO content_pillars (title, description, tradition_affinity)
+    VALUES ('Strategy as Alignment',
+      'Coherent systems outperform hustle every time. Quantum Business Framework, Three Rites diagnostics, offer design, funnel architecture, PLG strategy, positioning.',
+      ARRAY['rosicrucianism', 'kabbalah', 'taoism'])
+    RETURNING id INTO v_pillar_id;
   END IF;
 
   -- ── T1: Pre-Suasion and Attentional Priming ───────────────────────────────

@@ -13,7 +13,11 @@ DECLARE
 BEGIN
   SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Builder''s Stack';
   IF v_pillar_id IS NULL THEN
-    RAISE EXCEPTION 'Pillar "Builder''s Stack" not found — run pillar seed migration first';
+    INSERT INTO content_pillars (title, description, tradition_affinity)
+    VALUES ('The Builder''s Stack',
+      'The fundamentals that make every vision executable. Demand generation, content marketing, conversion architecture, SEO, email, analytics, offer ladders, GTM strategy.',
+      ARRAY['science'])
+    RETURNING id INTO v_pillar_id;
   END IF;
 
   -- ──────────────────────────────────────────────────────────────────────────

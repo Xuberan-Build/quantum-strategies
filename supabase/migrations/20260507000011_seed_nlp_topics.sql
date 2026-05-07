@@ -10,7 +10,11 @@ DECLARE
 BEGIN
   SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Self as Signal';
   IF v_pillar_id IS NULL THEN
-    RAISE EXCEPTION 'Pillar "Self as Signal" not found — run pillar seed first';
+    INSERT INTO content_pillars (title, description, tradition_affinity)
+    VALUES ('The Self as Signal',
+      'Who you are determines what you build. Consciousness, identity, waveform intelligence, perception, NLP. The self is the signal your market receives before the product does.',
+      ARRAY['sufism', 'kabbalah', 'hinduism', 'science'])
+    RETURNING id INTO v_pillar_id;
   END IF;
 
   -- ── T1. Submodality Encoding and Identity Perception ─────────────────────────

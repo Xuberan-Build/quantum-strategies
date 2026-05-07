@@ -19,7 +19,11 @@ DECLARE
 BEGIN
   SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Architecture of Reality';
   IF v_pillar_id IS NULL THEN
-    RAISE EXCEPTION 'Pillar "Architecture of Reality" not found — run pillar seed first';
+    INSERT INTO content_pillars (title, description, tradition_affinity)
+    VALUES ('The Architecture of Reality',
+      'Reality is electrical. Strategy is pattern literacy. Waveform physics, density cascade, electrical perception, phase coherence. Market timing, campaign pacing.',
+      ARRAY['hermeticism', 'taoism', 'science'])
+    RETURNING id INTO v_pillar_id;
   END IF;
 
   -- ── T1: Predictive Coding and Perceptual Reality Construction ────────────────
