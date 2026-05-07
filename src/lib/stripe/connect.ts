@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { APP_URL } from '@/lib/config/urls';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-02-25.clover',
+  apiVersion: '2025-12-15.clover',
 });
 
 // Helper function to create Supabase client (avoids module-level initialization)
