@@ -104,7 +104,13 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
           label: 'Corpus',
           href: '/admin/knowledge',
           icon: KnowledgeIcon,
-          active: pathname?.startsWith('/admin/knowledge'),
+          active: pathname === '/admin/knowledge',
+        },
+        {
+          label: 'Ingestion Queue',
+          href: '/admin/knowledge/ingestion',
+          icon: IngestIcon,
+          active: pathname?.startsWith('/admin/knowledge/ingestion'),
         },
       ],
     },
@@ -342,6 +348,14 @@ function ArrowLeftIcon() {
   return (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    </svg>
+  );
+}
+
+function IngestIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
     </svg>
   );
 }
