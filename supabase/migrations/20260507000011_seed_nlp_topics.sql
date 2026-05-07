@@ -3,6 +3,19 @@
 -- 12 topics × 4 angles = 48 angles total
 -- Idempotent: uses NOT EXISTS checks; no UNIQUE constraint on title
 
+-- Fix stale format/tone constraints inherited when content_pillars was renamed to content_angles
+ALTER TABLE public.content_angles DROP CONSTRAINT IF EXISTS content_pillars_format_check;
+ALTER TABLE public.content_angles DROP CONSTRAINT IF EXISTS content_pillars_tone_check;
+ALTER TABLE public.content_angles DROP CONSTRAINT IF EXISTS content_angles_format_check;
+ALTER TABLE public.content_angles ALTER COLUMN format DROP NOT NULL;
+ALTER TABLE public.content_angles ADD CONSTRAINT content_angles_format_check CHECK (
+  format IS NULL OR format IN (
+    'blog_post','thread','video_script','long_form_essay','deep_dive',
+    'comparison','how_to_guide','email_sequence','gpt_product',
+    'ebook','webinar','ecourse','whitepaper'
+  )
+);
+
 DO $$
 DECLARE
   v_pillar_id UUID;
