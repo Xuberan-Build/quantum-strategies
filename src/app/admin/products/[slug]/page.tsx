@@ -116,6 +116,18 @@ export default async function ProductConfigurePage({
         </div>
       </div>
 
+      {/* Landing Page link */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <Link
+          href={`/admin/products/${typedProduct.product_slug}/landing-page`}
+          className={`${styles.btn} ${styles.btnSecondary}`}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem' }}
+        >
+          <PageIcon />
+          Edit Landing Page
+        </Link>
+      </div>
+
       {/* Settings Form */}
       <ProductSettingsForm product={typedProduct} />
     </div>
@@ -126,6 +138,14 @@ function BackIcon() {
   return (
     <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    </svg>
+  );
+}
+
+function PageIcon() {
+  return (
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
   );
 }
