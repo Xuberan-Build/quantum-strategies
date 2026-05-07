@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 async function resolveSmartListCount(filterCriteria: Record<string, any>): Promise<number> {
   const source = filterCriteria?.source as string | undefined;
@@ -56,6 +57,8 @@ async function resolveSmartListCount(filterCriteria: Record<string, any>): Promi
 }
 
 export async function GET() {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   try {
     const { data: lists, error } = await supabaseAdmin
       .from('contact_lists')
@@ -83,6 +86,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   try {
     const body = await request.json();
     const { name, description, list_type = 'static', filter_criteria, created_by } = body;

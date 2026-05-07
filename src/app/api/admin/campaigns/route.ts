@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 export async function GET() {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   try {
     const { data: campaigns, error } = await supabaseAdmin
       .from('campaigns')
@@ -45,6 +48,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   try {
     const body = await request.json();
     const { name, description, trigger_type, trigger_product_slug, from_name, from_email } = body;
