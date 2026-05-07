@@ -37,17 +37,17 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "out/types/**/*.ts",
-    "out/dev/types/**/*.ts",
-    "vitest.setup.ts",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.spec.ts",
-    "**/*.spec.tsx"
+    "out/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "netlify",
     "scripts/**",
-    "grail-test/**"
+    "grail-test/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "vitest.setup.ts"
   ]
 }

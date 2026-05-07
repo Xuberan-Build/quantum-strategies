@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import TiptapEditor from './TiptapEditor';
+import dynamic from 'next/dynamic';
+const TiptapEditor = dynamic(() => import('./TiptapEditor'), { ssr: false });
 import styles from '@/app/admin/admin-layout.module.css';
 
 interface ProductStep {

@@ -6,7 +6,7 @@ const config: NextConfig = {
     remotePatterns: [{ protocol: "https", hostname: "i.ibb.co" }],
   },
   trailingSlash: true,
-  pageExtensions: ["js","jsx","ts","tsx","md","mdx"],
+  pageExtensions: ["js","jsx","ts","tsx"],
   typedRoutes: false,
 
   // Skip trailing slash redirects for API routes (fixes Stripe webhook 308 errors)
