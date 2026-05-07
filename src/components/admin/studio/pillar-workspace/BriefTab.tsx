@@ -6,6 +6,10 @@ import type { Pillar } from './types';
 import { TRADITION_META } from './constants';
 
 export function BriefTab({ pillar, onSave }: { pillar: Pillar; onSave: (u: Partial<Pillar>) => Promise<unknown> }) {
+  // tradition_filter may arrive as a comma-separated list from the strategy pipeline;
+  // normalize to the first single value (the select only handles one at a time).
+  const normTradition = (pillar.tradition_filter ?? '').split(',')[0].trim();
+
   const [form, setForm] = useState({
     title: pillar.title,
     format: pillar.format,
@@ -13,10 +17,11 @@ export function BriefTab({ pillar, onSave }: { pillar: Pillar; onSave: (u: Parti
     goal: pillar.goal ?? '',
     angle: pillar.angle ?? '',
     tone: pillar.tone,
-    tradition_filter: pillar.tradition_filter ?? '',
+    tradition_filter: normTradition,
   });
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved]   = useState(false);
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
 
   const set = (field: string) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -29,6 +34,23 @@ export function BriefTab({ pillar, onSave }: { pillar: Pillar; onSave: (u: Parti
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function handleEnhance() {
+    setEnhancing(true);
+    try {
+      const res = await fetch(`/api/admin/studio/pillars/${pillar.id}/enhance-brief`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setForm((f) => ({
+          ...f,
+          ...(data.audience && { audience: data.audience }),
+          ...(data.goal && { goal: data.goal }),
+          ...(data.angle && { angle: data.angle }),
+        }));
+      }
+    } catch { /* fail silently */ }
+    finally { setEnhancing(false); }
   }
 
   return (
@@ -84,10 +106,23 @@ export function BriefTab({ pillar, onSave }: { pillar: Pillar; onSave: (u: Parti
             ))}
           </select>
         </div>
-        <div>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} disabled={saving}>
             {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Brief'}
           </button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            disabled={enhancing}
+            onClick={handleEnhance}
+          >
+            {enhancing ? 'Expanding…' : '✦ Expand with AI'}
+          </button>
+          {enhancing && (
+            <span style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>
+              Enriching audience, goal, and angle…
+            </span>
+          )}
         </div>
       </form>
     </div>

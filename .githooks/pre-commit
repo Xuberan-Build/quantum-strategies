@@ -1,7 +1,8 @@
 #!/bin/sh
 set -e
 
-pattern='sb_secret_|SUPABASE_SERVICE_KEY|SUPABASE_SERVICE_ROLE_KEY'
+# Match actual secret values (KEY=<value>) not env var references in code (process.env.KEY)
+pattern='sb_secret_|SUPABASE_SERVICE_KEY=[^$"'"'"'`\n]|SUPABASE_SERVICE_ROLE_KEY=[^$"'"'"'`\n]'
 
 if command -v rg >/dev/null 2>&1; then
   if git diff --cached -U0 -- . ':!.githooks/pre-commit' ':!.env.example' | rg -n "$pattern"; then
