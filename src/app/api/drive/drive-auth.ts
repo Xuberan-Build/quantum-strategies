@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 
 export function requireDriveAuth(request: NextRequest) {
-  const expected = process.env.DRIVE_API_TOKEN || process.env.CRON_SECRET;
+  const expected = process.env.DRIVE_API_TOKEN;
   if (!expected) {
-    return NextResponse.json({ error: 'Missing DRIVE_API_TOKEN' }, { status: 500 });
+    console.error('[drive-auth] DRIVE_API_TOKEN is not configured');
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
   }
 
   const authHeader = request.headers.get('authorization') || '';
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
   const alt = request.headers.get('x-drive-token') || '';
 
-  if (bearer === expected || alt === expected) {
+  const expectedBuf = Buffer.from(expected);
+  const bearerMatch = bearer.length === expected.length &&
+    timingSafeEqual(Buffer.from(bearer), expectedBuf);
+  const altMatch = alt.length === expected.length &&
+    timingSafeEqual(Buffer.from(alt), expectedBuf);
+
+  if (bearerMatch || altMatch) {
     return null;
   }
 
