@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/server';
 import StrategyDashboard from '@/components/admin/strategy/StrategyDashboard';
+import FunnelMap from '@/components/admin/strategy/FunnelMap';
 import styles from '../admin-layout.module.css';
 
 const PLG_STAGES = ['awareness', 'interest', 'consideration', 'conversion', 'expansion'] as const;
@@ -11,7 +12,7 @@ export default async function StrategyPage() {
     supabaseAdmin.from('content_angles').select('id, title, status, topic_id, format'),
     supabaseAdmin.from('content_pieces').select('id, piece_type, status, angle_id'),
     supabaseAdmin.from('product_definitions')
-      .select('id, product_slug, name, price, plg_stage, pillar_id, is_active, is_purchasable')
+      .select('id, product_slug, name, price, plg_stage, pillar_id, stripe_price_id, is_active, is_purchasable')
       .eq('is_active', true),
     supabaseAdmin.from('product_suggestions')
       .select('*, content_pillars(title)')
@@ -139,6 +140,13 @@ export default async function StrategyPage() {
           <div className={styles.statValue}>{linkedProducts}/{products.length}</div>
         </div>
       </div>
+
+      <FunnelMap
+        products={products}
+        pillars={pillars}
+        angles={angles}
+        topics={topics}
+      />
 
       <StrategyDashboard
         matrix={matrix}
