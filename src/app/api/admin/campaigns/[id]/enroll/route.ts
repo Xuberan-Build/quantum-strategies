@@ -21,11 +21,13 @@ export async function POST(
       if (listError) throw listError;
 
       if (list.list_type === 'smart') {
-        const source = list.filter_criteria?.source;
+        const fc = (list.filter_criteria as Record<string, any>) || {};
+        const source = fc.source as string | undefined;
 
         if (source === 'completed_product') {
-          const { data, error: usersError } = await supabaseAdmin
-            .from('product_sessions').select('user_id').not('completed_at', 'is', null);
+          let q = supabaseAdmin.from('product_sessions').select('user_id').not('completed_at', 'is', null);
+          if (fc.product_slug) q = q.eq('product_slug', fc.product_slug);
+          const { data, error: usersError } = await q;
           if (usersError) throw usersError;
           listUserIds = [...new Set((data || []).map((r: any) => r.user_id))];
         } else if (source === 'beta_participants') {
@@ -33,6 +35,18 @@ export async function POST(
             .from('beta_participants').select('user_id');
           if (usersError) throw usersError;
           listUserIds = (data || []).map((r: any) => r.user_id);
+        } else if (source === 'hd_type') {
+          const { data, error: usersError } = await supabaseAdmin
+            .from('users').select('id').not('email', 'is', null)
+            .filter('placements->human_design->>type', 'ilike', `%${fc.hd_type}%`);
+          if (usersError) throw usersError;
+          listUserIds = (data || []).map((u: any) => u.id);
+        } else if (source === 'sun_sign') {
+          const { data, error: usersError } = await supabaseAdmin
+            .from('users').select('id').not('email', 'is', null)
+            .filter('placements->astrology->>sun', 'ilike', `%${fc.sun_sign}%`);
+          if (usersError) throw usersError;
+          listUserIds = (data || []).map((u: any) => u.id);
         } else {
           let query = supabaseAdmin.from('users').select('id').not('email', 'is', null);
           if (source === 'discord_linked') query = query.not('discord_id', 'is', null);

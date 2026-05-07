@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase/server';
 import Link from 'next/link';
 import styles from '../admin-layout.module.css';
+import { SmartListBuilder } from './SmartListBuilder';
 
 export default async function ListsPage() {
   const [listsResult, membersResult] = await Promise.all([
@@ -31,9 +32,12 @@ export default async function ListsPage() {
             <h1 className={styles.pageTitle}>Contact Lists</h1>
             <p className={styles.pageDescription}>Manage email lists and audience segments</p>
           </div>
-          <Link href="/admin/lists/new" className={`${styles.btn} ${styles.btnPrimary}`}>
-            + New List
-          </Link>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <SmartListBuilder />
+            <Link href="/admin/lists/new" className={`${styles.btn} ${styles.btnSecondary}`}>
+              + Static List
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -101,7 +105,11 @@ export default async function ListsPage() {
                       </span>
                     </td>
                     <td style={{ fontSize: '0.875rem' }}>
-                      {memberCountMap.get(list.id) ?? 0}
+                      {list.list_type === 'smart' ? (
+                        <span style={{ color: 'var(--admin-text-muted)', fontStyle: 'italic' }}>dynamic</span>
+                      ) : (
+                        memberCountMap.get(list.id) ?? 0
+                      )}
                     </td>
                     <td style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>
                       {new Date(list.created_at).toLocaleDateString('en-US', {
