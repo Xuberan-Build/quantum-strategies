@@ -850,3 +850,109 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Document Workspace (Google Docs-style layout) ─────────────────────────── */
+
+.documentWorkspace {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 0;
+  min-height: 100%;
+  align-items: start;
+  /* Break out of adminMain's padding to fill full content width */
+  margin: -2rem;
+}
+
+.documentMain {
+  padding: 2rem;
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
+.documentSidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-left: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+}
+
+.docSectionDivider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 2.5rem 0 1.5rem;
+  color: var(--admin-text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.docSectionDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--admin-border);
+}
+
+/* AI Sidebar Stub */
+.aiSidebarStub {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.aiSidebarHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.aiSidebarIcon {
+  font-size: 0.875rem;
+  color: var(--admin-primary);
+}
+
+.aiSidebarTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
+.aiSidebarSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.aiSidebarLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-text-muted);
+}
+
+.aiSidebarValue {
+  font-size: 0.875rem;
+  color: var(--admin-text);
+  font-weight: 500;
+}
+
+.aiSidebarPlaceholder {
+  font-size: 0.8125rem;
+  color: var(--admin-text-muted);
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--admin-bg);
+  border-radius: 0.5rem;
+  border: 1px dashed var(--admin-border);
+}
