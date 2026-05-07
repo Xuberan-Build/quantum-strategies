@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/server';
+import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
 import { openai } from '@/lib/openai/client';
 import { chartAnalysisModel } from '@/lib/ai/models';
 // @ts-ignore
@@ -8,6 +8,12 @@ import pdfParse from 'pdf-parse';
 export async function POST(req: Request) {
   console.log('=== EXTRACTION API CALLED ===');
   try {
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { storagePaths = [] } = body || {};
 
@@ -16,6 +22,11 @@ export async function POST(req: Request) {
     if (!Array.isArray(storagePaths) || storagePaths.length === 0) {
       console.error('No files provided for extraction');
       return NextResponse.json({ error: 'No files provided for extraction' }, { status: 400 });
+    }
+
+    for (const path of storagePaths) {
+      if (path.includes('..')) return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+      if (path.split('/')[0] !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Separate astro vs HD inputs, sign URLs for images, extract text from PDFs

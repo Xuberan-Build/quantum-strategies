@@ -26,6 +26,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No files provided for extraction' }, { status: 400 });
     }
 
+    for (const path of storagePaths) {
+      if (path.includes('..')) return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+      if (path.split('/')[0] !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Separate astro vs HD inputs, sign URLs for images, extract text from PDFs
     const astroImages: string[] = [];
     const hdImages: string[] = [];
