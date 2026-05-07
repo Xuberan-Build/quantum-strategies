@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (authError || !admin) return NextResponse.json({ error: authError || 'Unauthorized' }, { status: authError === 'Not authenticated' ? 401 : 403 });
+
   try {
     const { id: user_id } = await params;
 
@@ -57,6 +61,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (authError || !admin) return NextResponse.json({ error: authError || 'Unauthorized' }, { status: authError === 'Not authenticated' ? 401 : 403 });
+
   try {
     const { id: user_id } = await params;
     const { list_id } = await request.json();

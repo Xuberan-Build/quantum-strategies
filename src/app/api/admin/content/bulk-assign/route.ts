@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 // PATCH /api/admin/content/bulk-assign
 // Body: { assignments: [{ id: string, pillar_id: string | null }] }
 export async function PATCH(req: NextRequest) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (authError || !admin) return NextResponse.json({ error: authError || 'Unauthorized' }, { status: authError === 'Not authenticated' ? 401 : 403 });
+
   const { assignments } = await req.json();
   if (!Array.isArray(assignments) || assignments.length === 0) {
     return NextResponse.json({ error: 'assignments array required' }, { status: 400 });

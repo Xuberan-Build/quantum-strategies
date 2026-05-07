@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 const EMBED_MODEL = 'text-embedding-3-small';
 
@@ -16,6 +17,9 @@ Guidelines:
 - Aim for 250–450 words unless the question genuinely requires more depth`;
 
 export async function POST(req: NextRequest) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (authError || !admin) return NextResponse.json({ error: authError || 'Unauthorized' }, { status: authError === 'Not authenticated' ? 401 : 403 });
+
   try {
     const body = await req.json();
     const { query, tradition, count = 10, threshold = 0.45 } = body as {

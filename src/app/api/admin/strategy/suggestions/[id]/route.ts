@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,6 +28,9 @@ function mapToStudioFormat(format: string): 'ebook' | 'whitepaper' | 'ecourse' |
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (authError || !admin) return NextResponse.json({ error: authError || 'Unauthorized' }, { status: authError === 'Not authenticated' ? 401 : 403 });
+
   const { id } = await params;
   const body = await req.json();
   const allowed = ['status', 'title', 'tagline', 'rationale', 'format', 'linked_product_id'];
@@ -41,6 +45,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 // Accept a suggestion — routes to content_posts or product_definitions based on format
 export async function POST(req: NextRequest, { params }: Params) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (authError || !admin) return NextResponse.json({ error: authError || 'Unauthorized' }, { status: authError === 'Not authenticated' ? 401 : 403 });
+
   const { id } = await params;
   const { action } = await req.json();
 

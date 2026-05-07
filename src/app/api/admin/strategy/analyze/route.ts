@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 const PLG_STAGES = ['awareness', 'interest', 'consideration', 'conversion', 'expansion'];
 
@@ -14,6 +15,9 @@ Products should initiate, not just inform. Every offer creates a shift in percep
 `;
 
 export async function POST() {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (authError || !admin) return NextResponse.json({ error: authError || 'Unauthorized' }, { status: authError === 'Not authenticated' ? 401 : 403 });
+
   try {
     // Load full context
     const [pillarsRes, topicsRes, anglesRes, piecesRes, productsRes] = await Promise.all([

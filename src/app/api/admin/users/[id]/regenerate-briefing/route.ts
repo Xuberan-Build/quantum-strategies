@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { AIRequestService } from '@/lib/services/AIRequestService';
 import { PromptService } from '@/lib/services/PromptService';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (authError || !admin) return NextResponse.json({ error: authError || 'Unauthorized' }, { status: authError === 'Not authenticated' ? 401 : 403 });
+
   try {
     const { id: userId } = await params;
     const body = await _req.json();
