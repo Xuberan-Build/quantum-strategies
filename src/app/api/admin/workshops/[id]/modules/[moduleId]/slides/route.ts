@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ moduleId: string }> }
 ) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const { moduleId } = await params;
   const { data, error } = await supabaseAdmin
     .from('workshop_slides')
@@ -20,6 +23,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ moduleId: string }> }
 ) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const { moduleId } = await params;
   const { slide_type = 'content', content = {} } = await request.json();
 
