@@ -10,8 +10,8 @@ DECLARE
 BEGIN
   SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Self as Signal';
   IF v_pillar_id IS NULL THEN
-    INSERT INTO content_pillars (title, description, tradition_affinity)
-    VALUES ('The Self as Signal',
+    INSERT INTO content_pillars (title, slug, description, tradition_affinity)
+    VALUES ('The Self as Signal', 'the-self-as-signal',
       'Who you are determines what you build. Consciousness, identity, waveform intelligence, perception, NLP. The self is the signal your market receives before the product does.',
       ARRAY['sufism', 'kabbalah', 'hinduism', 'science'])
     RETURNING id INTO v_pillar_id;

@@ -19,8 +19,8 @@ DECLARE
 BEGIN
   SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Architecture of Reality';
   IF v_pillar_id IS NULL THEN
-    INSERT INTO content_pillars (title, description, tradition_affinity)
-    VALUES ('The Architecture of Reality',
+    INSERT INTO content_pillars (title, slug, description, tradition_affinity)
+    VALUES ('The Architecture of Reality', 'the-architecture-of-reality',
       'Reality is electrical. Strategy is pattern literacy. Waveform physics, density cascade, electrical perception, phase coherence. Market timing, campaign pacing.',
       ARRAY['hermeticism', 'taoism', 'science'])
     RETURNING id INTO v_pillar_id;

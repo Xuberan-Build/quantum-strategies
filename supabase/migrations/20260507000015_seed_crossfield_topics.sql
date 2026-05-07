@@ -13,8 +13,8 @@ DECLARE
 BEGIN
   SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Builder''s Stack';
   IF v_pillar_id IS NULL THEN
-    INSERT INTO content_pillars (title, description, tradition_affinity)
-    VALUES ('The Builder''s Stack',
+    INSERT INTO content_pillars (title, slug, description, tradition_affinity)
+    VALUES ('The Builder''s Stack', 'the-builders-stack',
       'The fundamentals that make every vision executable. Demand generation, content marketing, conversion architecture, SEO, email, analytics, offer ladders, GTM strategy.',
       ARRAY['science'])
     RETURNING id INTO v_pillar_id;

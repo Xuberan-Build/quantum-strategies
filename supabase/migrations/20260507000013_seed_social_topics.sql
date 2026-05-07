@@ -18,8 +18,8 @@ DECLARE
 BEGIN
   SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'Strategy as Alignment';
   IF v_pillar_id IS NULL THEN
-    INSERT INTO content_pillars (title, description, tradition_affinity)
-    VALUES ('Strategy as Alignment',
+    INSERT INTO content_pillars (title, slug, description, tradition_affinity)
+    VALUES ('Strategy as Alignment', 'strategy-as-alignment',
       'Coherent systems outperform hustle every time. Quantum Business Framework, Three Rites diagnostics, offer design, funnel architecture, PLG strategy, positioning.',
       ARRAY['rosicrucianism', 'kabbalah', 'taoism'])
     RETURNING id INTO v_pillar_id;
