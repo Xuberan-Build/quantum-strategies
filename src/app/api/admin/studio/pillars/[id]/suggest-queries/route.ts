@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Params) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const { id } = await params;
 
   const [pillarRes, corpusCountRes] = await Promise.all([

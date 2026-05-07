@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 export async function GET() {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const { data, error } = await supabaseAdmin
     .from('content_angles')
     .select(`
@@ -17,6 +20,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const body = await req.json();
   const { title, format, audience, goal, angle, tone, tradition_filter, metadata } = body;
 

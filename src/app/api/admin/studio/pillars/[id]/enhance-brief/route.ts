@@ -3,10 +3,13 @@ import { openai } from '@/lib/openai/client';
 
 const FAST_MODEL = 'gpt-4o-mini';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(_req: Request, { params }: Params) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const { id } = await params;
 
   const { data: pillar, error } = await supabaseAdmin

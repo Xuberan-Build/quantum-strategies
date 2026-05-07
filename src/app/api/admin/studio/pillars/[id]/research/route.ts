@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { openai } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 const EMBED_MODEL = 'text-embedding-3-small';
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const { id } = await params;
   const { query, tradition_filter, count = 20, threshold = 0.42 } = await req.json();
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { openai } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { expandQuery, rerankChunks } from '@/lib/corpus/expand-query';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 const EMBED_MODEL      = 'text-embedding-3-small';
 const VECTOR_THRESHOLD = 0.10;   // low — HNSW + re-ranker handle precision
@@ -39,6 +40,8 @@ async function vectorSearch(embedding: number[], threshold: number, count: numbe
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const { id } = await params;
   const { query, tradition_filter } = await req.json();
 

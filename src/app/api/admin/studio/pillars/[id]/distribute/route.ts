@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -118,6 +119,8 @@ Write the full system prompt now (800-1200 words).`,
 };
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const { admin, error: authError } = await validateAdminApiRequest();
+  if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const { id } = await params;
   const { types, section_ids }: { types: string[]; section_ids?: string[] } = await req.json();
 
