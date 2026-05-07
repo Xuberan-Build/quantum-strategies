@@ -109,9 +109,6 @@ export async function POST(req: Request) {
                 `=== ${d.product_name} (completed ${new Date(d.completed_at).toLocaleDateString()}) ===\n\n${d.deliverable_content}`
               )
               .join('\n\n---\n\n');
-            console.log(`[final-briefing] Injecting ${priorDeliverables.length} prior deliverables for Strategic Path`);
-          } else {
-            console.log('[final-briefing] No prior deliverables found for Strategic Path');
           }
         }
       } catch (e) {
@@ -122,13 +119,6 @@ export async function POST(req: Request) {
     const astro = placements?.astrology || {};
     const hd = placements?.human_design || {};
     const notes = placements?.notes || '';
-
-    console.log('[final-briefing] Placements:', placements ? 'Present' : 'MISSING');
-    console.log('[final-briefing] Astrology fields:', Object.keys(astro).length);
-    console.log('[final-briefing] HD fields:', Object.keys(hd).length);
-    console.log('[final-briefing] Astro values:', JSON.stringify(astro, null, 2));
-    console.log('[final-briefing] HD values:', JSON.stringify(hd, null, 2));
-    console.log('[final-briefing] Notes length:', notes.length);
 
     // Build placement summary - only include fields with actual data
     const astroFields = [];
@@ -201,8 +191,6 @@ export async function POST(req: Request) {
       placementSummary += `ADDITIONAL CHART NOTES:\n${notes}\n`;
     }
     placementSummary = placementSummary.trim();
-
-    console.log('[final-briefing] Placement summary preview:', placementSummary.slice(0, 200));
 
     // Gather user money goals if provided in conversations (look for $ or goal keywords)
     const moneyNotes = (conversations || [])
@@ -337,9 +325,6 @@ Generate the complete deliverable per the instructions above. Include every sect
       });
 
       briefing = briefingResult.content;
-
-      console.log('[final-briefing] AI response successful');
-      console.log(`[final-briefing] Tokens used: ${briefingResult.tokensUsed.total} (${briefingResult.tokensUsed.prompt} prompt, ${briefingResult.tokensUsed.completion} completion)`);
     } catch (err: any) {
       console.error('[final-briefing] AI request failed:', err?.message || err);
       return NextResponse.json({ error: 'AI generation failed', detail: err?.message || 'Unknown error' }, { status: 500 });
@@ -389,8 +374,6 @@ Generate the complete deliverable per the instructions above. Include every sect
             deliverable_generation_ms: briefingResult?.generationMs ?? null,
           })
           .eq('id', sessionId);
-
-        console.log('[final-briefing] Saved deliverable to product_sessions');
 
         // Fire-and-forget: enroll in completion campaigns
         enrollInCompletionCampaigns(session.user_id, session.product_slug || productSlug).catch(() => {});
@@ -443,7 +426,6 @@ Generate the complete deliverable per the instructions above. Include every sect
             EmailSequenceService.scheduleEmail(user.id, 'blueprint_day3', 'deliverable_completed', blueprintEmailContent, 3 * 24 * 60),
             EmailSequenceService.scheduleEmail(user.id, 'blueprint_day7', 'deliverable_completed', blueprintEmailContent, 7 * 24 * 60),
           ]);
-          console.log('[final-briefing] Scheduled blueprint Day 1/3/7 follow-up emails');
 
           // Only schedule affiliate email if user hasn't enrolled and hasn't opted out
           if (!user.is_affiliate && !user.affiliate_opted_out) {
@@ -463,15 +445,6 @@ Generate the complete deliverable per the instructions above. Include every sect
               30 // 30 minutes delay
             );
 
-            if (scheduledEmail) {
-              console.log('[final-briefing] Scheduled affiliate invitation email for 30 minutes');
-            } else {
-              console.log('[final-briefing] Failed to schedule affiliate invitation email');
-            }
-          } else {
-            console.log(
-              `[final-briefing] Skipping affiliate email (is_affiliate: ${user.is_affiliate}, opted_out: ${user.affiliate_opted_out})`
-            );
           }
 
           // Store customer insights in CRM sheet

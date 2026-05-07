@@ -104,7 +104,6 @@ export default async function ProductExperiencePage({
     }
 
     if (profilePlacements?.placements && !isPlacementsEmpty(profilePlacements.placements)) {
-      console.log('[experience] Using placements from user profile');
       const { error: updateError } = await supabase
         .from('product_sessions')
         .update({
@@ -131,7 +130,6 @@ export default async function ProductExperiencePage({
 
   // Auto-copy placements from user's latest confirmed session if missing
   if (!productSession?.placements || isPlacementsEmpty(productSession?.placements)) {
-    console.log('[experience] Attempting auto-copy - no placements in current session');
     const { data: placementSource, error: sourceError } = await supabase
       .from('product_sessions')
       .select('placements, product_slug')
@@ -143,15 +141,7 @@ export default async function ProductExperiencePage({
       .limit(1)
       .maybeSingle();
 
-    console.log('[experience] Auto-copy source query result:', {
-      found: !!placementSource,
-      error: sourceError,
-      sourceProduct: placementSource?.product_slug,
-      hasPlacementsData: !!placementSource?.placements
-    });
-
     if (placementSource?.placements) {
-      console.log('[experience] Auto-copying placements from', placementSource.product_slug);
       const { error: updateError } = await supabase
         .from('product_sessions')
         .update({
@@ -164,8 +154,6 @@ export default async function ProductExperiencePage({
 
       if (updateError) {
         console.error('[experience] Error updating session with auto-copied placements:', updateError);
-      } else {
-        console.log('[experience] Successfully auto-copied placements to session');
       }
 
       productSession = {
@@ -175,32 +163,14 @@ export default async function ProductExperiencePage({
         current_step: 1,
         current_section: 1,
       };
-    } else {
-      console.log('[experience] No confirmed session found to auto-copy from');
     }
-  } else {
-    console.log('[experience] Session already has placements, skipping auto-copy');
   }
 
   // Treat missing/placeholder placements as not confirmed
   const needsConfirmation =
     !productSession.placements_confirmed || isPlacementsEmpty(productSession.placements);
 
-  console.log('[experience] Session loaded:', {
-    sessionId: productSession.id,
-    placementsConfirmed: productSession.placements_confirmed,
-    placementsEmpty: isPlacementsEmpty(productSession.placements),
-    placementsPresent: !!productSession.placements,
-    currentStep: productSession.current_step,
-    totalSteps: product.total_steps,
-  });
-
-  if (productSession.placements) {
-    console.log('[experience] Placements from DB:', JSON.stringify(productSession.placements, null, 2));
-  }
-
   if (needsConfirmation) {
-    console.log('[experience] Forcing confirmation due to missing/empty placements');
     // Normalize session on the server so the client can't skip confirmation
     // IMPORTANT: Keep placements even if empty - user needs to see them in confirmation gate
     await supabase

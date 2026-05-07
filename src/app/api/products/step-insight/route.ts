@@ -54,10 +54,6 @@ export async function POST(req: Request) {
     const astro = placements?.astrology || {};
     const hd = placements?.human_design || {};
 
-    console.log('[step-insight] Placements from Supabase:', placements ? 'Present' : 'MISSING');
-    console.log('[step-insight] Astrology data:', Object.keys(astro).length, 'fields');
-    console.log('[step-insight] HD data:', Object.keys(hd).length, 'fields');
-
     const placementSummary = `
 Astrology: Sun ${astro.sun || 'UNKNOWN'}, Moon ${astro.moon || 'UNKNOWN'}, Rising ${astro.rising || 'UNKNOWN'}, Houses ${astro.houses || 'UNKNOWN'} (if 2nd house is empty, note its sign/ruler), Mercury ${astro.mercury || 'UNKNOWN'}, Venus ${astro.venus || 'UNKNOWN'}, Mars ${astro.mars || 'UNKNOWN'}, Jupiter ${astro.jupiter || 'UNKNOWN'}, Saturn ${astro.saturn || 'UNKNOWN'}, Uranus ${astro.uranus || 'UNKNOWN'}, Neptune ${astro.neptune || 'UNKNOWN'}, Pluto ${astro.pluto || 'UNKNOWN'}
 Human Design: Type ${hd.type || 'UNKNOWN'}, Strategy ${hd.strategy || 'UNKNOWN'}, Authority ${hd.authority || 'UNKNOWN'}, Profile ${hd.profile || 'UNKNOWN'}, Centers ${hd.centers || 'UNKNOWN'}, Gifts ${hd.gifts || 'UNKNOWN'}
@@ -101,9 +97,6 @@ Product: ${productName || 'Business Alignment Orientation'}
       });
 
       content = aiResponse.content;
-
-      console.log('[step-insight] AI response successful');
-      console.log(`[step-insight] Tokens used: ${aiResponse.tokensUsed.total} (${aiResponse.tokensUsed.prompt} prompt, ${aiResponse.tokensUsed.completion} completion)`);
     } catch (err: any) {
       console.error('[step-insight] AI request failed:', err?.message || err);
       return NextResponse.json(

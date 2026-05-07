@@ -29,17 +29,10 @@ export default function SlideViewer() {
         setCurrentSlide(event.data.currentSlide);
         setTotalSlides(event.data.totalSlides);
 
-        // TODO: Save progress to Supabase
-        console.log("Progress:", {
-          moduleId,
-          currentSlide: event.data.currentSlide,
-          totalSlides: event.data.totalSlides,
-        });
       }
 
       if (event.data.type === "slideshowComplete") {
         // TODO: Mark module slideshow as complete in Supabase
-        console.log("Slideshow completed!");
       }
     };
 

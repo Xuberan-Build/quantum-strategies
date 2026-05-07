@@ -24,8 +24,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 export async function POST(request: NextRequest) {
-  console.log('Stripe webhook received');
-
   const sig = request.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -50,12 +48,6 @@ export async function POST(request: NextRequest) {
 
   const session = stripeEvent.data.object as Stripe.Checkout.Session;
 
-  console.log('=== CHECKOUT SESSION COMPLETED ===');
-  console.log('Session ID:', session.id);
-  console.log('Customer Email:', session.customer_details?.email);
-  console.log('Amount:', session.amount_total);
-  console.log('Metadata:', session.metadata);
-
   const customerEmail = session.customer_details?.email;
   const customerName = session.customer_details?.name || 'there';
   const amount = (session.amount_total || 0) / 100;
@@ -79,8 +71,6 @@ export async function POST(request: NextRequest) {
   // Validate product exists (constants or DB — just used for fallback name here)
   const product = getProductBySlug(productSlug);
   const productName = product?.name ?? productSlug;
-
-  console.log('Product slug:', productSlug, '— name:', productName);
 
   const timestamp = new Date().toISOString();
   let emailSent = '❌ Failed';

@@ -98,9 +98,6 @@ Placements: ${placementSummary}
       });
 
       aiResponseText = aiResult.content;
-
-      console.log('[followup-response] AI response successful');
-      console.log(`[followup-response] Tokens used: ${aiResult.tokensUsed.total} (${aiResult.tokensUsed.prompt} prompt, ${aiResult.tokensUsed.completion} completion)`);
     } catch (err: any) {
       console.error('[followup-response] AI request failed:', err?.message || err);
       return NextResponse.json({ error: 'AI generation failed', detail: err?.message || 'Unknown error' }, { status: 500 });
