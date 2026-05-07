@@ -8,7 +8,7 @@ DECLARE
   v_pillar_id UUID;
   v_topic_id  UUID;
 BEGIN
-  SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Self as Signal';
+  SELECT id INTO v_pillar_id FROM content_pillars WHERE slug = 'the-self-as-signal';
   IF v_pillar_id IS NULL THEN
     INSERT INTO content_pillars (title, slug, description, tradition_affinity)
     VALUES ('The Self as Signal', 'the-self-as-signal',

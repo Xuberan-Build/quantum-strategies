@@ -11,7 +11,7 @@ DECLARE
   v_topic_4   UUID;
   v_topic_5   UUID;
 BEGIN
-  SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Builder''s Stack';
+  SELECT id INTO v_pillar_id FROM content_pillars WHERE slug = 'the-builders-stack';
   IF v_pillar_id IS NULL THEN
     INSERT INTO content_pillars (title, slug, description, tradition_affinity)
     VALUES ('The Builder''s Stack', 'the-builders-stack',

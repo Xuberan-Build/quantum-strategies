@@ -17,7 +17,7 @@ DECLARE
   v_topic_10   UUID;
   v_topic_11   UUID;
 BEGIN
-  SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'The Architecture of Reality';
+  SELECT id INTO v_pillar_id FROM content_pillars WHERE slug = 'the-architecture-of-reality';
   IF v_pillar_id IS NULL THEN
     INSERT INTO content_pillars (title, slug, description, tradition_affinity)
     VALUES ('The Architecture of Reality', 'the-architecture-of-reality',

@@ -16,7 +16,7 @@ DECLARE
   v_topic_9    UUID;
   v_topic_10   UUID;
 BEGIN
-  SELECT id INTO v_pillar_id FROM content_pillars WHERE title = 'Strategy as Alignment';
+  SELECT id INTO v_pillar_id FROM content_pillars WHERE slug = 'strategy-as-alignment';
   IF v_pillar_id IS NULL THEN
     INSERT INTO content_pillars (title, slug, description, tradition_affinity)
     VALUES ('Strategy as Alignment', 'strategy-as-alignment',
