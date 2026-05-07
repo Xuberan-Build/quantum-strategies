@@ -6,19 +6,53 @@ import { StepView } from './StepView';
 import { FollowUpChat } from './FollowUpChat';
 import { DeliverableView } from './DeliverableView';
 import { WelcomeBanner } from './WelcomeBanner';
+import { FileUpload } from './FileUpload';
 import { supabase } from '@/lib/supabase/client';
 import { isPlacementsEmpty } from '@/lib/utils/placements';
 import { useStep1StateMachine } from './useStep1StateMachine';
 import { useProductPlacements } from './useProductPlacements';
 import { useProductDeliverable } from './useProductDeliverable';
 import { useProductSession } from './useProductSession';
-import { THREE_RITES_PRODUCTS } from '@/lib/beta/constants';
+import { THREE_RITES_PRODUCTS, getRiteForProduct } from '@/lib/beta/constants';
 import ScanFeedbackForm from '@/components/beta/ScanFeedbackForm';
 import BlueprintFeedbackForm from '@/components/beta/BlueprintFeedbackForm';
 import DeclarationFeedbackForm from '@/components/beta/DeclarationFeedbackForm';
 import RiteOneConsolidationForm from '@/components/beta/RiteOneConsolidationForm';
 import RiteTwoConsolidationForm from '@/components/beta/RiteTwoConsolidationForm';
 import CompleteJourneyForm from '@/components/beta/CompleteJourneyForm';
+
+const RITE_META = {
+  perception:  { roman: 'I',   label: 'Perception',  itemLabel: 'Scan' },
+  orientation: { roman: 'II',  label: 'Orientation', itemLabel: 'Blueprint' },
+  declaration: { roman: 'III', label: 'Declaration', itemLabel: 'Declaration' },
+} as const;
+
+function RiteProgressHeader({ productSlug, productName }: { productSlug: string; productName: string }) {
+  const rite = getRiteForProduct(productSlug);
+  if (!rite) return null;
+
+  const meta = RITE_META[rite];
+  const riteProducts = THREE_RITES_PRODUCTS[rite.toUpperCase() as 'PERCEPTION' | 'ORIENTATION' | 'DECLARATION'];
+  const position = (riteProducts as readonly string[]).indexOf(productSlug) + 1;
+  const total = riteProducts.length;
+
+  return (
+    <div className="relative bg-gradient-to-r from-purple-950/50 via-black/40 to-purple-950/30 backdrop-blur-sm px-6 py-2.5">
+      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-purple-300/20 to-transparent" />
+      <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
+        <span className="shrink-0 text-[11px] font-bold tracking-widest uppercase bg-gradient-to-r from-[#cebeff] to-[#B399FF] bg-clip-text text-transparent">
+          Rite {meta.roman} · {meta.label}
+        </span>
+        <span className="text-[13px] text-white/40 font-medium truncate text-center">
+          {productName}
+        </span>
+        <span className="shrink-0 text-[11px] text-white/25 tabular-nums">
+          {meta.itemLabel} {position} of {total}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 interface ProductExperienceProps {
   product: any;
@@ -234,10 +268,13 @@ export default function ProductExperience({
     // WELCOME STATE
     if (step1Machine.shouldShowWelcome) {
       return (
-        <WelcomeBanner
-          instructions={product.instructions}
-          onBegin={() => step1Machine.transitions.welcomeComplete()}
-        />
+        <>
+          <RiteProgressHeader productSlug={product.product_slug} productName={product.name} />
+          <WelcomeBanner
+            instructions={product.instructions}
+            onBegin={() => step1Machine.transitions.welcomeComplete()}
+          />
+        </>
       );
     }
 
@@ -366,9 +403,66 @@ export default function ProductExperience({
       );
     }
 
-    // UPLOAD STATE - show upload interface (falls through to StepView)
+    // UPLOAD STATE - show upload interface
     if (step1Machine.shouldShowUpload) {
-      // Falls through to StepView which has upload UI
+      // If the product has no dedicated upload step, render a standalone upload gate
+      if (!currentStepData?.allow_file_upload) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 via-gray-900 to-black p-6 md:p-10">
+            <div className="w-full max-w-3xl space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 md:p-8 backdrop-blur-xl shadow-[0_25px_120px_-40px_rgba(0,0,0,0.75)]">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.18em] text-teal-200/80">Step 1 of {steps.length + 1}</p>
+                <h1 className="text-3xl font-semibold text-white">Upload Your Charts</h1>
+                <p className="text-slate-200/85">
+                  Upload your Birth Chart and Human Design Chart so we can extract your placements and personalize your experience.
+                </p>
+                <p className="text-sm text-slate-400 mt-1">
+                  We accept PDFs or images from astro.com, astro-seek.com, jovianarchive.com, mybodygraph.com, etc.
+                </p>
+              </div>
+
+              <FileUpload
+                onUpload={handleFileUpload}
+                uploadedFiles={uploadedFiles}
+              />
+
+              {uploadedFiles.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate-300/80">Files ready</p>
+                  <div className="space-y-2">
+                    {uploadedFiles.map((file, idx) => (
+                      <div key={idx} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 px-3 py-2">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500/15 text-teal-300">
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M5 12l4 4L19 6" />
+                          </svg>
+                        </span>
+                        <span className="truncate text-sm font-semibold text-white flex-1">{file.split('/').pop()}</span>
+                        <button onClick={() => handleRemoveFile(file)} className="text-slate-300 hover:text-red-300" title="Remove file">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {uploadError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {uploadError}
+                </div>
+              )}
+
+              <button
+                onClick={handleExtractPlacements}
+                disabled={isExtracting || uploadedFiles.length === 0}
+                className="w-full rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 py-3.5 font-semibold text-white shadow-lg shadow-teal-500/30 transition-all hover:shadow-xl hover:shadow-teal-500/40 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+              >
+                {isExtracting ? 'Extracting placements...' : 'Extract Placements →'}
+              </button>
+            </div>
+          </div>
+        );
+      }
+      // Has an explicit upload step — falls through to StepView which renders the upload UI inline
     }
 
     // REVIEW STATE - show review/edit placements gate
@@ -625,6 +719,7 @@ export default function ProductExperience({
 
   return (
     <>
+      <RiteProgressHeader productSlug={product.product_slug} productName={product.name} />
       {!showFollowUp ? (
         <StepView
           step={currentStepData}
