@@ -29,17 +29,15 @@ export async function GET(req: NextRequest) {
       }
     );
 
-    // Get authenticated user
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const userId = session.user.id;
+    const userId = authUser.id;
 
     // Get user status
     const { data: user } = await supabaseAdmin

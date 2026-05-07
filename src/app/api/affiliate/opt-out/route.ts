@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
     );
 
     // Get authenticated user
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         affiliate_opted_out: true,
         first_affiliate_visit: new Date().toISOString(),
       })
-      .eq('id', session.user.id);
+      .eq('id', user.id);
 
     if (error) {
       console.error('Error updating opt-out status:', error);

@@ -37,9 +37,9 @@ export async function POST(req: NextRequest) {
     );
 
     // Get authenticated user
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (!user) {
       await logApiError({
         req,
         action: 'affiliate_enroll',
@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    userId = session.user.id;
-    userEmail = session.user.email!;
+    userId = user.id;
+    userEmail = user.email!;
 
     // Check if already enrolled
     const { data: existingHierarchy } = await supabaseAdmin

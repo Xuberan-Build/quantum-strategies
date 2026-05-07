@@ -30,9 +30,9 @@ export async function GET(req: NextRequest) {
     );
 
     // Get authenticated user
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json({ wasReferred: false });
     }
 
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const { data: hierarchy } = await supabaseAdmin
       .from('referral_hierarchy')
       .select('referred_by_id')
-      .eq('affiliate_id', session.user.id)
+      .eq('affiliate_id', user.id)
       .single();
 
     // Also check referral cookie as fallback

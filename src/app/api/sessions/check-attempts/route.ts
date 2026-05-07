@@ -9,12 +9,8 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
 
-    // Get current user
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -30,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     // Check attempts
     const { data, error } = await supabase.rpc('can_create_new_version', {
-      p_user_id: session.user.id,
+      p_user_id: user.id,
       p_product_slug: productSlug,
     });
 

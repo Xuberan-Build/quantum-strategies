@@ -40,16 +40,16 @@ export async function GET(req: NextRequest) {
     );
 
     // Get authenticated user
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const userId = session.user.id;
+    const userId = user.id;
 
     // Get affiliate stats using database function
     const { data: stats, error: statsError } = await supabase

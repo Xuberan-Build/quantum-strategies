@@ -5,12 +5,8 @@ export async function POST(req: Request) {
   try {
     const supabase = await createServerSupabaseClient();
 
-    // Check authentication
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -33,7 +29,7 @@ export async function POST(req: Request) {
         placements_confirmed: false,
         // Keep placements data so you don't have to re-upload
       })
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .eq('product_slug', productSlug)
       .select()
       .single();
@@ -42,8 +38,6 @@ export async function POST(req: Request) {
       console.error('Reset session error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    console.log('[reset-session] Session reset successfully:', data);
 
     return NextResponse.json({
       success: true,
