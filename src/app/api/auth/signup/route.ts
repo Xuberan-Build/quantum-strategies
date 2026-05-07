@@ -15,42 +15,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email address.' }, { status: 400 });
     }
 
-    const { data: authListData, error: authLookupError } =
-      await supabaseAdmin.auth.admin.listUsers();
-    if (authLookupError) {
-      console.error('[signup] auth lookup failed:', authLookupError);
-      return NextResponse.json({ error: 'Failed to check user status.' }, { status: 500 });
-    }
-
-    const existingAuth = authListData.users.find(u => u.email?.toLowerCase() === normalizedEmail);
-    if (existingAuth) {
-      return NextResponse.json({ error: 'Account already exists. Please sign in.' }, { status: 409 });
-    }
-
     const { data: existingProfile } = await supabaseAdmin
       .from('users')
       .select('id, email, name')
       .eq('email', normalizedEmail)
       .maybeSingle();
 
-    const createPayload = existingProfile
-      ? {
-          id: existingProfile.id,
-          email: normalizedEmail,
-          password,
-          email_confirm: true,
-          user_metadata: {
-            name: trimmedName || existingProfile.name || normalizedEmail.split('@')[0],
-          },
-        }
-      : {
-          email: normalizedEmail,
-          password,
-          email_confirm: true,
-          user_metadata: {
-            name: trimmedName || normalizedEmail.split('@')[0],
-          },
-        };
+    if (existingProfile) {
+      return NextResponse.json({ error: 'Account already exists. Please sign in.' }, { status: 409 });
+    }
+
+    const createPayload = {
+      email: normalizedEmail,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        name: trimmedName || normalizedEmail.split('@')[0],
+      },
+    };
 
     const { data, error } = await supabaseAdmin.auth.admin.createUser(createPayload as any);
     if (error || !data?.user) {
