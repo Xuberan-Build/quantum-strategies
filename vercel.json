@@ -6,15 +6,15 @@
     },
     {
       "path": "/api/cron/process-campaigns",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/send-affiliate-emails",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/extract-insights",
-      "schedule": "0 * * * *"
+      "schedule": "0 5 * * *"
     }
   ]
 }
