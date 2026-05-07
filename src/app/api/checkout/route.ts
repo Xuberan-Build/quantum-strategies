@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { cookies } from 'next/headers';
-import { supabaseAdmin } from '@/lib/supabase/server';
+import { supabaseAdmin, createServerSupabaseClient } from '@/lib/supabase/server';
 import { getProductBySlug } from '@/lib/constants/products';
 import { APP_URL, MARKETING_URL } from '@/lib/config/urls';
 
@@ -23,6 +23,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY?.trim() || '', {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Please sign in before purchasing' }, { status: 401 });
+    }
+
     const { productSlug } = await req.json();
 
     if (!productSlug || typeof productSlug !== 'string') {
@@ -94,6 +100,7 @@ export async function POST(req: NextRequest) {
       },
       allow_promotion_codes: allowPromoCodes,
       billing_address_collection: 'auto',
+      client_reference_id: user.id,
     });
 
     return NextResponse.json({ sessionId: session.id, url: session.url });
