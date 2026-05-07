@@ -81,24 +81,27 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     throw new Error('No customer email in checkout session');
   }
 
-  const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
-  const existingUser = userList?.users?.find((u) => u.email === customerEmail);
+  const { data: existingUser } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('email', customerEmail)
+    .maybeSingle();
 
   let userId: string;
 
   if (existingUser) {
     userId = existingUser.id;
   } else {
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: customerEmail,
-      email_confirm: true,
-    });
+    // Using inviteUserByEmail instead of createUser(email_confirm:true) to prevent
+    // account pre-emption attacks where an attacker pays with a victim's email.
+    // New buyers receive a setup email; subscription is provisioned immediately.
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(customerEmail);
 
-    if (createError || !newUser.user) {
-      throw new Error(`Failed to create user: ${createError?.message}`);
+    if (inviteError || !inviteData?.user) {
+      throw new Error(`Failed to invite user: ${inviteError?.message}`);
     }
 
-    userId = newUser.user.id;
+    userId = inviteData.user.id;
   }
 
   const { error: subError } = await supabaseAdmin
