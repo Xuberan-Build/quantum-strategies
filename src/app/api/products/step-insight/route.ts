@@ -146,7 +146,7 @@ Product: ${productName || 'Business Alignment Orientation'}
 
         // Fire-and-forget: log to generation_log
         supabaseAdmin.from('generation_log').insert({
-          user_id: userId || null,
+          user_id: user.id || null,
           session_id: body.sessionId,
           product_slug: productSlug,
           event_type: 'step_insight',
