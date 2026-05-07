@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import styles from '../../admin-layout.module.css';
 import { RegenerateBriefingButton } from './UserSessionActions';
+import { ActivityTimeline, type TimelineEvent } from './ActivityTimeline';
+import { UserNotes } from './UserNotes';
 
 export default async function UserDetailPage({
   params,
@@ -11,7 +13,13 @@ export default async function UserDetailPage({
 }) {
   const { id } = await params;
 
-  const [userResult, sessionsResult, accessResult, emailSeqResult, listMembersResult, activeEnrollmentsResult, smartListsResult, conversationsResult, betaResult] = await Promise.all([
+  const sessionIdsResult = await supabaseAdmin
+    .from('product_sessions')
+    .select('id')
+    .eq('user_id', id);
+  const sessionIds = (sessionIdsResult.data || []).map((s: any) => s.id);
+
+  const [userResult, sessionsResult, accessResult, emailSeqResult, listMembersResult, activeEnrollmentsResult, smartListsResult, conversationsResult, betaResult, notesResult] = await Promise.all([
     supabaseAdmin
       .from('users')
       .select('*')
@@ -38,30 +46,30 @@ export default async function UserDetailPage({
       .eq('user_id', id),
     supabaseAdmin
       .from('campaign_enrollments')
-      .select('id, campaign_id, current_step, next_send_at, campaigns(id, name)')
+      .select('id, campaign_id, current_step, next_send_at, enrolled_at, created_at, campaigns(id, name)')
       .eq('user_id', id)
       .eq('status', 'active'),
     supabaseAdmin
       .from('contact_lists')
       .select('id, name, list_type, filter_criteria')
       .eq('list_type', 'smart'),
-    supabaseAdmin
-      .from('conversations')
-      .select('session_id, step_number, messages')
-      .in('session_id',
-        // will be filtered client-side; fetch all for this user's sessions
-        (await supabaseAdmin
-          .from('product_sessions')
-          .select('id')
-          .eq('user_id', id)
-          .then(({ data }) => (data || []).map((s: any) => s.id)))
-      )
-      .order('step_number', { ascending: true }),
+    sessionIds.length > 0
+      ? supabaseAdmin
+          .from('conversations')
+          .select('session_id, step_number, messages')
+          .in('session_id', sessionIds)
+          .order('step_number', { ascending: true })
+      : Promise.resolve({ data: [] }),
     supabaseAdmin
       .from('beta_participants')
       .select('id')
       .eq('user_id', id)
       .maybeSingle(),
+    supabaseAdmin
+      .from('user_notes')
+      .select('id, author, content, created_at')
+      .eq('user_id', id)
+      .order('created_at', { ascending: false }),
   ]);
 
   if (userResult.error || !userResult.data) notFound();
@@ -73,6 +81,7 @@ export default async function UserDetailPage({
   const activeEnrollments = activeEnrollmentsResult.data || [];
   const allConversations = conversationsResult.data || [];
   const isBeta = !!betaResult.data;
+  const notes = notesResult.data || [];
 
   // Group conversations by session_id for easy lookup
   const convBySession: Record<string, any[]> = {};
@@ -105,6 +114,48 @@ export default async function UserDetailPage({
     .map((l: any) => ({ ...l, kind: 'smart' as const }));
 
   const crmLists = [...staticLists, ...smartLists];
+
+  // Build chronological activity timeline
+  const timelineEvents: TimelineEvent[] = [
+    ...access.map((a: any) => ({
+      id: `purchase-${a.product_slug}`,
+      type: 'purchase' as const,
+      label: `Purchased ${formatSlug(a.product_slug)}`,
+      detail: a.purchase_source ? `via ${a.purchase_source}` : undefined,
+      timestamp: a.access_granted_at,
+    })),
+    ...sessions.flatMap((s: any) => {
+      const events: TimelineEvent[] = [{
+        id: `session-start-${s.id}`,
+        type: 'session_start' as const,
+        label: `Started ${formatSlug(s.product_slug)}`,
+        timestamp: s.created_at,
+      }];
+      if (s.completed_at) {
+        events.push({
+          id: `session-complete-${s.id}`,
+          type: 'session_complete' as const,
+          label: `Completed ${formatSlug(s.product_slug)}`,
+          timestamp: s.completed_at,
+        });
+      }
+      return events;
+    }),
+    ...emailSeqs
+      .filter((e: any) => e.sent_at)
+      .map((e: any) => ({
+        id: `email-${e.id}`,
+        type: 'email_sent' as const,
+        label: `Email sent: ${e.sequence_type.replace(/_/g, ' ')}`,
+        timestamp: e.sent_at,
+      })),
+    ...activeEnrollments.map((enr: any) => ({
+      id: `enroll-${enr.id}`,
+      type: 'campaign_enrolled' as const,
+      label: `Enrolled in ${enr.campaigns?.name || 'campaign'}`,
+      timestamp: enr.enrolled_at || enr.created_at,
+    })),
+  ];
 
   // Fetch discord member separately (depends on user.discord_id)
   let discordMember: any = null;
@@ -347,6 +398,15 @@ export default async function UserDetailPage({
               </table>
             </div>
           )}
+
+          {/* Activity Timeline */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Activity Timeline</h2>
+              <span className={`${styles.badge} ${styles.badgeNeutral}`}>{timelineEvents.length} events</span>
+            </div>
+            <ActivityTimeline events={timelineEvents} />
+          </div>
         </div>
 
         {/* Right column */}
@@ -418,6 +478,17 @@ export default async function UserDetailPage({
               </div>
             </div>
           )}
+
+          {/* Notes */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Notes</h2>
+              {notes.length > 0 && (
+                <span className={`${styles.badge} ${styles.badgeNeutral}`}>{notes.length}</span>
+              )}
+            </div>
+            <UserNotes userId={id} initialNotes={notes} />
+          </div>
 
           {/* CRM */}
           <div className={styles.card}>
