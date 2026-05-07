@@ -5,6 +5,7 @@ import { AIRequestService } from '@/lib/services/AIRequestService';
 import { EmailSequenceService, type EmailContent } from '@/lib/services/EmailSequenceService';
 import { EmailTemplateService } from '@/lib/services/EmailTemplateService';
 import { storeCustomerInsights } from '@/lib/google-sheets/customer-sync';
+import { enrollInCompletionCampaigns } from '@/lib/crm/auto-enroll';
 
 export async function POST(req: Request) {
   try {
@@ -390,6 +391,9 @@ Generate the complete deliverable per the instructions above. Include every sect
           .eq('id', sessionId);
 
         console.log('[final-briefing] Saved deliverable to product_sessions');
+
+        // Fire-and-forget: enroll in completion campaigns
+        enrollInCompletionCampaigns(session.user_id, session.product_slug || productSlug).catch(() => {});
 
         // Fire-and-forget: log to generation_log
         supabaseAdmin.from('generation_log').insert({

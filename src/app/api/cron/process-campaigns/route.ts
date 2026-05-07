@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     .select(`
       id, campaign_id, user_id, current_step, next_send_at,
       campaigns(id, name, from_name, from_email, status),
-      users(id, name, email)
+      users(id, name, email, placements)
     `)
     .eq('status', 'active')
     .lte('next_send_at', new Date().toISOString())
@@ -57,11 +57,55 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // Personalize content
+      // Personalize content with name
       const firstName = (user.name || '').split(' ')[0] || 'there';
       const subject = step.subject.replace(/\{\{name\}\}/g, firstName);
-      const htmlBody = step.html_body.replace(/\{\{name\}\}/g, firstName);
-      const textBody = (step.text_body || '').replace(/\{\{name\}\}/g, firstName);
+      let htmlBody = step.html_body.replace(/\{\{name\}\}/g, firstName);
+      let textBody = (step.text_body || '').replace(/\{\{name\}\}/g, firstName);
+      let personalizationModel: string | null = null;
+
+      // AI chart personalization when user has placements
+      const placements = (user as any).placements;
+      const hdType = placements?.human_design?.type;
+      const authority = placements?.human_design?.authority;
+      const profile = placements?.human_design?.profile;
+      const sunSign = placements?.astrology?.sun;
+
+      if (hdType || sunSign) {
+        try {
+          const OpenAI = (await import('openai')).default;
+          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+          const chartContext = [
+            hdType && `HD Type: ${hdType}`,
+            authority && `Authority: ${authority}`,
+            profile && `Profile: ${profile}`,
+            sunSign && `Sun: ${sunSign}`,
+          ].filter(Boolean).join(', ');
+
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'system',
+                content: 'You personalize email copy using astrology and Human Design. Keep the structure, links, and CTA identical. Naturally weave in 1-2 chart references that make the email feel specifically written for this person. Return JSON only: { "html_body": "...", "text_body": "..." }',
+              },
+              {
+                role: 'user',
+                content: `Recipient: ${firstName}\nChart: ${chartContext}\n\nHTML:\n${htmlBody}\n\nText:\n${textBody}`,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            max_completion_tokens: 2000,
+          });
+
+          const parsed = JSON.parse(completion.choices[0].message.content || '{}');
+          if (parsed.html_body) htmlBody = parsed.html_body;
+          if (parsed.text_body) textBody = parsed.text_body;
+          personalizationModel = 'gpt-4o-mini';
+        } catch (e) {
+          console.warn('[process-campaigns] AI personalization failed, using original:', (e as Error).message);
+        }
+      }
 
       // Send via Resend
       const resendId = await sendEmailViaResend({
@@ -81,6 +125,9 @@ export async function GET(request: NextRequest) {
         step_number: enrollment.current_step,
         resend_id: resendId,
         status: 'sent',
+        personalized_html: personalizationModel ? htmlBody : null,
+        personalized_text: personalizationModel ? textBody : null,
+        personalization_model: personalizationModel,
       });
 
       // Find next step

@@ -17,6 +17,7 @@ import { syncToCRM } from '@/lib/stripe/webhook-handlers/sync-crm';
 import { processAffiliate } from '@/lib/stripe/webhook-handlers/process-affiliate';
 import { syncCustomer } from '@/lib/google-sheets/customer-sync';
 import { FEATURES } from '../../../../config/features.config';
+import { enrollInPurchaseCampaigns } from '@/lib/crm/auto-enroll';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-12-15.clover',
@@ -136,6 +137,11 @@ export async function POST(request: NextRequest) {
     } catch (err: any) {
       console.error('⚠️ Affiliate processing failed (non-fatal):', err.message);
     }
+  }
+
+  // ── 3b. CAMPAIGN PURCHASE TRIGGER ───────────────────────────────────────────
+  if (accessResult.userId) {
+    enrollInPurchaseCampaigns(accessResult.userId, productSlug).catch(() => {});
   }
 
   // ── 4. CRM SYNC (Sheets) ─────────────────────────────────────────────────────
