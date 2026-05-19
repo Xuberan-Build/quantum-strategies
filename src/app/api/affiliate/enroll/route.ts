@@ -81,13 +81,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user has opted out
-    const { data: user } = await supabaseAdmin
+    const { data: userRecord } = await supabaseAdmin
       .from('users')
       .select('affiliate_opted_out')
       .eq('id', userId)
       .single();
 
-    if (user?.affiliate_opted_out) {
+    if (userRecord?.affiliate_opted_out) {
       // User previously opted out - clear opt-out flag to allow re-enrollment
       await supabaseAdmin
         .from('users')
