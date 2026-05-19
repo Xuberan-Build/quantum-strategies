@@ -7,7 +7,7 @@
   justify-items: center;
   padding: clamp(0.5rem, 2vw, 2rem) clamp(0.75rem, 2vw, 2rem);
   position: relative;
-  overflow: visible;
+  overflow-x: clip;
   background-image: url('/images/hero-bg.webp');
   background-repeat: no-repeat;
   background-position: left center;

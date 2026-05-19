@@ -16,7 +16,7 @@ export function WelcomeBanner({ instructions, onBegin }: WelcomeBannerProps) {
       <div className="relative w-full max-w-2xl">
         {/* Glassmorphic Card */}
         <div
-          className="relative overflow-hidden rounded-3xl border border-purple-300/20 bg-gradient-to-br from-purple-900/30 via-indigo-900/25 to-purple-800/30 p-12 shadow-2xl backdrop-blur-xl"
+          className="relative overflow-hidden rounded-3xl border border-purple-300/20 bg-gradient-to-br from-purple-900/30 via-indigo-900/25 to-purple-800/30 p-6 sm:p-10 md:p-12 shadow-2xl backdrop-blur-xl"
         >
           {/* Gradient Accent Line */}
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent" />
@@ -24,7 +24,7 @@ export function WelcomeBanner({ instructions, onBegin }: WelcomeBannerProps) {
           {/* Content */}
           <div className="relative space-y-8">
             {/* Title */}
-            <h1 className="bg-gradient-to-br from-white via-purple-100 to-purple-200 bg-clip-text text-center text-4xl font-bold tracking-tight text-transparent md:text-5xl">
+            <h1 className="bg-gradient-to-br from-white via-purple-100 to-purple-200 bg-clip-text text-center text-2xl sm:text-4xl font-bold tracking-tight text-transparent md:text-5xl">
               {welcome.title}
             </h1>
 

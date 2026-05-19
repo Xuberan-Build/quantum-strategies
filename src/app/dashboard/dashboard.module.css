@@ -742,3 +742,25 @@
     min-width: 860px;
   }
 }
+
+@media (max-width: 480px) {
+  .header {
+    padding: 1.5rem 1rem 1rem 1rem;
+  }
+
+  .main {
+    padding: 0 1rem 3rem 1rem;
+  }
+
+  .section h2 {
+    font-size: 1.25rem;
+  }
+
+  .courseDetailCard {
+    padding: 20px 16px;
+  }
+
+  .courseCard {
+    padding: 20px;
+  }
+}
