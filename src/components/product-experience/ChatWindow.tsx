@@ -147,24 +147,8 @@ export function ChatWindow({
               </div>
             )}
 
-            {/* File naming tip */}
-            <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-              <div className="flex items-start gap-3">
-                <svg className="h-5 w-5 text-amber-300 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-amber-100">Tip for best results</p>
-                  <p className="text-sm text-amber-200/80">
-                    Name your files clearly (e.g., "Austin-Birth-Chart.png" or "Austin-HumanDesign.png").
-                    If using screenshots, our AI will analyze them to detect both chart types automatically.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             <div
-              className={`mt-3 rounded-2xl border bg-gradient-to-br from-white/10 via-white/5 to-white/0 p-5 md:p-6 transition ${
+              className={`mt-5 rounded-2xl border bg-gradient-to-br from-white/10 via-white/5 to-white/0 p-5 md:p-6 transition ${
                 dragActive ? 'border-teal-400/70 bg-teal-500/10' : 'border-white/10'
               }`}
               onDragOver={(e) => {

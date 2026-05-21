@@ -42,7 +42,7 @@ type Props = {
 };
 
 const defaultSort: SortState = {
-  key: 'status',
+  key: 'order',
   direction: 'asc',
 };
 
@@ -130,7 +130,58 @@ export default function ProductTable({ rows, createNewVersionAction }: Props) {
   };
 
   return (
-    <div className={styles.table}>
+    <>
+      {/* Mobile card layout */}
+      <div className={styles.mobileOnly}>
+        <div className={styles.mobileCardList}>
+          {sortedRows.map((row) => (
+            <div key={row.slug} className={styles.mobileCard}>
+              <div className={styles.mobileCardTop}>
+                <div className={styles.mobileCardInfo}>
+                  <div className={styles.productName}>{row.name}</div>
+                  <div className={styles.productSub}>
+                    {row.riteLabel} · #{row.displayOrder} · {row.estimatedDuration}
+                  </div>
+                </div>
+                <span className={`${styles.statusPill} ${styles[row.statusClass]}`}>
+                  {row.statusLabel}
+                </span>
+              </div>
+              <div className={styles.mobileCardMeta}>
+                <span>{row.progressLabel}</span>
+                <span>·</span>
+                <span>{row.lastActivityLabel}</span>
+              </div>
+              <Link
+                href={row.primaryHref}
+                className={row.primaryVariant === 'primary' ? styles.mobilePrimaryAction : styles.mobilePurchaseAction}
+              >
+                {row.primaryLabel}
+                <svg className={styles.mobilePrimaryArrow} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </Link>
+              <div className={styles.mobileSecondaryActions}>
+                <Link href={row.detailsHref} className={styles.secondaryAction}>Overview</Link>
+                {row.showChat && row.chatHref && (
+                  <Link href={row.chatHref} className={styles.secondaryAction}>View Chat</Link>
+                )}
+                {row.sessionId && row.attemptsRemaining !== null && (
+                  <SessionVersionManager
+                    sessionId={row.sessionId}
+                    productSlug={row.slug}
+                    attemptsRemaining={row.attemptsRemaining}
+                    createNewVersionAction={createNewVersionAction}
+                  />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Desktop table layout */}
+      <div className={`${styles.table} ${styles.desktopOnly}`}>
       <div className={styles.tableHeader}>
         <button
           type="button"
@@ -232,5 +283,6 @@ export default function ProductTable({ rows, createNewVersionAction }: Props) {
         </div>
       ))}
     </div>
+    </>
   );
 }
