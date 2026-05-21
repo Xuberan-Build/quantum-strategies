@@ -42,8 +42,9 @@ const GATE_SEQUENCE: readonly number[] = [
   28, 44, 1,  43, 14, 34, 9,  5,  26, 11, 10, 58, 38, 54, 61, 60,
 ];
 
-/** Tropical longitude where Gate 41 (index 0) begins. Verified: 2°00′ Aquarius = 302°. */
-const GATE_START_DEGREE = 302.0;
+/** Tropical longitude where Gate 41 (index 0) begins. Calibrated to 301.625° (~1°37' Aquarius).
+ *  Valid range: 301.5°–301.75°. Confirmed against Austin Santos (1/3 Manifestor, self-reported). */
+const GATE_START_DEGREE = 301.625;
 
 /** Width of each gate in degrees (360 / 64). */
 const GATE_WIDTH = 360 / 64; // 5.625°
