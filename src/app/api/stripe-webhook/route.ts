@@ -46,14 +46,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  const session = stripeEvent.data.object as Stripe.Checkout.Session;
+  // The webhook endpoint is registered on API version 2020-08-27, which predates the
+  // customer_details field (added 2021-09-20). Re-fetch the session with the current SDK
+  // version when customer_details is absent so we always have the full object.
+  let session = stripeEvent.data.object as Stripe.Checkout.Session;
+  if (!session.customer_details?.email && !session.customer_email) {
+    try {
+      session = await stripe.checkout.sessions.retrieve(session.id);
+      console.log('Re-fetched session for full customer details:', session.id);
+    } catch (err: any) {
+      console.error('Failed to re-fetch session:', err.message);
+    }
+  }
 
-  const customerEmail = session.customer_details?.email;
+  const customerEmail = session.customer_details?.email || session.customer_email || null;
   const customerName = session.customer_details?.name || 'there';
   const amount = (session.amount_total || 0) / 100;
 
   if (!customerEmail) {
-    console.error('No customer email found');
+    console.error('No customer email found in session:', session.id);
     return NextResponse.json({ error: 'No customer email' }, { status: 400 });
   }
 
@@ -76,6 +87,10 @@ export async function POST(request: NextRequest) {
   let emailSent = '❌ Failed';
 
   // ── 1. GRANT ACCESS ─────────────────────────────────────────────────────────
+  // client_reference_id is the Supabase auth user.id set during checkout session creation.
+  // Using it directly avoids a fallible email lookup and ensures the UUID matches auth.
+  const authUserId = session.client_reference_id || undefined;
+
   let accessResult = { userId: '', productsGranted: [productSlug], productAccessIds: [] as string[] };
   try {
     accessResult = await grantProductAccess({
@@ -85,6 +100,7 @@ export async function POST(request: NextRequest) {
       sessionId: session.id,
       amountPaid: amount,
       purchaseDate: timestamp,
+      authUserId,
     });
   } catch (err: any) {
     console.error('⚠️ Grant access failed (non-fatal):', err.message);

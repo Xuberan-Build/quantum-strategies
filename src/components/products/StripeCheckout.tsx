@@ -19,25 +19,36 @@ export default function StripeCheckout({ paymentLink, productName, price, produc
     if (isProcessing) return;
 
     setIsProcessing(true);
+    let navigating = false;
 
     try {
       if (productSlug) {
         await redirectToCheckout(productSlug);
+        navigating = true;
         return;
       }
 
       if (paymentLink) {
         window.location.href = paymentLink;
+        navigating = true;
         return;
       }
 
       console.error("No checkout configuration available");
       alert("Payment not configured. Please contact support.");
-      setIsProcessing(false);
-    } catch (error) {
+    } catch (error: any) {
+      const message: string = error?.message || '';
       console.error("Checkout error:", error);
+
+      if (message.toLowerCase().includes('sign in')) {
+        navigating = true;
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+        return;
+      }
+
       alert("Checkout failed. Please try again or contact support.");
-      setIsProcessing(false);
+    } finally {
+      if (!navigating) setIsProcessing(false);
     }
   };
 

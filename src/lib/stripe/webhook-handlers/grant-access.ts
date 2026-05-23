@@ -41,35 +41,63 @@ export async function grantProductAccess(params: {
   sessionId: string;
   amountPaid: number;
   purchaseDate: string;
+  authUserId?: string;
 }): Promise<GrantAccessResult> {
-  const { customerEmail, customerName, productSlug, sessionId, amountPaid, purchaseDate } = params;
+  const { customerEmail, customerName, productSlug, sessionId, amountPaid, purchaseDate, authUserId } = params;
 
   // Resolve which products to grant (handles bundles via DB lookup)
   const productsToGrant = await resolveProductSlugs(productSlug);
   const isBundle = productsToGrant.length > 1;
 
-  // Find or create user
+  // Find or create user.
+  // Prefer authUserId (the Supabase auth UUID) when available — it's the authoritative ID
+  // that matches what the experience page uses for access checks. Falls back to email lookup
+  // for sessions that didn't set client_reference_id (e.g. legacy payment links).
   let userId: string;
 
-  const { data: existingUser } = await supabaseAdmin
-    .from('users')
-    .select('id')
-    .eq('email', customerEmail)
-    .single();
-
-  if (existingUser?.id) {
-    userId = existingUser.id;
-    console.log('Found existing user:', userId);
-  } else {
-    const { data: newUser, error: createError } = await supabaseAdmin
+  if (authUserId) {
+    const { data: authUser } = await supabaseAdmin
       .from('users')
-      .insert({ email: customerEmail, name: customerName })
       .select('id')
+      .eq('id', authUserId)
       .single();
 
-    if (createError) throw createError;
-    userId = newUser.id;
-    console.log('Created new user:', userId);
+    if (authUser?.id) {
+      userId = authUser.id;
+      console.log('Found user by auth ID:', userId);
+    } else {
+      // User exists in auth but not yet in public.users (trigger may not have fired yet)
+      const { data: newUser, error: createError } = await supabaseAdmin
+        .from('users')
+        .insert({ id: authUserId, email: customerEmail, name: customerName })
+        .select('id')
+        .single();
+
+      if (createError) throw createError;
+      userId = newUser.id;
+      console.log('Created user with auth ID:', userId);
+    }
+  } else {
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', customerEmail)
+      .single();
+
+    if (existingUser?.id) {
+      userId = existingUser.id;
+      console.log('Found existing user by email:', userId);
+    } else {
+      const { data: newUser, error: createError } = await supabaseAdmin
+        .from('users')
+        .insert({ email: customerEmail, name: customerName })
+        .select('id')
+        .single();
+
+      if (createError) throw createError;
+      userId = newUser.id;
+      console.log('Created new user:', userId);
+    }
   }
 
   // Grant access for each product
