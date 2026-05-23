@@ -59,3 +59,13 @@ scripts/production-readiness-check.ts
 
 # Claude Code agent worktrees (cleaned up manually — see CLAUDE.md)
 .claude/worktrees/
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+
+# Supabase CLI temp files
+supabase/.temp/
+
+# Python (ingest scripts)
+**/__pycache__/
+scripts/ingest/.venv/
