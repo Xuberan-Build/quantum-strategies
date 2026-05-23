@@ -324,16 +324,12 @@ function computeAngles(date: Date, lat: number, lng: number): { asc: number; mc:
   const denominator = -(Math.sin(eps_r) * Math.tan(lat_r) + Math.cos(eps_r) * Math.sin(ramc_r));
 
   let asc = Math.atan2(numerator, denominator) * (180 / Math.PI);
-  // Bring into 0-360
+  // Bring into 0-360.
+  // atan2 sign of cos(RAMC) already encodes the correct ecliptic hemisphere:
+  //   cos(RAMC) > 0 → ASC ∈ [0°, 180°]
+  //   cos(RAMC) < 0 → ASC ∈ [180°, 360°]
+  // No additional quadrant correction is needed.
   asc = norm360(asc);
-
-  // The ASC must be in the eastern half of the chart (opposite to MC).
-  // A robust correction: ASC should be roughly 90° from RAMC in the right direction.
-  // Ensure ASC and MC are approximately opposite (within 90°-270° apart).
-  const diff = norm360(asc - mc);
-  if (diff < 90 || diff > 270) {
-    asc = norm360(asc + 180);
-  }
 
   return { asc, mc };
 }
