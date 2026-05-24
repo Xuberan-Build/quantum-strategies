@@ -43,7 +43,7 @@ export default function HumanDesignPanel({ chart, timeUnknown }: Props) {
     <>
       <p className={styles.panelTitle}>Human Design</p>
       <p className={styles.panelSubtitle}>
-        Design date: {chart.designDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+        Design date: {new Date(chart.designDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
       </p>
 
       {timeUnknown && (

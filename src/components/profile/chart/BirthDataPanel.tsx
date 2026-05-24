@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { StoredBirthData } from '@/lib/calculator/compute';
+import type { GeocodeSuggestion } from '@/app/api/profile/geocode-search/route';
 import styles from './chart.module.css';
 
 interface Props {
@@ -20,6 +21,76 @@ export default function BirthDataPanel({ initialData }: Props) {
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Typeahead state
+  const [cityConfirmed, setCityConfirmed] = useState(!!initialData);
+  const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [focusedIdx, setFocusedIdx] = useState(-1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  const searchCity = (q: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (q.trim().length < 2) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/profile/geocode-search?q=${encodeURIComponent(q)}`);
+        const json = await res.json();
+        setSuggestions(json.results ?? []);
+        setShowDropdown((json.results ?? []).length > 0);
+        setFocusedIdx(-1);
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+  };
+
+  const handleCityChange = (value: string) => {
+    setForm(f => ({ ...f, city: value }));
+    setCityConfirmed(false);
+    searchCity(value);
+  };
+
+  const selectSuggestion = (s: GeocodeSuggestion) => {
+    setForm(f => ({ ...f, city: s.displayName }));
+    setCityConfirmed(true);
+    setSuggestions([]);
+    setShowDropdown(false);
+    setFocusedIdx(-1);
+  };
+
+  const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdown || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedIdx(i => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedIdx(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' && focusedIdx >= 0) {
+      e.preventDefault();
+      selectSuggestion(suggestions[focusedIdx]);
+    } else if (e.key === 'Escape') {
+      setShowDropdown(false);
+    }
+  };
 
   const handleSave = async () => {
     setError(null);
@@ -43,6 +114,8 @@ export default function BirthDataPanel({ initialData }: Props) {
       setSaving(false);
     }
   };
+
+  const canSave = !!form.date && (timeUnknown || !!form.time) && cityConfirmed;
 
   if (!editing && data) {
     const displayTime = data.timeUnknown ? '12:00 (time unknown)' : data.time;
@@ -117,16 +190,47 @@ export default function BirthDataPanel({ initialData }: Props) {
             </p>
           )}
         </div>
-        <div className={styles.formGridFull}>
+
+        <div className={styles.formGridFull} style={{ position: 'relative' }} ref={dropdownRef}>
           <label className={styles.formLabel}>Birth City</label>
           <input
             type="text"
             className={styles.formInput}
             placeholder="e.g. San Francisco, CA"
             value={form.city}
-            onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+            onChange={e => handleCityChange(e.target.value)}
+            onKeyDown={handleCityKeyDown}
+            onFocus={() => { if (suggestions.length > 0) setShowDropdown(true); }}
+            autoComplete="off"
+            style={cityConfirmed ? { borderColor: 'rgba(93, 211, 130, 0.6)' } : undefined}
           />
-          <p className={styles.formHint}>We geocode this to find coordinates and timezone automatically.</p>
+          {searching && (
+            <p className={styles.formHint} style={{ marginTop: '0.35rem' }}>Searching…</p>
+          )}
+          {!cityConfirmed && form.city.trim().length >= 2 && !searching && (
+            <p className={styles.formHint} style={{ marginTop: '0.35rem', color: 'rgba(251,191,36,0.7)' }}>
+              Select a location from the suggestions to continue.
+            </p>
+          )}
+          {cityConfirmed && (
+            <p className={styles.formHint} style={{ marginTop: '0.35rem', color: 'rgba(93,211,130,0.7)' }}>
+              Location confirmed.
+            </p>
+          )}
+          {showDropdown && suggestions.length > 0 && (
+            <div className={styles.cityDropdown}>
+              {suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`${styles.cityOption} ${i === focusedIdx ? styles.cityOptionFocused : ''}`}
+                  onMouseDown={() => selectSuggestion(s)}
+                >
+                  {s.displayName}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -134,7 +238,7 @@ export default function BirthDataPanel({ initialData }: Props) {
         <button
           className={styles.btnPrimary}
           onClick={handleSave}
-          disabled={saving || !form.date || (!timeUnknown && !form.time) || !form.city.trim()}
+          disabled={saving || !canSave}
         >
           {saving ? 'Saving…' : 'Save & Calculate'}
         </button>

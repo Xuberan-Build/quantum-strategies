@@ -78,12 +78,14 @@ export default function VedicPanel({ chart, birthUtc, timeUnknown }: Props) {
             </thead>
             <tbody>
               {chart.dashas.map((d, i) => {
-                const isActive = d.start <= birthUtc && birthUtc < d.end;
+                const dStart = new Date(d.start);
+                const dEnd = new Date(d.end);
+                const isActive = dStart <= birthUtc && birthUtc < dEnd;
                 return (
                   <tr key={i} style={isActive ? { background: 'rgba(93,63,211,0.12)' } : undefined}>
                     <td><span className={styles.planetName}>{d.lord}</span>{isActive && <span style={{ marginLeft: '0.4rem', fontSize: '0.72rem', color: '#a78bfa' }}>current</span>}</td>
-                    <td style={{ fontSize: '0.82rem', color: 'rgba(206,190,255,0.65)' }}>{d.start.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</td>
-                    <td style={{ fontSize: '0.82rem', color: 'rgba(206,190,255,0.65)' }}>{d.end.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</td>
+                    <td style={{ fontSize: '0.82rem', color: 'rgba(206,190,255,0.65)' }}>{dStart.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</td>
+                    <td style={{ fontSize: '0.82rem', color: 'rgba(206,190,255,0.65)' }}>{dEnd.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</td>
                   </tr>
                 );
               })}
