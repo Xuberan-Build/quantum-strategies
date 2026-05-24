@@ -8,7 +8,6 @@ import WesternPanel from './WesternPanel';
 import HumanDesignPanel from './HumanDesignPanel';
 import VedicPanel from './VedicPanel';
 import ProfileEditor from '@/components/profile/ProfileEditor';
-import SyncToConfirmedButton from './SyncToConfirmedButton';
 import styles from './chart.module.css';
 
 type ChartSection = 'birth-data' | 'western' | 'human-design' | 'vedic' | 'confirmed';
@@ -44,14 +43,7 @@ async function ComputedChartPanel({
       panel = <VedicPanel chart={result.vedic} birthUtc={result.utcBirthDatetime} timeUnknown={timeUnknown} />;
     }
 
-    return (
-      <>
-        {panel}
-        <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(206,190,255,0.1)' }}>
-          <SyncToConfirmedButton chartResult={result} />
-        </div>
-      </>
-    );
+    return <>{panel}</>;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return (

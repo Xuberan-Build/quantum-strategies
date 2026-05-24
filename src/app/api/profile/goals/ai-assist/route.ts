@@ -19,10 +19,11 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { messages = [], existingGoals = [], journey = null } = body
 
-    // Fetch user context
-    const [{ data: userData }, { data: accessRows }] = await Promise.all([
+    // Fetch user context + completed deliverables for nudge injection
+    const [{ data: userData }, { data: accessRows }, { data: deliverableSessions }] = await Promise.all([
       supabase.from('users').select('name, company_name, placements').eq('id', user.id).single(),
       supabase.from('product_access').select('product_slug, completed_at').eq('user_id', user.id),
+      supabase.from('product_sessions').select('product_slug, deliverable_content').eq('user_id', user.id).not('deliverable_content', 'is', null),
     ])
 
     const placements = userData?.placements || {}
@@ -45,6 +46,20 @@ Declaration: ${journey.declaration.completed.length}/${journey.declaration.total
       ? existingGoals.map((g: any) => `- ${g.title} (${g.rite_stage}, ${g.status})`).join('\n')
       : 'No goals set yet.'
 
+    // Extract action plan items from deliverables to inject as context
+    const nudgeContext = (deliverableSessions ?? [])
+      .map((s) => {
+        const content = (s.deliverable_content as string) ?? ''
+        // Pull the last part of the deliverable where action plans live
+        const excerpt = content.slice(-2500)
+        // Look for numbered action items inline rather than calling GPT again (already in stream context)
+        const matches = [...excerpt.matchAll(/\d+[.)]\s+(.+)/g)].map((m) => m[1].trim())
+        if (matches.length === 0) return null
+        return `${s.product_slug}:\n${matches.map((i) => `  • ${i}`).join('\n')}`
+      })
+      .filter(Boolean)
+      .join('\n\n')
+
     const systemPrompt = `You are a strategic guide helping ${name}${company ? ` of ${company}` : ''} identify and articulate meaningful goals aligned with their Three Rites journey and cosmic blueprint.
 
 THEIR CHART:
@@ -56,7 +71,7 @@ ${journeyContext}
 
 EXISTING GOALS:
 ${existingGoalsList}
-
+${nudgeContext ? `\nACTION ITEMS FROM THEIR COMPLETED BLUEPRINTS (reference these to propose specific, chart-grounded goals — don't just repeat them verbatim):\n${nudgeContext}` : ''}
 YOUR ROLE:
 - Help them articulate goals specific to each Rite stage (Orientation = understanding who they are, Perception = reading their environment accurately, Declaration = committing to a direction)
 - Ground every insight in their specific placements — do not give generic advice

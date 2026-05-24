@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { find as tzFind } from 'geo-tz';
+import { computeChart } from '@/lib/calculator/compute';
+import { chartResultToPlacements } from '@/lib/calculator/toPlacementsMapper';
 
 async function geocodeCity(city: string): Promise<{ lat: number; lng: number; displayName: string } | null> {
   try {
@@ -66,6 +68,18 @@ export async function POST(req: Request) {
       .eq('id', user.id);
 
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
+
+    // Compute chart and auto-sync placements so AI assistants have up-to-date data
+    try {
+      const chartResult = await computeChart(birth_data);
+      const placements = chartResultToPlacements(chartResult);
+      await supabase
+        .from('users')
+        .update({ placements, placements_confirmed: true, placements_updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+    } catch {
+      // Non-fatal: chart computation failure doesn't block the save
+    }
 
     revalidateTag(`chart-user-${user.id}`, 'default');
     return NextResponse.json({ birth_data, resolvedAddress: geo.displayName });
