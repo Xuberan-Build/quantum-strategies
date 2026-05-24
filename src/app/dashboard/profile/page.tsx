@@ -1,20 +1,21 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import ProfileEditor from '@/components/profile/ProfileEditor'
 import ProfileSettings from '@/components/profile/ProfileSettings'
 import GoalsList from '@/components/profile/goals/GoalsList'
 import JourneyProgress from '@/components/profile/goals/JourneyProgress'
-import { isPlacementsEmpty } from '@/lib/utils/placements'
+import ChartDataSection from '@/components/profile/chart/ChartDataSection'
 import { computeRiteJourney } from '@/lib/profile/rite-journey'
+import type { StoredBirthData } from '@/lib/calculator/compute'
 import styles from '../dashboard.module.css'
 
 export const dynamic = 'force-dynamic'
 
 type Tab = 'settings' | 'goals' | 'chart'
+type ChartSection = 'birth-data' | 'western' | 'human-design' | 'vedic' | 'confirmed'
 
 type Props = {
-  searchParams?: Promise<{ tab?: string; onboarding?: string }>
+  searchParams?: Promise<{ tab?: string; onboarding?: string; section?: string }>
 }
 
 export default async function ProfilePage({ searchParams }: Props) {
@@ -25,12 +26,12 @@ export default async function ProfilePage({ searchParams }: Props) {
 
   const sp = await searchParams
   const tab: Tab = (sp?.tab as Tab) || 'settings'
-  const showOnboarding = sp?.onboarding === 'beta'
+  const section: ChartSection = (sp?.section as ChartSection) || 'birth-data'
 
   const [{ data: userData }, { data: accessRows }, { data: goalsData }] = await Promise.all([
     supabase
       .from('users')
-      .select('name, email, company_name, ig_handle, placements, placements_confirmed, placements_updated_at')
+      .select('name, email, company_name, ig_handle, placements, placements_confirmed, placements_updated_at, birth_data')
       .eq('id', session.user.id)
       .single(),
     supabase
@@ -45,8 +46,6 @@ export default async function ProfilePage({ searchParams }: Props) {
   ])
 
   const journey = computeRiteJourney(accessRows ?? [])
-  const needsPlacements =
-    !userData?.placements_confirmed || isPlacementsEmpty(userData?.placements || null)
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'settings', label: 'Settings' },
@@ -94,31 +93,14 @@ export default async function ProfilePage({ searchParams }: Props) {
         )}
 
         {tab === 'chart' && (
-          <>
-            {(showOnboarding || needsPlacements) && (
-              <div className={styles.onboardingCard}>
-                <div>
-                  <h2 className={styles.onboardingTitle}>Step 1: Verify your charts</h2>
-                  <p className={styles.onboardingText}>
-                    Upload your astrology + Human Design charts so we can extract placements and
-                    personalize every beta product. Review and confirm before you continue.
-                  </p>
-                  <div className={styles.onboardingSteps}>
-                    <span>1) Upload charts</span>
-                    <span>2) Review placements</span>
-                    <span>3) Confirm accuracy</span>
-                  </div>
-                </div>
-                <div className={styles.onboardingBadge}>Beta Onboarding</div>
-              </div>
-            )}
-            <ProfileEditor
-              initialPlacements={userData?.placements || null}
-              placementsConfirmed={userData?.placements_confirmed || false}
-              placementsUpdatedAt={userData?.placements_updated_at || null}
-              userId={session.user.id}
-            />
-          </>
+          <ChartDataSection
+            section={section}
+            birthData={(userData?.birth_data as StoredBirthData | null) ?? null}
+            placements={userData?.placements || null}
+            placementsConfirmed={userData?.placements_confirmed || false}
+            placementsUpdatedAt={userData?.placements_updated_at || null}
+            userId={session.user.id}
+          />
         )}
       </div>
     </div>

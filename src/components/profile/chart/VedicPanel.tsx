@@ -10,19 +10,31 @@ const PLANET_LABELS: Partial<Record<PlanetName, string>> = {
 interface Props {
   chart: VedicChart;
   birthUtc: Date;
+  timeUnknown?: boolean;
 }
 
-export default function VedicPanel({ chart, birthUtc }: Props) {
+export default function VedicPanel({ chart, birthUtc, timeUnknown }: Props) {
   const entries = Object.entries(chart.planets)
     .filter(([, p]) => p)
     .sort(([, a], [, b]) => a!.house - b!.house);
+
+  const lagnaLabel = timeUnknown
+    ? `~${chart.lagna.sign} (${chart.lagna.nakshatra} pada ${chart.lagna.pada})`
+    : `${chart.lagna.sign} (${chart.lagna.nakshatra} pada ${chart.lagna.pada})`;
 
   return (
     <>
       <p className={styles.panelTitle}>Vedic Astrology</p>
       <p className={styles.panelSubtitle}>
-        Sidereal · Lahiri ayanamsa {chart.ayanamsa.toFixed(4)}° · Lagna {chart.lagna.sign} ({chart.lagna.nakshatra} pada {chart.lagna.pada})
+        Sidereal · Lahiri ayanamsa {chart.ayanamsa.toFixed(4)}° · Lagna {lagnaLabel}
+        {timeUnknown && <span style={{ marginLeft: '0.35rem', color: 'rgba(252,211,77,0.7)', fontStyle: 'italic' }}>(approx.)</span>}
       </p>
+
+      {timeUnknown && (
+        <div className={styles.warningBanner}>
+          Birth time unknown — Lagna (Ascendant) and house placements are based on 12:00 noon and may be inaccurate.
+        </div>
+      )}
 
       <table className={styles.chartTable}>
         <thead>
@@ -46,7 +58,11 @@ export default function VedicPanel({ chart, birthUtc }: Props) {
               <td>{p!.degree.toFixed(2)}°</td>
               <td style={{ fontSize: '0.82rem' }}>{p!.nakshatra}</td>
               <td>{p!.pada}</td>
-              <td>H{p!.house}</td>
+              <td>
+                {timeUnknown
+                  ? <span style={{ color: 'rgba(206,190,255,0.45)', fontStyle: 'italic' }}>~H{p!.house}</span>
+                  : `H${p!.house}`}
+              </td>
             </tr>
           ))}
         </tbody>

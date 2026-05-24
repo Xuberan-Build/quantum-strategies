@@ -22,9 +22,10 @@ function DignityBadge({ d }: { d: Dignity }) {
 interface Props {
   chart: WesternChart;
   designDate: Date;
+  timeUnknown?: boolean;
 }
 
-export default function WesternPanel({ chart, designDate: _ }: Props) {
+export default function WesternPanel({ chart, designDate: _, timeUnknown }: Props) {
   const entries = Object.entries(chart.planets)
     .filter(([, p]) => p)
     .sort(([, a], [, b]) => (a!.house - b!.house) || (a!.sign.localeCompare(b!.sign)));
@@ -33,6 +34,12 @@ export default function WesternPanel({ chart, designDate: _ }: Props) {
     <>
       <p className={styles.panelTitle}>Western Astrology</p>
       <p className={styles.panelSubtitle}>Tropical zodiac · {chart.houseSystem === 'whole-sign' ? 'Whole Sign houses' : 'Placidus houses'}</p>
+
+      {timeUnknown && (
+        <div className={styles.warningBanner}>
+          Birth time unknown — Ascendant and house placements are based on 12:00 noon and may be inaccurate.
+        </div>
+      )}
 
       <table className={styles.chartTable}>
         <thead>
@@ -50,7 +57,11 @@ export default function WesternPanel({ chart, designDate: _ }: Props) {
               <td><span className={styles.planetName}>{PLANET_LABELS[name as PlanetName] ?? name}</span>{p!.retrograde && <span className={styles.retro}>℞</span>}</td>
               <td>{p!.sign}</td>
               <td>{p!.degree.toFixed(2)}°</td>
-              <td>H{p!.house}</td>
+              <td>
+                {timeUnknown
+                  ? <span style={{ color: 'rgba(206,190,255,0.45)', fontStyle: 'italic' }}>~H{p!.house}</span>
+                  : `H${p!.house}`}
+              </td>
               <td><DignityBadge d={p!.dignity} /></td>
             </tr>
           ))}

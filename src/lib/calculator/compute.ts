@@ -1,3 +1,5 @@
+import { unstable_cache } from 'next/cache';
+import crypto from 'crypto';
 import type { ChartResult } from './types';
 import { birthDataToUtc, getEphemeris, findDesignDate } from './ephemeris';
 import { buildWesternChart } from './western';
@@ -11,6 +13,27 @@ export interface StoredBirthData {
   lat: number;
   lng: number;
   timezone: string;  // IANA
+  timeUnknown?: boolean;
+}
+
+function birthDataFingerprint(stored: StoredBirthData): string {
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify(stored))
+    .digest('hex')
+    .slice(0, 16);
+}
+
+export function getCachedChart(userId: string, stored: StoredBirthData): Promise<ChartResult> {
+  const fingerprint = birthDataFingerprint(stored);
+  return unstable_cache(
+    () => computeChart(stored),
+    [`chart-${userId}-${fingerprint}`],
+    {
+      revalidate: 3600,
+      tags: [`chart-user-${userId}`],
+    }
+  )();
 }
 
 export async function computeChart(stored: StoredBirthData): Promise<ChartResult> {

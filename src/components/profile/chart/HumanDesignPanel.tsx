@@ -33,9 +33,10 @@ function ActivationsTable({ acts, title }: { acts: HDActivations; title: string 
 
 interface Props {
   chart: HumanDesignChart;
+  timeUnknown?: boolean;
 }
 
-export default function HumanDesignPanel({ chart }: Props) {
+export default function HumanDesignPanel({ chart, timeUnknown }: Props) {
   const definedSet = new Set(chart.definedCenters);
 
   return (
@@ -44,6 +45,12 @@ export default function HumanDesignPanel({ chart }: Props) {
       <p className={styles.panelSubtitle}>
         Design date: {chart.designDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
       </p>
+
+      {timeUnknown && (
+        <div className={styles.warningBanner}>
+          Birth time unknown — Type, Profile, Authority, and gate activations are computed from 12:00 noon and may differ from your actual chart. Confirm with a certified practitioner or re-enter your exact birth time.
+        </div>
+      )}
 
       <div className={styles.hdGrid}>
         {[

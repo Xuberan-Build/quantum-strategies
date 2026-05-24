@@ -384,6 +384,17 @@
   font-size: 0.9rem;
 }
 
+.warningBanner {
+  padding: 0.875rem 1.125rem;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: rgba(252, 211, 77, 0.9);
+  font-size: 0.875rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
 @media (max-width: 768px) {
   .layout {
     grid-template-columns: 1fr;

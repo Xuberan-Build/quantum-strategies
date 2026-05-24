@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { find as tzFind } from 'geo-tz';
 
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { date, time, city } = body as { date?: string; time?: string; city?: string };
+    const { date, time, city, timeUnknown } = body as { date?: string; time?: string; city?: string; timeUnknown?: boolean };
 
     if (!date || !time || !city) {
       return NextResponse.json({ error: 'date, time, and city are required' }, { status: 400 });
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
     const tzList = tzFind(geo.lat, geo.lng);
     const timezone = tzList[0] ?? 'UTC';
 
-    const birth_data = { date, time, city, lat: geo.lat, lng: geo.lng, timezone };
+    const birth_data = { date, time, city, lat: geo.lat, lng: geo.lng, timezone, timeUnknown: timeUnknown ?? false };
 
     const { error: updateErr } = await supabase
       .from('users')
@@ -66,7 +67,8 @@ export async function POST(req: Request) {
 
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 
-    return NextResponse.json({ birth_data });
+    revalidateTag(`chart-user-${user.id}`, 'default');
+    return NextResponse.json({ birth_data, resolvedAddress: geo.displayName });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -80,6 +82,7 @@ export async function DELETE() {
     if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     await supabase.from('users').update({ birth_data: null }).eq('id', user.id);
+    revalidateTag(`chart-user-${user.id}`, 'default');
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
