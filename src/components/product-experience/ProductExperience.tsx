@@ -339,18 +339,16 @@ export default function ProductExperience({
             <div className="flex flex-col gap-3">
               <button
                 onClick={async () => {
-                  // Use existing placements - save to profile if needed, then move to step 2
-                  if (!userPlacements) {
-                    try {
-                      await fetch('/api/profile/placements', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ placements, confirmed: true }),
-                      });
-                      setUserPlacements(placements);
-                    } catch (error) {
-                      console.error('Failed to save placements to profile:', error);
-                    }
+                  // Always sync confirmed placements to profile
+                  try {
+                    await fetch('/api/profile/placements', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ placements, confirmed: true }),
+                    });
+                    setUserPlacements(placements);
+                  } catch (error) {
+                    console.error('Failed to save placements to profile:', error);
                   }
 
                   await supabase
@@ -616,18 +614,16 @@ export default function ProductExperience({
 
                     const updatedPlacements = { ...(placements || {}), notes: placementNotes };
 
-                    // If user profile doesn't have placements, save to profile (dual-write)
-                    if (!userPlacements) {
-                      try {
-                        await fetch('/api/profile/placements', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ placements: updatedPlacements, confirmed: true }),
-                        });
-                        setUserPlacements(updatedPlacements);
-                      } catch (error) {
-                        console.error('Failed to save placements to profile:', error);
-                      }
+                    // Always sync confirmed placements to profile
+                    try {
+                      await fetch('/api/profile/placements', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ placements: updatedPlacements, confirmed: true }),
+                      });
+                      setUserPlacements(updatedPlacements);
+                    } catch (error) {
+                      console.error('Failed to save placements to profile:', error);
                     }
 
                     const { error } = await supabase

@@ -69,6 +69,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to update profile data' }, { status: 500 });
     }
 
+    // Cascade to active product sessions that have no confirmed placements yet
+    // so the next product the user opens inherits the updated data automatically.
+    await supabase
+      .from('product_sessions')
+      .update({ placements, placements_confirmed: true })
+      .eq('user_id', user.id)
+      .eq('placements_confirmed', false)
+      .is('placements', null);
+
     return NextResponse.json({
       success: true,
       placements: data.placements,
