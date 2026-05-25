@@ -481,6 +481,12 @@
   line-height: 1.5;
 }
 
+.tableScroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 @media (max-width: 768px) {
   .layout {
     grid-template-columns: 1fr;
@@ -496,8 +502,9 @@
   .sidebarLabel, .sidebarDivider { display: none; }
 
   .navItem {
-    padding: 0.4rem 0.75rem;
+    padding: 0.5rem 0.875rem;
     font-size: 0.85rem;
+    min-height: 40px;
   }
 
   .hdGrid {
@@ -506,5 +513,34 @@
 
   .gatesGrid {
     grid-template-columns: 1fr;
+  }
+
+  /* Birth data form stacks on mobile */
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Big Three cards stay 3-col but compact */
+  .bigThreeCard {
+    padding: 0.875rem 0.375rem;
+    gap: 0.2rem;
+  }
+
+  .bigThreeSymbol {
+    font-size: 1.125rem;
+  }
+
+  .bigThreeSign {
+    font-size: 1rem;
+  }
+
+  .bigThreeDeg {
+    font-size: 0.68rem;
+  }
+
+  .bigThreeLabel {
+    font-size: 0.65rem;
   }
 }

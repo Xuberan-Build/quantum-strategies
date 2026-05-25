@@ -153,51 +153,47 @@
     padding: 0.5rem 0.75rem;
     font-size: 0.8125rem;
   }
+
+  /* Hide brand text — tabs need the space */
+  .brandText {
+    display: none;
+  }
 }
 
-@media (max-width: 480px) {
-  .brandText {
-    font-size: 1rem;
+/* ≤640px: hide brand entirely, tabs share the full width evenly */
+@media (max-width: 640px) {
+  .brand {
+    display: none;
+  }
+
+  .navTabs {
+    flex: 1;
+    justify-content: space-around;
   }
 
   .navTab {
-    padding: 0.5rem 0.75rem;
-  }
-
-  .navLabel {
-    font-size: 0.8125rem;
+    flex: 1;
+    justify-content: center;
+    padding: 0.5rem 0.25rem;
+    min-width: 0;
   }
 }
 
+/* ≤420px: tighter padding, no hidden overflow scroll */
 @media (max-width: 420px) {
   .navContainer {
     gap: 0.5rem;
     padding: 0 0.75rem;
   }
 
-  .navTabs {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    flex-shrink: 1;
-    min-width: 0;
-  }
-
-  .navTabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .navTab {
-    padding: 0.5rem 0.625rem;
-    flex-shrink: 0;
-  }
-
   .navLabel {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
   }
 
   .signOutButton {
-    padding: 0.4rem 0.625rem;
-    font-size: 0.75rem;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
   }
 }

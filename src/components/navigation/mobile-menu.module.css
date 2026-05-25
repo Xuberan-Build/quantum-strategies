@@ -5,7 +5,7 @@
   gap: 6px;
   background: transparent;
   border: none;
-  padding: 8px;
+  padding: 12px;
   cursor: pointer;
   z-index: 11001; /* above navbar */
 }
@@ -93,7 +93,7 @@
   border: 1px solid rgba(150, 134, 214, 0.3);
   color: #cebeff;
   border-radius: 8px;
-  padding: 8px;
+  padding: 10px;
   cursor: pointer;
   display: flex;
   align-items: center;

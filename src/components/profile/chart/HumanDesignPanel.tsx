@@ -13,6 +13,7 @@ function ActivationsTable({ acts, title }: { acts: HDActivations; title: string 
   return (
     <div className={styles.gatesColumn}>
       <h4>{title}</h4>
+      <div className={styles.tableScroll}>
       <table className={styles.chartTable}>
         <thead>
           <tr><th>Planet</th><th>Gate·Line</th><th>Center</th></tr>
@@ -27,6 +28,7 @@ function ActivationsTable({ acts, title }: { acts: HDActivations; title: string 
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

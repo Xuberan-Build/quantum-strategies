@@ -255,6 +255,36 @@
   margin-bottom: 0.75rem;
 }
 
+@media (max-width: 640px) {
+  .iconBtn {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+
+  .statusBadge {
+    padding: 0.4rem 0.75rem;
+    font-size: 12px;
+  }
+
+  .thread {
+    max-height: 300px;
+  }
+
+  .journey {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .riteDivider {
+    display: none;
+  }
+
+  .riteCard {
+    width: 100%;
+  }
+}
+
 /* ─── Journey Progress ──────────────────────────────────────── */
 
 .journey {

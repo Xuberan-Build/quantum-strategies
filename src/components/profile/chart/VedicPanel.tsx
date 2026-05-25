@@ -36,6 +36,7 @@ export default function VedicPanel({ chart, birthUtc, timeUnknown }: Props) {
         </div>
       )}
 
+      <div className={styles.tableScroll}>
       <table className={styles.chartTable}>
         <thead>
           <tr>
@@ -67,11 +68,13 @@ export default function VedicPanel({ chart, birthUtc, timeUnknown }: Props) {
           ))}
         </tbody>
       </table>
+      </div>
 
       {chart.dashas.length > 0 && (
         <>
           <div className={styles.panelDivider} />
           <p className={styles.panelTitle} style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>Vimshottari Dashas</p>
+          <div className={styles.tableScroll}>
           <table className={styles.chartTable}>
             <thead>
               <tr><th>Lord</th><th>Start</th><th>End</th></tr>
@@ -91,6 +94,7 @@ export default function VedicPanel({ chart, birthUtc, timeUnknown }: Props) {
               })}
             </tbody>
           </table>
+          </div>
         </>
       )}
     </>

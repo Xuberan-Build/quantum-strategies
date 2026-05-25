@@ -89,6 +89,7 @@ export default function WesternPanel({ chart, designDate: _, timeUnknown }: Prop
 
       <p className={styles.formLabel} style={{ marginBottom: '0.75rem' }}>All Placements</p>
 
+      <div className={styles.tableScroll}>
       <table className={styles.chartTable}>
         <thead>
           <tr>
@@ -118,6 +119,7 @@ export default function WesternPanel({ chart, designDate: _, timeUnknown }: Prop
           ))}
         </tbody>
       </table>
+      </div>
     </>
   );
 }
