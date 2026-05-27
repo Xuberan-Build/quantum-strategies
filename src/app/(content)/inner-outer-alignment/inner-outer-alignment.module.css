@@ -1,0 +1,118 @@
+/* Page-scoped styles for the Inner-Outer Alignment Method dossier.
+   Tailwind utility classes carry over from the source project; this file
+   adds the named keyframes and helper classes that the source defined
+   in its global index.css. All helpers are prefixed `ioa-` to avoid
+   colliding with the portal's design system. */
+
+.page {
+  /* Font stack matches the source dossier. Cormorant Garamond + JetBrains Mono
+     are loaded via next/font in page.tsx and exposed as CSS variables. */
+  font-family: var(--font-ioa-mono), "JetBrains Mono", "IBM Plex Mono", monospace;
+  background: #0a0908;
+  color: #e8e6e0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.page :global(.ioa-serif) {
+  font-family: var(--font-ioa-serif), "Cormorant Garamond", Georgia, serif;
+}
+
+.page :global(.ioa-mono) {
+  font-family: var(--font-ioa-mono), "JetBrains Mono", monospace;
+}
+
+/* Film-grain overlay applied to the entire dossier */
+.page :global(.ioa-grain)::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Reveal-on-scroll animation */
+.page :global(.ioa-reveal) {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.page :global(.ioa-reveal.visible) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page :global(.ioa-stagger-1) {
+  transition-delay: 0.1s;
+}
+.page :global(.ioa-stagger-2) {
+  transition-delay: 0.2s;
+}
+.page :global(.ioa-stagger-3) {
+  transition-delay: 0.3s;
+}
+.page :global(.ioa-stagger-4) {
+  transition-delay: 0.4s;
+}
+
+@keyframes ioa-pulse-line {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+.page :global(.ioa-pulse-line) {
+  animation: ioa-pulse-line 4s ease-in-out infinite;
+}
+
+@keyframes ioa-scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+.page :global(.ioa-scan-line) {
+  animation: ioa-scan 8s linear infinite;
+}
+
+.page :global(.ioa-classified-grid) {
+  background-image:
+    linear-gradient(rgba(212, 165, 116, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 165, 116, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+@keyframes ioa-expand-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.page :global(.ioa-entry-expand) {
+  animation: ioa-expand-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .page :global(.ioa-reveal),
+  .page :global(.ioa-pulse-line),
+  .page :global(.ioa-scan-line),
+  .page :global(.ioa-entry-expand) {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
