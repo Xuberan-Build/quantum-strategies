@@ -1,12 +1,18 @@
 /**
  * GET /api/cron/portrait-extraction-queue
  *
- * Canonical drainage path for portrait_update_queue. Called by Vercel Cron
- * every 5 minutes. Do NOT call processPortraitUpdate from any HTTP request
- * handler or other background job — enqueue into portrait_update_queue and
- * let this worker drain it.
+ * Canonical drainage path for portrait_update_queue. Triggered by the
+ * GitHub Actions workflow at .github/workflows/portrait-extraction.yml,
+ * which runs every 5 minutes. Do NOT call processPortraitUpdate from any
+ * HTTP request handler or other background job — enqueue into
+ * portrait_update_queue and let this worker drain it.
  *
- * Cadence: every 5 minutes (`* /5 * * * *` in vercel.json).
+ * Why GitHub Actions and not Vercel Cron: Vercel's Hobby plan caps cron
+ * cadence to once per day with ±59-minute jitter. Once the project is on
+ * Pro and a 5-minute Vercel cron entry is added back to vercel.json, this
+ * same route serves that trigger too — the auth check accepts any caller
+ * with the correct CRON_SECRET bearer.
+ *
  * Batch size: up to CLAIM_LIMIT rows per invocation (currently 5), processed
  * sequentially so OpenAI rate limits are spread across runs.
  *
@@ -20,10 +26,12 @@
  * failed (status='failed') without calling the worker. This matches the
  * max_attempts guard inside processPortraitUpdate itself.
  *
- * Auth: Authorization: Bearer <CRON_SECRET> header required.
- * CRON_SECRET must be set in both Vercel environment variables and
- * .env.local for local testing. It is NOT in .env.example yet — add it:
- *   CRON_SECRET=<random-secret>
+ * Auth: Authorization: Bearer <CRON_SECRET> header required. CRON_SECRET
+ * must be set in BOTH:
+ *   - Vercel environment variables (used by this route at runtime)
+ *   - GitHub Actions repository secrets (used by the workflow caller)
+ * The two MUST match. A separate PRODUCTION_URL secret in GitHub Actions
+ * points the workflow at the deployed Vercel URL.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

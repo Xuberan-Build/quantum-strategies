@@ -565,7 +565,6 @@ export type Database = {
       briefings: {
         Row: {
           extracted_at: string | null
-          extraction_attempts: number
           extraction_error: string | null
           extraction_status: string
           full_text: string
@@ -579,7 +578,6 @@ export type Database = {
         }
         Insert: {
           extracted_at?: string | null
-          extraction_attempts?: number
           extraction_error?: string | null
           extraction_status?: string
           full_text: string
@@ -593,7 +591,6 @@ export type Database = {
         }
         Update: {
           extracted_at?: string | null
-          extraction_attempts?: number
           extraction_error?: string | null
           extraction_status?: string
           full_text?: string

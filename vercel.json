@@ -15,10 +15,6 @@
     {
       "path": "/api/cron/extract-insights",
       "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/cron/portrait-extraction-queue",
-      "schedule": "*/5 * * * *"
     }
   ]
 }
