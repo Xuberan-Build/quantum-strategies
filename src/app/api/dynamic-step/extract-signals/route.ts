@@ -35,6 +35,10 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
 import { openai } from '@/lib/openai/client';
 import { validateUserInput } from '@/lib/security/input-validation';
+import { checkRateLimit } from '@/lib/security/rate-limit';
+import type { Database } from '@/types/supabase';
+
+type SessionSignalInsert = Database['public']['Tables']['session_signals']['Insert'];
 
 const SIGNAL_EXTRACTION_SYSTEM_PROMPT = `You are a signal extractor. Read the user response and return signals from the allowed vocabulary that you can support with evidence quoted from the response. Output ONLY valid JSON.
 
@@ -91,6 +95,16 @@ export async function POST(req: Request) {
       );
     }
 
+    // Rate limiting check
+    const rateLimitKey = productSessionId || user.id;
+    const rateLimit = checkRateLimit(rateLimitKey, { maxRequests: 30, windowMs: 60 * 1000 });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before making more requests.' },
+        { status: 429 }
+      );
+    }
+
     // 1. Verify session belongs to the authenticated user
     const { data: sessionRow, error: sessionError } = await supabaseAdmin
       .from('product_sessions')
@@ -132,10 +146,11 @@ export async function POST(req: Request) {
         ],
       });
       rawContent = completion.choices[0]?.message?.content ?? '';
-    } catch (err: any) {
-      console.error('[dynamic-step/extract-signals] OpenAI call failed:', err?.message || err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'OpenAI request error';
+      console.error('[dynamic-step/extract-signals] OpenAI call failed:', message);
       return NextResponse.json(
-        { error: 'Signal extraction failed', detail: err?.message || 'OpenAI request error' },
+        { error: 'Signal extraction failed', detail: message },
         { status: 502 }
       );
     }
@@ -163,8 +178,8 @@ export async function POST(req: Request) {
 
     // 5. Persist each valid signal to session_signals
     if (validSignals.length > 0) {
-      const rows = validSignals.map((s) => ({
-        session_id: productSessionId,
+      const rows: SessionSignalInsert[] = validSignals.map((s) => ({
+        product_session_id: productSessionId,
         step_index: stepIndex,
         signal: s.signal,
         confidence: s.confidence,
@@ -183,11 +198,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ extracted: validSignals });
-  } catch (err: any) {
-    console.error('[dynamic-step/extract-signals] Unexpected error:', err?.message || err);
-    return NextResponse.json(
-      { error: err?.message || 'Failed to extract signals' },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to extract signals';
+    console.error('[dynamic-step/extract-signals] Unexpected error:', message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

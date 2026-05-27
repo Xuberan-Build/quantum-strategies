@@ -14,6 +14,9 @@ vi.mock('@/lib/openai/client', () => ({
 // Mock Supabase
 vi.mock('@/lib/supabase/server');
 
+// Mock rate-limit helper
+vi.mock('@/lib/security/rate-limit');
+
 // Mock input-validation — pass-through by default
 vi.mock('@/lib/security/input-validation', () => ({
   validateUserInput: vi.fn((input: string) => ({
@@ -26,6 +29,7 @@ vi.mock('@/lib/security/input-validation', () => ({
 import { POST } from '../route';
 import { supabaseAdmin, createServerSupabaseClient } from '@/lib/supabase/server';
 import { openai } from '@/lib/openai/client';
+import { checkRateLimit } from '@/lib/security/rate-limit';
 
 const SESSION_ROW = { user_id: 'user-abc' };
 
@@ -46,6 +50,9 @@ const OPENAI_SIGNALS = {
 describe('POST /api/dynamic-step/extract-signals', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Default: rate limit allows requests
+    vi.mocked(checkRateLimit).mockReturnValue({ allowed: true, remaining: 29, resetAt: Date.now() + 60000 });
 
     // Authenticated user for every test by default
     vi.mocked(createServerSupabaseClient).mockResolvedValue({
@@ -151,6 +158,22 @@ describe('POST /api/dynamic-step/extract-signals', () => {
 
     expect(res.status).toBe(403);
     expect(data.error).toMatch(/Unauthorized/);
+    expect(openai.chat.completions.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 429 when rate-limited', async () => {
+    vi.mocked(checkRateLimit).mockReturnValue({ allowed: false, remaining: 0, resetAt: Date.now() + 60000 });
+
+    const req = new Request('http://localhost/api/dynamic-step/extract-signals', {
+      method: 'POST',
+      body: JSON.stringify(VALID_BODY),
+    });
+
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(429);
+    expect(data.error).toContain('Rate limit exceeded');
     expect(openai.chat.completions.create).not.toHaveBeenCalled();
   });
 

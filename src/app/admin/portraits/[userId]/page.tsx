@@ -61,7 +61,7 @@ export default async function AdminPortraitDetailPage({
       .limit(2000),
     supabaseAdmin
       .from('briefings')
-      .select('id, product_slug, generated_at, extraction_status, extraction_attempts, extraction_error, extracted_at')
+      .select('id, product_slug, generated_at, extraction_status, extraction_error, extracted_at')
       .eq('user_id', userId)
       .order('generated_at', { ascending: false })
       .limit(200),
@@ -100,7 +100,40 @@ export default async function AdminPortraitDetailPage({
   };
 
   const audit = ((auditEntries ?? []) as AuditLogEntry[]).map((e) => ({ ...e }));
-  const briefingRows = ((briefings ?? []) as BriefingRow[]).map((b) => ({ ...b }));
+
+  // Fetch retry counts from portrait_update_queue.attempts (the source of
+  // truth — briefings.extraction_attempts was dropped to remove the
+  // two-counter redundancy). A briefing may have more than one queue row
+  // historically (re-enqueue after failure); take the max attempts seen.
+  type BriefingRawRow = Omit<BriefingRow, 'attempts'>;
+  const rawBriefings = (briefings ?? []) as BriefingRawRow[];
+  const briefingIds = rawBriefings.map((b) => b.id);
+  const attemptsByBriefingId: Record<string, number> = {};
+
+  if (briefingIds.length > 0) {
+    const { data: queueRows, error: queueError } = await supabaseAdmin
+      .from('portrait_update_queue')
+      .select('briefing_id, attempts')
+      .in('briefing_id', briefingIds);
+
+    if (queueError) {
+      console.error('[Admin] portrait_update_queue fetch error:', queueError);
+    }
+
+    for (const row of (queueRows ?? []) as Array<{
+      briefing_id: string | null;
+      attempts: number;
+    }>) {
+      if (!row.briefing_id) continue;
+      const prev = attemptsByBriefingId[row.briefing_id] ?? 0;
+      if (row.attempts > prev) attemptsByBriefingId[row.briefing_id] = row.attempts;
+    }
+  }
+
+  const briefingRows: BriefingRow[] = rawBriefings.map((b) => ({
+    ...b,
+    attempts: attemptsByBriefingId[b.id] ?? 0,
+  }));
 
   return (
     <div>

@@ -44,7 +44,9 @@ export interface BriefingRow {
   product_slug: string;
   generated_at: string;
   extraction_status: 'pending' | 'completed' | 'failed' | 'skipped';
-  extraction_attempts: number;
+  // Joined from portrait_update_queue.attempts (the source of truth).
+  // 0 when no queue row exists (e.g. extraction_status = 'skipped').
+  attempts: number;
   extraction_error: string | null;
   extracted_at: string | null;
 }
@@ -349,7 +351,7 @@ export default function PortraitInspector({
                       </span>
                     </td>
                     <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                      {b.extraction_attempts}
+                      {b.attempts}
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: '0.7rem' }}>
                       {formatDate(b.extracted_at)}

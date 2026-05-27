@@ -30,7 +30,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { validateAdminApiRequest } from '@/lib/admin/auth';
+import { validateAdminApiRequest, logAdminAction } from '@/lib/admin/auth';
+import type { Database } from '@/types/supabase';
+
+type StepFrictionLogUpdate = Database['public']['Tables']['step_friction_log']['Update'];
 
 const VALID_STATUSES = ['new', 'triaged', 'resolved', 'wont_fix'] as const;
 
@@ -105,10 +108,10 @@ export async function PATCH(
     );
   }
 
-  // Verify the row exists
+  // Verify the row exists and capture pre-update state for the audit log
   const { data: current, error: fetchError } = await supabaseAdmin
     .from('step_friction_log')
-    .select('id, status')
+    .select('id, status, triage_note, triaged_by, triaged_at, product_slug, step_index, reason')
     .eq('id', id)
     .single();
 
@@ -117,7 +120,7 @@ export async function PATCH(
   }
 
   // Build the update payload
-  const patch: Record<string, unknown> = {};
+  const patch: StepFrictionLogUpdate = {};
 
   if (updates.status !== undefined) {
     patch.status = updates.status;
@@ -144,6 +147,27 @@ export async function PATCH(
     console.error('[step-friction] Admin triage update error:', updateError);
     return NextResponse.json({ error: 'Failed to update friction log entry' }, { status: 500 });
   }
+
+  await logAdminAction({
+    adminUserId: admin.id,
+    adminEmail: admin.email,
+    actionType: 'friction_triage',
+    targetType: 'friction_log',
+    targetId: id,
+    targetName: `${current.product_slug} step ${current.step_index} (${current.reason})`,
+    previousValue: {
+      status: current.status,
+      triage_note: current.triage_note,
+      triaged_by: current.triaged_by,
+      triaged_at: current.triaged_at,
+    },
+    newValue: {
+      status: updated.status,
+      triage_note: updated.triage_note,
+      triaged_by: updated.triaged_by,
+      triaged_at: updated.triaged_at,
+    },
+  });
 
   return NextResponse.json({ row: updated });
 }
