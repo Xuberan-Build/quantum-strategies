@@ -95,6 +95,30 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
           icon: PromptsIcon,
           active: pathname?.startsWith('/admin/prompts'),
         },
+        {
+          label: 'Question Pool',
+          href: '/admin/question-pool',
+          icon: QuestionPoolIcon,
+          active: pathname?.startsWith('/admin/question-pool'),
+        },
+        {
+          label: 'Tao Situations',
+          href: '/admin/tao-situations',
+          icon: TaoSituationsIcon,
+          active: pathname?.startsWith('/admin/tao-situations'),
+        },
+        {
+          label: 'Friction Log',
+          href: '/admin/friction-log',
+          icon: FrictionLogIcon,
+          active: pathname?.startsWith('/admin/friction-log'),
+        },
+        {
+          label: 'Portraits',
+          href: '/admin/portraits',
+          icon: PortraitsIcon,
+          active: pathname?.startsWith('/admin/portraits'),
+        },
       ],
     },
     {
@@ -252,6 +276,36 @@ function PromptsIcon({ className }: { className?: string }) {
   );
 }
 
+function QuestionPoolIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093M12 17h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
+function FrictionLogIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 21V5a2 2 0 012-2h11l-1.5 4L16 11H5v10" />
+    </svg>
+  );
+}
+
+function PortraitsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="8" r="3.25" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5" />
+      <rect x="3" y="3" width="18" height="18" rx="2.5" />
+    </svg>
+  );
+}
+
 function UsersIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -386,6 +440,17 @@ function AnglesIcon({ className }: { className?: string }) {
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h10M4 18h6" />
       <circle cx="19" cy="12" r="2" fill="currentColor" stroke="none" />
       <circle cx="15" cy="18" r="2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function TaoSituationsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3a4.5 4.5 0 010 9 4.5 4.5 0 000 9" />
+      <circle cx="12" cy="7.5" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="16.5" r="0.9" fill="currentColor" stroke="none" />
     </svg>
   );
 }
