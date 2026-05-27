@@ -10,6 +10,7 @@ import { MultiTextInput } from './step-inputs/MultiTextInput';
 import { InteractiveInput } from './step-inputs/InteractiveInput';
 import { TextInput } from './step-inputs/TextInput';
 import { InlineFileAttachment } from './step-inputs/InlineFileAttachment';
+import { FrictionFlag } from './FrictionFlag';
 
 interface StepViewProps {
   step: any;
@@ -29,6 +30,9 @@ interface StepViewProps {
   processingMessages?: string[];
   showReviewCharts?: boolean;
   initialValue?: string;
+  /** Friction-flag context — when provided, renders the in-flow flag button. */
+  productSessionId?: string;
+  productSlug?: string;
 }
 
 export function StepView({
@@ -49,6 +53,8 @@ export function StepView({
   processingMessages,
   showReviewCharts,
   initialValue,
+  productSessionId,
+  productSlug,
 }: StepViewProps) {
   const [currentProcessingMessage, setCurrentProcessingMessage] = useState(0);
   const [wheelRatings, setWheelRatings] = useState<Record<string, number>>({});
@@ -388,6 +394,18 @@ ${textValue}`.trim();
               onFileUpload={onFileUpload}
               onRemoveFile={onRemoveFile}
             />
+          )}
+
+          {/* Friction Flag — quiet, additive */}
+          {productSessionId && productSlug && (
+            <div className="mt-4 flex justify-end">
+              <FrictionFlag
+                productSessionId={productSessionId}
+                productSlug={productSlug}
+                stepIndex={stepNumber}
+                draftResponse={textValue || response}
+              />
+            </div>
           )}
 
           {/* Progress Bar */}

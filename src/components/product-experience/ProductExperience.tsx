@@ -735,6 +735,8 @@ export default function ProductExperience({
           onRemoveFile={handleRemoveFile}
           processingMessages={product.instructions?.processing}
           initialValue={stepInitialValue}
+          productSessionId={session.id}
+          productSlug={product.product_slug}
         />
       ) : (
         <FollowUpChat
