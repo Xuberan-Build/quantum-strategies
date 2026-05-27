@@ -6,6 +6,7 @@ import { EmailSequenceService, type EmailContent } from '@/lib/services/EmailSeq
 import { EmailTemplateService } from '@/lib/services/EmailTemplateService';
 import { storeCustomerInsights } from '@/lib/google-sheets/customer-sync';
 import { enrollInCompletionCampaigns } from '@/lib/crm/auto-enroll';
+import { assembleUserContext } from '@/lib/portraits/assembler';
 
 export async function POST(req: Request) {
   try {
@@ -304,13 +305,29 @@ Review all step insights and list the 5-7 MOST actionable nudges — numbered 1�
 PART 2 — FULL DELIVERABLE (output this immediately after Part 1):
 Generate the complete deliverable per the instructions above. Include every section in full. Do not skip or abbreviate any section.`;
 
+    // Assemble user portrait context and prepend to system prompt
+    let portraitContextBlock = '';
+    let portraitAuditFields: Awaited<ReturnType<typeof assembleUserContext>>['auditFields'] = [];
+    try {
+      const portraitContext = await assembleUserContext(userId, productSlug);
+      portraitContextBlock = portraitContext.contextBlock;
+      portraitAuditFields = portraitContext.auditFields;
+    } catch (portraitErr) {
+      // Non-fatal: proceed without portrait context
+      console.error('[final-briefing] Portrait assembly failed:', portraitErr);
+    }
+
+    const effectiveSystemPrompt = portraitContextBlock
+      ? `${portraitContextBlock}\n\n${systemPrompt}`
+      : systemPrompt;
+
     // Generate final briefing using AIRequestService
     let briefing = '';
     let briefingResult: Awaited<ReturnType<typeof AIRequestService.request>> | null = null;
     try {
       briefingResult = await AIRequestService.request({
         model: process.env.OPENAI_MODEL || 'gpt-4o',
-        systemPrompt,
+        systemPrompt: effectiveSystemPrompt,
         messages: [
           { role: 'user', content: chartDataMessage },
           { role: 'user', content: conversationMessage },
@@ -328,6 +345,72 @@ Generate the complete deliverable per the instructions above. Include every sect
     } catch (err: any) {
       console.error('[final-briefing] AI request failed:', err?.message || err);
       return NextResponse.json({ error: 'AI generation failed', detail: err?.message || 'Unknown error' }, { status: 500 });
+    }
+
+    // Store briefing in the briefings table (one row per product_session)
+    // ON CONFLICT updates the existing row so re-generation stays idempotent.
+    let storedBriefingId: string | null = null;
+    try {
+      const deliverableModel = process.env.OPENAI_MODEL || 'gpt-4o';
+      const { data: upsertedBriefing, error: briefingUpsertError } = await supabaseAdmin
+        .from('briefings')
+        .upsert(
+          {
+            user_id: userId,
+            product_session_id: sessionId,
+            product_slug: productSlug,
+            full_text: briefing,
+            model_used: deliverableModel,
+            generated_at: new Date().toISOString(),
+            extraction_status: 'pending',
+          },
+          { onConflict: 'product_session_id' },
+        )
+        .select('id')
+        .single();
+
+      if (briefingUpsertError) {
+        console.error('[final-briefing] Failed to upsert briefing row:', briefingUpsertError);
+      } else {
+        storedBriefingId = (upsertedBriefing as { id: string }).id;
+      }
+    } catch (e) {
+      console.error('[final-briefing] Unexpected error upserting briefing:', e);
+    }
+
+    // Write portrait audit log 'read' rows for every portrait field consumed
+    if (storedBriefingId && portraitAuditFields.length > 0) {
+      const auditRows = portraitAuditFields.map((f) => ({
+        user_id: userId,
+        briefing_id: storedBriefingId,
+        direction: 'read' as const,
+        section: f.section,
+        field_path: f.field_path ?? null,
+        actor_id: null,
+      }));
+      supabaseAdmin
+        .from('portrait_audit_log')
+        .insert(auditRows)
+        .then(({ error }) => {
+          if (error) console.error('[final-briefing] Failed to write portrait audit log:', error);
+        });
+    }
+
+    // Fire-and-forget: trigger portrait extraction for the new briefing
+    if (storedBriefingId) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+      if (!appUrl) {
+        console.warn('[final-briefing] NEXT_PUBLIC_APP_URL is not set; falling back to http://localhost:3000 for extract trigger');
+      }
+      const extractUrl = `${appUrl ?? 'http://localhost:3000'}/api/portraits/extract`;
+      void fetch(extractUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-service-role-key': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        },
+        body: JSON.stringify({ briefingId: storedBriefingId }),
+      }).catch((err) => console.error('[final-briefing] extract trigger failed:', err));
     }
 
     // Log briefing to conversations

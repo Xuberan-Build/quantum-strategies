@@ -70,6 +70,12 @@ export default async function ProfilePage({ searchParams }: Props) {
             {label}
           </Link>
         ))}
+        <Link
+          href="/dashboard/profile/portrait"
+          className={styles.tabLink}
+        >
+          Portrait
+        </Link>
       </nav>
 
       <div className={styles.main}>
