@@ -19,6 +19,7 @@ const tocItems = [
   { id: "ccpa", label: "California Privacy Rights (CCPA)" },
   { id: "gdpr", label: "European Privacy Rights (GDPR)" },
   { id: "ai", label: "AI and Automated Decision-Making" },
+  { id: "briefings-portrait", label: "Personalized Briefings and the User Portrait" },
   { id: "changes", label: "Changes to This Privacy Policy" },
   { id: "contact", label: "Contact Us" },
   { id: "affiliate-privacy", label: "Affiliate Program Specific Privacy" },
@@ -31,8 +32,8 @@ export default function PrivacyPolicyPage() {
         <div className={`container ${styles.heroInner}`}>
           <h1>Privacy Policy</h1>
           <div className={styles.meta}>
-            <span>Effective Date: [INSERT DATE]</span>
-            <span>Last Updated: [INSERT DATE]</span>
+            <span>Effective Date: May 26, 2026</span>
+            <span>Last Updated: May 26, 2026</span>
           </div>
           <p>
             Welcome to Quantum Strategies ("we," "our," or "us"). We respect your privacy and are
@@ -324,7 +325,15 @@ export default function PrivacyPolicyPage() {
               <li>Disable personalization features</li>
             </ul>
 
-            <h3>5.6 How to Exercise Your Rights</h3>
+            <h3>5.6 User Portrait Controls</h3>
+            <p>
+              If you use products that generate briefings, you can view your full User Portrait,
+              reset any section of it, review the audit log of how it has been used, or opt out of
+              Portrait building entirely at <strong>/profile/portrait</strong>. See section 13 for
+              how this system works and how to request deletion of existing Portrait data.
+            </p>
+
+            <h3>5.7 How to Exercise Your Rights</h3>
             <p>To exercise any of these rights, contact us at:</p>
             <p>
               <strong>Email:</strong> austin@xuberandigital.com
@@ -489,8 +498,67 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
+          <section id="briefings-portrait">
+            <h2>13. Personalized Briefings and the User Portrait</h2>
+            <p>
+              Each product session ends with a written briefing — a markdown document that
+              summarizes what came up for you and what to do with it. We store these briefings in
+              our database so you can return to them later and so future products can build on what
+              you've already worked through, rather than starting from zero each time.
+            </p>
+            <p>
+              To make that continuity possible, we also maintain a structured summary of what you
+              have told us across products, which we call your User Portrait. The Portrait organizes
+              what we have learned into sections such as identity, values, energy patterns,
+              activity, results, and path. Each section records a current state, prior states for
+              comparison, and any transitions we have detected. Every entry is tied to evidence
+              from your own responses or briefings — we do not store claims about you without a
+              source.
+            </p>
+            <p>
+              The Portrait is built by a small, narrowly-scoped AI extraction step that runs after
+              a briefing is generated. We send the briefing text and your responses from that
+              session to OpenAI's API (using the <em>gpt-4o-mini</em> model) to extract structured
+              updates, then write those updates back to your Portrait in our database. This is the
+              same usage pattern described in our AI and Automated Decision-Making section: data
+              is sent to OpenAI for inference only, and we do not opt in to OpenAI using your data
+              to train their models.
+            </p>
+            <p>
+              When a new product generates a briefing for you, the system reads your Portrait and
+              any linked past briefings and prepends that context to the prompt sent to the AI.
+              This is what allows briefings to reference what you've previously surfaced instead of
+              treating each session as isolated. We keep an internal audit log of which briefing
+              read which Portrait fields and which extraction wrote which fields, so the history of
+              how your Portrait has been used is reviewable.
+            </p>
+            <h3>13.1 Your Controls</h3>
+            <p>
+              You can view your full Portrait at any time at <strong>/profile/portrait</strong>,
+              along with the audit log showing how it has been used. From that page you can reset
+              any section or specific field, and you can opt out of Portrait building entirely with
+              a single toggle. When opted out, your briefings are still generated and stored so you
+              can reread them, but no extraction runs and no cross-product context is injected into
+              future prompts. Existing Portrait data is retained but no longer read or updated; to
+              delete it, contact us at the email below.
+            </p>
+            <h3>13.2 Retention</h3>
+            <p>
+              Briefings and your Portrait are retained for the lifetime of your account and are
+              deleted when you delete your account. The internal audit log of Portrait reads and
+              writes is retained for 24 months from creation.
+            </p>
+            <h3>13.3 Where This Data Lives</h3>
+            <p>
+              Briefings, Portrait data, and audit logs are stored in our Supabase database in the
+              United States, alongside the rest of your account data. The only external service
+              that sees this content is OpenAI, and only at the moment of extraction or generation
+              as described above.
+            </p>
+          </section>
+
           <section id="changes">
-            <h2>13. Changes to This Privacy Policy</h2>
+            <h2>14. Changes to This Privacy Policy</h2>
             <p>We may update this Privacy Policy periodically to reflect:</p>
             <ul>
               <li>Changes in our Services or practices</li>
@@ -510,7 +578,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section id="contact">
-            <h2>14. Contact Us</h2>
+            <h2>15. Contact Us</h2>
             <p>
               If you have questions, concerns, or requests regarding this Privacy Policy or our
               privacy practices, please contact us:
@@ -525,7 +593,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section id="affiliate-privacy">
-            <h2>15. Affiliate Program Specific Privacy</h2>
+            <h2>16. Affiliate Program Specific Privacy</h2>
             <h3>15.1 Affiliate Data Collection</h3>
             <ul>
               <li>Referral link tracking data</li>
