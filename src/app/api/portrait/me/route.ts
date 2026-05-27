@@ -9,6 +9,10 @@
  */
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
+import type { Database } from '@/types/supabase';
+
+type UserPortraitInsert = Database['public']['Tables']['user_portraits']['Insert'];
+type UserPortraitUpdate = Database['public']['Tables']['user_portraits']['Update'];
 
 export async function GET() {
   try {
@@ -81,7 +85,7 @@ export async function PATCH(req: Request) {
     // the client is permitted to set. Postgres RLS allows UPDATE on the row
     // but cannot constrain WHICH columns are written; this is that gate.
     // ---------------------------------------------------------------------
-    const updates: { opt_out?: boolean; last_reviewed_at?: string } = {};
+    const updates: Pick<UserPortraitUpdate, 'opt_out' | 'last_reviewed_at'> = {};
 
     if (typeof body.opt_out === 'boolean') {
       updates.opt_out = body.opt_out;
@@ -102,9 +106,10 @@ export async function PATCH(req: Request) {
       .maybeSingle();
 
     if (!existing) {
+      const insertRow: UserPortraitInsert = { user_id: user.id, ...updates };
       const { error: insertErr } = await supabaseAdmin
         .from('user_portraits')
-        .insert({ user_id: user.id, ...updates });
+        .insert(insertRow);
       if (insertErr) {
         return NextResponse.json({ error: insertErr.message }, { status: 500 });
       }

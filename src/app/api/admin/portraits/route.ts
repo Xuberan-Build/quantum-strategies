@@ -2,27 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { SECTION_NAMES, type PortraitSection } from '@/lib/portraits/schema';
+import type { Database } from '@/types/supabase';
 
-interface UserPortraitRow {
-  user_id: string;
+// Narrow Row types to just the columns we select. The user_portraits.sections
+// column is Json in the generated types; the worker writes it as
+// Record<sectionName, PortraitSection>, which we narrow here for downstream use.
+type UserPortraitRow = Pick<
+  Database['public']['Tables']['user_portraits']['Row'],
+  'user_id' | 'opt_out' | 'last_extracted_at' | 'last_reviewed_at' | 'products_completed'
+> & {
   sections: Record<string, PortraitSection | undefined> | null;
-  opt_out: boolean;
-  last_extracted_at: string | null;
-  last_reviewed_at: string | null;
-  products_completed: string[] | null;
-}
+};
 
-interface UserRow {
-  id: string;
-  email: string;
-  created_at: string;
-  portrait_opt_out: boolean | null;
-}
+type UserRow = Pick<
+  Database['public']['Tables']['users']['Row'],
+  'id' | 'email' | 'created_at' | 'portrait_opt_out'
+>;
 
 interface PortraitListRow {
   user_id: string;
   email: string;
-  created_at: string;
+  created_at: string | null;
   has_portrait: boolean;
   opt_out: boolean;
   last_extracted_at: string | null;
@@ -84,7 +84,9 @@ export async function GET(request: NextRequest) {
 
   const portraitsByUserId = new Map<string, UserPortraitRow>();
   (portraits ?? []).forEach((p) => {
-    portraitsByUserId.set(p.user_id, p as UserPortraitRow);
+    // sections is Json in the generated types; the worker writes it as the
+    // PortraitSection-keyed shape used by UserPortraitRow.
+    portraitsByUserId.set(p.user_id, p as unknown as UserPortraitRow);
   });
 
   const now = Date.now();

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest, logAdminAction } from '@/lib/admin/auth';
+import type { Database } from '@/types/supabase';
+
+type QuestionPoolUpdate = Database['public']['Tables']['question_pool']['Update'];
 
 const AUDIENCE_TRACKS = ['operator', 'side_builder', 'inside_player', 'almost_builder', 'seeker', 'all'] as const;
 const RITES = ['perception', 'orientation', 'declaration'] as const;
@@ -87,7 +90,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Question not found' }, { status: 404 });
   }
 
-  const updates = parsed.data;
+  const updates: QuestionPoolUpdate = parsed.data;
 
   const { data: updated, error: updateError } = await supabaseAdmin
     .from('question_pool')

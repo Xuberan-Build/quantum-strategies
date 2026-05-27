@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest, logAdminAction } from '@/lib/admin/auth';
+import type { Database } from '@/types/supabase';
+
+type QuestionPoolInsert = Database['public']['Tables']['question_pool']['Insert'];
 
 const AUDIENCE_TRACKS = ['operator', 'side_builder', 'inside_player', 'almost_builder', 'seeker', 'all'] as const;
 const RITES = ['perception', 'orientation', 'declaration'] as const;
@@ -114,7 +117,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'A question with this id already exists' }, { status: 409 });
   }
 
-  const insertRow = {
+  const insertRow: QuestionPoolInsert = {
     id: data.id,
     product_slug: data.product_slug,
     step_index: data.step_index,

@@ -142,11 +142,9 @@ export async function POST(req: Request) {
       audienceTrack,
       signalsToExtract: Array.isArray(chosen.signals_extracted) ? chosen.signals_extracted : [],
     });
-  } catch (err: any) {
-    console.error('[dynamic-step/select] Unexpected error:', err?.message || err);
-    return NextResponse.json(
-      { error: err?.message || 'Failed to select question' },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to select question';
+    console.error('[dynamic-step/select] Unexpected error:', message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

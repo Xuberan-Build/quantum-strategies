@@ -15,6 +15,11 @@ import {
   type SectionNameType,
   type StoredSections,
 } from '@/lib/portraits/schema';
+import type { Database, Json } from '@/types/supabase';
+
+type UserPortraitInsert = Database['public']['Tables']['user_portraits']['Insert'];
+type UserPortraitUpdate = Database['public']['Tables']['user_portraits']['Update'];
+type PortraitAuditLogInsert = Database['public']['Tables']['portrait_audit_log']['Insert'];
 
 export async function POST(req: Request) {
   try {
@@ -62,33 +67,43 @@ export async function POST(req: Request) {
     const nextSections: StoredSections = { ...sections, [section]: updatedSection };
 
     if (!portrait) {
-      // First-time interaction: create the row so the reset is recorded
+      // First-time interaction: create the row so the reset is recorded.
+      // sections is Json in the generated types; the StoredSections shape
+      // is JSON-serialisable so the cast is structural-only.
+      const insertRow: UserPortraitInsert = {
+        user_id: user.id,
+        sections: nextSections as unknown as Json,
+      };
       const { error: insertErr } = await supabaseAdmin
         .from('user_portraits')
-        .insert({ user_id: user.id, sections: nextSections });
+        .insert(insertRow);
       if (insertErr) {
         return NextResponse.json({ error: insertErr.message }, { status: 500 });
       }
     } else {
+      const updateRow: UserPortraitUpdate = {
+        sections: nextSections as unknown as Json,
+      };
       const { error: updateErr } = await supabaseAdmin
         .from('user_portraits')
-        .update({ sections: nextSections })
+        .update(updateRow)
         .eq('user_id', user.id);
       if (updateErr) {
         return NextResponse.json({ error: updateErr.message }, { status: 500 });
       }
     }
 
-    const { error: auditErr } = await supabaseAdmin.from('portrait_audit_log').insert({
+    const auditRow: PortraitAuditLogInsert = {
       user_id: user.id,
       briefing_id: null,
       direction: 'reset',
       section,
       field_path: 'current',
-      old_value: previousCurrent ?? null,
+      old_value: (previousCurrent ?? null) as unknown as Json | null,
       new_value: null,
       actor_id: user.id,
-    });
+    };
+    const { error: auditErr } = await supabaseAdmin.from('portrait_audit_log').insert(auditRow);
     if (auditErr) {
       // Audit failure shouldn't roll back the reset — log and continue
       console.error('portrait_audit_log insert failed:', auditErr.message);

@@ -22,6 +22,7 @@ import {
   type PortraitSection,
   type StoredSections,
 } from './schema';
+import type { Database } from '@/types/supabase';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,23 +54,24 @@ const BRIEFING_LINKS: Record<string, string[]> = {
 };
 
 // ---------------------------------------------------------------------------
-// Internal DB row types (only columns we need)
+// Internal DB row types — derived from the generated Database type so they
+// stay in sync with the schema. Only the columns this file actually selects.
 // ---------------------------------------------------------------------------
 
-interface PortraitRow {
-  sections: Record<string, unknown>;
-}
+type PortraitRow = Pick<
+  Database['public']['Tables']['user_portraits']['Row'],
+  'sections'
+>;
 
-interface UserRow {
-  portrait_opt_out: boolean;
-}
+type UserRow = Pick<
+  Database['public']['Tables']['users']['Row'],
+  'portrait_opt_out'
+>;
 
-interface BriefingRow {
-  id: string;
-  product_slug: string;
-  full_text: string;
-  generated_at: string;
-}
+type BriefingRow = Pick<
+  Database['public']['Tables']['briefings']['Row'],
+  'id' | 'product_slug' | 'full_text' | 'generated_at'
+>;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -152,7 +154,8 @@ export async function assembleUserContext(
     return empty;
   }
 
-  if ((userRow as UserRow | null)?.portrait_opt_out === true) {
+  const typedUserRow: UserRow | null = userRow;
+  if (typedUserRow?.portrait_opt_out === true) {
     return empty;
   }
 
@@ -172,9 +175,10 @@ export async function assembleUserContext(
 
   if (!portraitRow) return empty;
 
-  const parsedSections = StoredSectionsSchema.safeParse(
-    (portraitRow as PortraitRow).sections,
-  );
+  // portraitRow.sections is Json from the generated types; Zod parses it
+  // into the strongly-typed StoredSections shape below.
+  const typedPortraitRow: PortraitRow = portraitRow;
+  const parsedSections = StoredSectionsSchema.safeParse(typedPortraitRow.sections);
 
   if (!parsedSections.success) {
     console.warn('[assembler] Portrait sections failed Zod parse — skipping:', parsedSections.error.message);
@@ -206,7 +210,7 @@ export async function assembleUserContext(
       console.warn('[assembler] Failed to load related briefings:', briefingError);
       // Non-fatal — continue without briefings
     } else {
-      relatedBriefings = (briefingRows ?? []) as BriefingRow[];
+      relatedBriefings = briefingRows ?? [];
     }
   }
 

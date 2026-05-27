@@ -36,6 +36,7 @@ import {
   type TaoSituationRow,
   type TaoCoreState,
 } from '../../src/lib/tao/schema';
+import type { Database } from '../../src/types/supabase';
 
 // --- Dotenv (matches the pattern used by the backup script) ---
 loadDotenv({ path: '.env.local' });
@@ -410,7 +411,7 @@ async function upsertAll(exp: TaoExport): Promise<IngestSummary> {
     );
   }
 
-  const client = createClient(url, key, {
+  const client = createClient<Database>(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
@@ -422,7 +423,7 @@ async function upsertAll(exp: TaoExport): Promise<IngestSummary> {
   if (existingError) {
     throw new Error(`Failed to read existing tao_situations: ${existingError.message}`);
   }
-  const existingIds = new Set<string>((existing ?? []).map((r) => r.id as string));
+  const existingIds = new Set<string>((existing ?? []).map((r) => r.id));
 
   const summary: IngestSummary = {
     total: exp.situations.length,

@@ -26,6 +26,9 @@
 
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
+import type { Database } from '@/types/supabase';
+
+type StepFrictionLogInsert = Database['public']['Tables']['step_friction_log']['Insert'];
 
 const VALID_REASONS = ['tedious', 'unclear', 'other'] as const;
 type FrictionReason = (typeof VALID_REASONS)[number];
@@ -96,19 +99,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized access to session' }, { status: 403 });
     }
 
-    // Insert friction log entry
+    // Insert friction log entry. Validation above guarantees the narrowed
+    // string/number types match StepFrictionLogInsert.
+    const insertRow: StepFrictionLogInsert = {
+      user_id: user.id,
+      product_session_id: productSessionId,
+      product_slug: productSlug,
+      step_index: stepIndex,
+      reason: reason as FrictionReason,
+      note: (note as string | undefined) ?? null,
+      response_excerpt: (responseExcerpt as string | undefined) ?? null,
+      status: 'new',
+    };
+
     const { data: inserted, error: insertError } = await supabaseAdmin
       .from('step_friction_log')
-      .insert({
-        user_id: user.id,
-        product_session_id: productSessionId,
-        product_slug: productSlug as string,
-        step_index: stepIndex as number,
-        reason: reason as FrictionReason,
-        note: (note as string | undefined) ?? null,
-        response_excerpt: (responseExcerpt as string | undefined) ?? null,
-        status: 'new',
-      })
+      .insert(insertRow)
       .select('id')
       .single();
 

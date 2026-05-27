@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest, logAdminAction } from '@/lib/admin/auth';
+import type { Database } from '@/types/supabase';
+
+type TaoSituationUpdate = Database['public']['Tables']['tao_situations']['Update'];
 
 const FATES = ['Fear', 'Authority', 'Trust', 'Ego'] as const;
 const CORE_STATES = ['Being', 'Inner Peace', 'Love', 'OKness', 'Oneness'] as const;
@@ -123,9 +126,11 @@ export async function PATCH(
 
   const updates = parsed.data;
 
-  // Suppress noisy "tier" type narrowing issue from Zod literal union:
-  // explicit cast is safe because the schema only accepts 1|2|3.
-  const updatePayload = updates as Record<string, unknown>;
+  // The Zod schema permits 1|2|3 literals for tier and JSONB layer objects;
+  // the generated Update type widens tier to number and layers to Json | null.
+  // The runtime values are correct by construction, but TypeScript can't
+  // narrow Json from Record<string, unknown>, so we assert at the boundary.
+  const updatePayload: TaoSituationUpdate = updates as TaoSituationUpdate;
 
   const { data: updated, error: updateError } = await supabaseAdmin
     .from('tao_situations')
@@ -147,7 +152,7 @@ export async function PATCH(
     targetId: id,
     targetName: current.name ?? id,
     previousValue: { active: current.active, name: current.name, tier: current.tier },
-    newValue: updatePayload,
+    newValue: updatePayload as Record<string, unknown>,
   });
 
   return NextResponse.json({ success: true, situation: updated });

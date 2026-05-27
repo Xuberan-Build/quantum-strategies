@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "backup": "tsx scripts/backup/backup-database.ts",
+    "gen:types": "npx supabase gen types typescript --project-id znpspiwsgztophzpoxub > src/types/supabase.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",

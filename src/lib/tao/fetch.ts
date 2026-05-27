@@ -1,17 +1,33 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { TaoSituation, FateDriver } from "@/data/tao";
+import type { Database } from "@/types/supabase";
 
-type DbRow = {
-  id: string;
-  domain_id: string;
-  domain_name: string;
-  name: string;
+// Generated types widen tier to number and fate to string — narrow at the
+// boundary to the project's domain unions. Layer columns are Json | null
+// in the generated types; mapRow narrows them to plain records via the
+// str() / strArr() helpers below.
+type SelectedColumns =
+  | 'id'
+  | 'domain_id'
+  | 'domain_name'
+  | 'name'
+  | 'tier'
+  | 'fate'
+  | 'core_state'
+  | 'being_name'
+  | 're_entry_phrase'
+  | 'variant_count'
+  | 'layer_identity'
+  | 'layer_submodality'
+  | 'layer_language'
+  | 'layer_fate_bte';
+
+type DbRow = Omit<
+  Pick<Database['public']['Tables']['tao_situations']['Row'], SelectedColumns>,
+  'tier' | 'fate' | 'layer_identity' | 'layer_submodality' | 'layer_language' | 'layer_fate_bte'
+> & {
   tier: 1 | 2 | 3;
   fate: FateDriver | null;
-  core_state: string | null;
-  being_name: string | null;
-  re_entry_phrase: string | null;
-  variant_count: number | null;
   layer_identity: Record<string, unknown> | null;
   layer_submodality: Record<string, unknown> | null;
   layer_language: Record<string, unknown> | null;
@@ -82,5 +98,9 @@ export async function getActiveSituations(): Promise<TaoSituation[]> {
     return [];
   }
 
-  return (data as DbRow[]).map(mapRow);
+  // The generated row type widens tier/fate and uses Json for the layer columns.
+  // The DB rows in this product are produced by scripts/tao-ingest/sync-from-studio.ts,
+  // which validates against TaoSituationSchema before upsert, so the narrower
+  // DbRow shape is guaranteed at runtime.
+  return (data as unknown as DbRow[]).map(mapRow);
 }

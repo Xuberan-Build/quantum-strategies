@@ -10,18 +10,16 @@ import {
   type PortraitSection,
   type SectionNameType,
 } from '@/lib/portraits/schema';
+import type { Database } from '@/types/supabase';
 
-interface StoredPortrait {
-  user_id: string;
+// Narrow Row: sections is Json in the generated types; this route reads/writes
+// it as the PortraitSection-keyed shape produced by the extraction worker.
+type StoredPortrait = Omit<
+  Database['public']['Tables']['user_portraits']['Row'],
+  'sections'
+> & {
   sections: Record<string, PortraitSection | undefined> | null;
-  opt_out: boolean;
-  schema_version: number;
-  last_extracted_at: string | null;
-  last_reviewed_at: string | null;
-  products_completed: string[] | null;
-  created_at: string;
-  updated_at: string;
-}
+};
 
 const PatchSchema = z
   .object({
@@ -161,7 +159,7 @@ export async function PATCH(
 
   let portrait: StoredPortrait;
   if (existing) {
-    portrait = existing as StoredPortrait;
+    portrait = existing as unknown as StoredPortrait;
   } else {
     const seed = {
       user_id: userId,
@@ -179,7 +177,7 @@ export async function PATCH(
       console.error('[Admin API] user_portraits seed insert error:', insertError);
       return NextResponse.json({ error: 'Failed to seed portrait' }, { status: 500 });
     }
-    portrait = inserted as StoredPortrait;
+    portrait = inserted as unknown as StoredPortrait;
   }
 
   const sectionName: SectionNameType = parsed.data.section;
