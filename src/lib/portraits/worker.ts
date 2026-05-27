@@ -1,20 +1,18 @@
 /**
  * Portrait Extraction Worker
  *
- * processPortraitUpdate(queueId) is called synchronously from the extract
- * API route today. When a real queue runner (pg_cron, BullMQ, or a Vercel
- * Cron job) is wired up, this function can be invoked from a dedicated
- * worker route with no changes to its signature.
+ * processPortraitUpdate(queueId) is the canonical extraction entry point.
+ * It is called by the cron worker at /api/cron/portrait-extraction-queue,
+ * which drains portrait_update_queue every 5 minutes. Do not call this
+ * function from any other HTTP request path — enqueue into
+ * portrait_update_queue and let the cron pick it up.
  *
- * TODO (before production traffic):
- *   1. Move the processPortraitUpdate call out of the HTTP request path
- *      and into a proper background worker (Vercel Cron, pg_cron trigger,
- *      or a queue consumer) so slow OpenAI calls don't block the client.
- *   2. Implement advisory locks (pg_try_advisory_lock on user_id) if
- *      multiple worker instances will run concurrently.
- *   3. Set max_attempts enforcement — mark briefing 'failed' once the
- *      queue row's attempts >= max_attempts (currently the route always
- *      retries on the next call; stale 'failed' items need a sweep job).
+ * Remaining TODOs (now that async mode is live):
+ *   1. Implement advisory locks (pg_try_advisory_lock on user_id) if
+ *      multiple concurrent cron workers are ever added.
+ *   2. FOR UPDATE SKIP LOCKED on the claim step would allow safe
+ *      parallelism within a single cron invocation; currently the cron
+ *      processes rows sequentially to avoid model rate-limit spikes.
  */
 
 import { supabaseAdmin } from '@/lib/supabase/server';
@@ -172,6 +170,28 @@ export async function processPortraitUpdate(queueId: string): Promise<void> {
 
   const queue = queueRead as QueueRow;
 
+  // ------------------------------------------------------------------
+  // max_attempts guard — if the row has already exhausted its retries,
+  // permanently fail it here without running extraction. The cron also
+  // checks this before calling us, but the guard here defends against
+  // direct calls and race conditions.
+  // ------------------------------------------------------------------
+  if (queue.attempts >= queue.max_attempts) {
+    console.error(
+      '[portraits/worker] Queue row', queueId,
+      'has exhausted max_attempts (', queue.max_attempts, '). Marking failed.',
+    );
+    await supabaseAdmin
+      .from('portrait_update_queue')
+      .update({
+        status: 'failed',
+        error_message: `Exhausted max_attempts (${queue.max_attempts}) without successful extraction`,
+        processed_at: new Date().toISOString(),
+      })
+      .eq('id', queueId);
+    return;
+  }
+
   const { error: claimError } = await supabaseAdmin
     .from('portrait_update_queue')
     .update({
@@ -265,8 +285,9 @@ export async function processPortraitUpdate(queueId: string): Promise<void> {
         ],
       });
       rawContent = completion.choices[0]?.message?.content ?? '{}';
-    } catch (err: any) {
-      throw new Error(`OpenAI call failed: ${err?.message ?? String(err)}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`OpenAI call failed: ${message}`);
     }
 
     // ------------------------------------------------------------------
@@ -440,8 +461,8 @@ export async function processPortraitUpdate(queueId: string): Promise<void> {
         processed_at: new Date().toISOString(),
       })
       .eq('id', queueId);
-  } catch (err: any) {
-    const message: string = err?.message ?? String(err);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error('[portraits/worker] Processing failed for queue', queueId, message);
 
     await supabaseAdmin

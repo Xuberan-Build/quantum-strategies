@@ -1,7 +1,7 @@
 /**
  * POST /api/portraits/extract
  *
- * Triggers portrait extraction for a given briefing. Internal endpoint —
+ * Enqueues portrait extraction for a given briefing. Internal endpoint —
  * accessible to admins and service-role callers only; never exposed to
  * end-users directly.
  *
@@ -10,6 +10,12 @@
  * before processing.
  *
  * Body: { briefingId: string; force?: boolean }
+ *
+ * Async model: this endpoint is enqueue-only. The OpenAI extraction call
+ * and all DB writes happen asynchronously in the cron worker at
+ * /api/cron/portrait-extraction-queue, which runs every 5 minutes.
+ * The synchronous processPortraitUpdate() call was removed — this endpoint
+ * now returns in <200 ms regardless of OpenAI latency.
  *
  * Manual test (replace values with real data):
  *
@@ -20,11 +26,11 @@
  *     "briefingId": "00000000-0000-0000-0000-000000000001"
  *   }'
  *
- * Expected 200 (queued + processed):
+ * Expected 200 (enqueued):
  * {
  *   "ok": true,
  *   "queueId": "<uuid>",
- *   "status": "completed"
+ *   "status": "queued"
  * }
  *
  * Expected 200 (already extracted, no force):
@@ -38,23 +44,11 @@
  * Expected 404: { "error": "Briefing not found" }
  * Expected 409: { "error": "Briefing already in queue" }
  * Expected 500: { "error": "..." }
- *
- * TODO: Move processPortraitUpdate out of the HTTP request path.
- *   Currently the OpenAI call and all DB writes happen synchronously
- *   in this handler, which can add 3-10 s of latency. The correct
- *   production pattern is:
- *     1. INSERT into portrait_update_queue.
- *     2. Return { ok: true, queueId, status: 'pending' } immediately.
- *     3. A background worker (Vercel Cron, pg_cron, or BullMQ) polls
- *        pending rows and calls processPortraitUpdate(queueId).
- *   processPortraitUpdate's signature is already worker-ready — no
- *   changes needed when the queue runner is wired up.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin, createServerSupabaseClient } from '@/lib/supabase/server';
-import { processPortraitUpdate } from '@/lib/portraits/worker';
 import { BUSINESS } from '../../../../../config/business.config';
 
 // ---------------------------------------------------------------------------
@@ -229,24 +223,15 @@ export async function POST(req: NextRequest) {
   const queueId = inserted.id as string;
 
   // ------------------------------------------------------------------
-  // 5. Run worker synchronously (see TODO at top of file for the
-  //    production-ready async path)
+  // 5. Return immediately — the cron at /api/cron/portrait-extraction-queue
+  //    will pick up this row within 5 minutes and call processPortraitUpdate.
+  //    The synchronous worker call was removed; this endpoint now returns
+  //    in <200 ms regardless of OpenAI latency.
   // ------------------------------------------------------------------
-  await processPortraitUpdate(queueId);
-
-  // ------------------------------------------------------------------
-  // 6. Read final queue status to report back
-  // ------------------------------------------------------------------
-  const { data: finalQueue } = await supabaseAdmin
-    .from('portrait_update_queue')
-    .select('status')
-    .eq('id', queueId)
-    .maybeSingle();
-
   return NextResponse.json({
     ok: true,
     queueId,
-    status: finalQueue?.status ?? 'unknown',
+    status: 'queued',
   });
 }
 
