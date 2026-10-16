@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
+import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
+import { evidenceTag } from '@/lib/corpus/evidence';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -23,48 +25,57 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const { data: links } = await supabaseAdmin
     .from('content_corpus_links')
-    .select(`knowledge_chunks!inner(tradition, text_name, author, section, content)`)
+    .select(`similarity, knowledge_chunks!inner(tradition, text_name, author, section, content)`)
     .eq('angle_id', pillar.id as string)
     .eq('curated', true);
 
   const corpusContext = (links ?? [])
     .map((l) => {
       const c = (Array.isArray(l.knowledge_chunks) ? l.knowledge_chunks[0] : l.knowledge_chunks) as { tradition: string; text_name: string; author?: string; section?: string; content: string };
-      return `[${c.tradition.toUpperCase()} — ${c.text_name}${c.section ? ` — ${c.section}` : ''}]\n${c.content.slice(0, 800)}`;
+      return `${evidenceTag(l.similarity)} [${c.tradition.toUpperCase()} — ${c.text_name}${c.section ? ` — ${c.section}` : ''}]\n${c.content.slice(0, 800)}`;
     })
     .join('\n\n---\n\n');
 
   const formatInstructions: Record<string, string> = {
-    ebook: 'Write 600-1000 words. Use clear prose with subheadings. Ground each major point in at least one sacred text or science passage.',
+    ebook: 'Write 600-1000 words. Use clear prose with subheadings. Ground each major claim in a linked [evidence] passage and name its source plainly.',
     webinar: 'Write a presenter script (600-900 words). Include speaker notes, transitions, and suggested pause points. Mark slide cue points as [SLIDE: ...].',
     ecourse: 'Write a lesson (500-800 words). Include a learning objective, main content, a reflection exercise, and a key takeaway.',
-    whitepaper: 'Write 700-1000 words in a professional academic tone. Include citations from the corpus in the format (Tradition — Source).',
+    whitepaper: 'Write 700-1000 words in a precise, professional register. Cite [evidence] passages from the corpus in the format (Tradition — Source). Never cite a WEAK MATCH passage.',
   };
 
+  const pack = await getVoicePack();
   const instructions = formatInstructions[(pillar.format as string) ?? ''] ?? 'Write 600-900 words of clear, compelling prose.';
 
   const prompt = `You are writing section "${section.title}" for a ${pillar.format} titled "${pillar.title}".
 
 Section description: ${section.description || 'No description provided'}
-Audience: ${(pillar.audience as string) || 'spiritual practitioners and consciousness explorers'}
-Tone: ${(pillar.tone as string) || 'inspirational'}
-Angle: ${(pillar.angle as string) || 'synthesis of mystical traditions and modern science'}
+Audience: ${(pillar.audience as string) || pack.identity.audience || 'not specified'}
+Tone: ${(pillar.tone as string) || 'not specified'}
+Angle: ${(pillar.angle as string) || 'not specified'}
 
 ${instructions}
 
-CORPUS PASSAGES TO DRAW FROM:
-${corpusContext || 'No corpus passages linked. Draw on general knowledge of mystical traditions.'}
+CORPUS PASSAGES TO DRAW FROM (WEAK MATCH passages are resonance only and cannot support a claim):
+${corpusContext || 'No corpus passages are linked. Do not invent sources, studies or quotes. Where a claim needs backing, mark it [NEEDS SOURCE].'}
 
 Write the section now. Do not include a title header — just the body content.`;
 
-  const completion = await openai.chat.completions.create({
-    model: DEFAULT_MODEL,
-    messages: [{ role: 'user', content: prompt }],
-    max_completion_tokens: 1400,
-    temperature: 0.7,
-  });
-
-  const draftBody = completion.choices[0].message.content ?? '';
+  let draftBody: string;
+  try {
+    const completion = await openai.chat.completions.create({
+      model: DEFAULT_MODEL,
+      messages: [
+        { role: 'system', content: buildVoiceSystemPrompt(pack, { role: 'You write sections of long-form pieces.', includeCanon: true }) },
+        { role: 'user', content: prompt },
+      ],
+      max_completion_tokens: 1400,
+      temperature: 0.7,
+    });
+    draftBody = completion.choices[0].message.content ?? '';
+  } catch (err) {
+    console.error('[section draft]', err);
+    return NextResponse.json({ error: 'Model call failed', detail: err instanceof Error ? err.message : undefined }, { status: 500 });
+  }
 
   // Save to version history before overwriting
   const currentHistory = Array.isArray(section.version_history) ? section.version_history : [];

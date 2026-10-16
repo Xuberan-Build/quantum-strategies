@@ -1,8 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
+import {
+  excerptFrom,
+  nextPublishedAt,
+  postTypeForPiece,
+  resolvePillarId,
+  sanitizeMarkdownForMdx,
+  slugify,
+} from '@/lib/content/publish';
 
 type Params = { params: Promise<{ id: string }> };
+
+type PieceWithAngle = {
+  id: string;
+  piece_type: string;
+  title: string | null;
+  body: string | null;
+  content_angles: {
+    id: string;
+    title: string;
+    topic_id: string | null;
+    metadata: unknown;
+    content_topics: { id: string; pillar_id: string | null } | null;
+  } | null;
+};
 
 export async function POST(req: NextRequest, { params }: Params) {
   const { admin, error: authError } = await validateAdminApiRequest();
@@ -12,93 +35,107 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { publish = false, slug_override } = await req.json().catch(() => ({}));
 
   // Load piece and walk up the hierarchy for pillar/topic context
-  const { data: piece, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('content_pieces')
     .select(`
-      *,
+      id, piece_type, title, body,
       content_angles!inner(
-        id, title, topic_id,
+        id, title, topic_id, metadata,
         content_topics(id, pillar_id)
       )
     `)
     .eq('id', id)
     .single();
 
-  if (error || !piece) {
+  if (error || !data) {
     return NextResponse.json({ error: 'Piece not found' }, { status: 404 });
   }
+  const piece = data as unknown as PieceWithAngle;
+  const angle = piece.content_angles;
 
-  const angle = piece.content_angles as {
-    id: string; title: string; topic_id: string | null;
-    content_topics: { id: string; pillar_id: string | null } | null;
-  };
+  // Only article-shaped pieces become posts; a thread or email is never an article.
+  const postType = postTypeForPiece(piece.piece_type);
+  if (!postType) {
+    return NextResponse.json(
+      { error: `A ${piece.piece_type} piece can't be published as an article. Copy it out or send it through a campaign.` },
+      { status: 400 },
+    );
+  }
 
-  const topicId  = angle?.topic_id ?? null;
-  const pillarId = angle?.content_topics?.pillar_id ?? null;
+  const topicId = angle?.topic_id ?? null;
+  const pillarId = resolvePillarId(angle?.content_topics?.pillar_id, angle?.metadata);
 
-  // Generate slug from piece title, falling back to angle title
-  const baseTitle = piece.title || angle?.title || 'untitled';
-  const slug = slug_override || baseTitle
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 80);
+  const title = piece.title || angle?.title || 'Untitled';
+  const slug = (typeof slug_override === 'string' && slugify(slug_override)) || slugify(title) || `post-${id.slice(0, 8)}`;
 
+  // Model output is markdown; make it safe for the MDX renderer before it goes live.
+  const body = sanitizeMarkdownForMdx(piece.body ?? '');
+  const excerpt = excerptFrom(piece.body ?? '');
   const now = new Date().toISOString();
 
-  // Upsert into content_posts (conflict on piece_id if already published, else slug)
   const { data: existingPost } = await supabaseAdmin
     .from('content_posts')
-    .select('id, slug')
+    .select('id, slug, published_at')
     .eq('piece_id', id)
     .maybeSingle();
 
-  let post;
+  let post: { slug: string } & Record<string, unknown>;
   if (existingPost) {
-    // Update existing
-    const { data, error: updateErr } = await supabaseAdmin
+    const { data: updated, error: updateErr } = await supabaseAdmin
       .from('content_posts')
       .update({
-        title: piece.title || angle?.title,
-        body: piece.body ?? '',
+        title,
+        type: postType,
+        excerpt,
+        body,
+        pillar_id: pillarId,
+        topic_id: topicId,
         is_published: publish,
-        published_at: publish ? (existingPost ? undefined : now) : null,
+        published_at: nextPublishedAt(publish, existingPost.published_at, now),
         updated_at: now,
       })
       .eq('id', existingPost.id)
       .select()
       .single();
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
-    post = data;
+    post = updated;
   } else {
-    // Create new
-    const { data, error: insertErr } = await supabaseAdmin
+    const { data: inserted, error: insertErr } = await supabaseAdmin
       .from('content_posts')
       .insert({
         slug,
-        type: 'blog',
-        title: piece.title || angle?.title || 'Untitled',
-        excerpt: (piece.body ?? '').slice(0, 200).replace(/\n/g, ' '),
-        body: piece.body ?? '',
+        type: postType,
+        title,
+        excerpt,
+        body,
         pillar_id: pillarId,
         topic_id: topicId,
         piece_id: id,
         is_published: publish,
-        published_at: publish ? now : null,
+        published_at: nextPublishedAt(publish, null, now),
         tags: [],
       })
       .select()
       .single();
-    if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 });
-    post = data;
+    if (insertErr) {
+      const message = insertErr.code === '23505' ? `The slug "${slug}" is already taken. Pass slug_override.` : insertErr.message;
+      return NextResponse.json({ error: message }, { status: insertErr.code === '23505' ? 409 : 500 });
+    }
+    post = inserted;
   }
 
   // Update piece status
-  await supabaseAdmin
+  const { error: statusErr } = await supabaseAdmin
     .from('content_pieces')
     .update({ status: publish ? 'published' : 'review' })
     .eq('id', id);
+  if (statusErr) console.error('[publish] piece status update failed', statusErr);
+
+  // /articles, the article page and the sitemap are statically rendered; refresh them now
+  // instead of waiting for the next deploy.
+  revalidatePath('/articles');
+  revalidatePath(`/articles/${post.slug}`);
+  revalidatePath('/sitemap.xml');
 
   return NextResponse.json({ post, slug: post.slug });
 }

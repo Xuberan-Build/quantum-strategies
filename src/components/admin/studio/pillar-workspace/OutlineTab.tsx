@@ -83,15 +83,27 @@ export function OutlineTab({
   const [editing, setEditing]       = useState<string | null>(null);
 
   async function generateOutline() {
+    // Regenerating replaces the current sections. Ask first; the server archives the old ones.
+    let confirm = false;
+    if (sections.length > 0) {
+      const drafted = sections.filter((s) => s.body).length;
+      const ok = window.confirm(
+        `Replace the current outline (${sections.length} sections${drafted ? `, ${drafted} with drafts` : ''})?\n\n` +
+          'The current sections and drafts will be archived on this angle (metadata.outline_history), not lost.',
+      );
+      if (!ok) return;
+      confirm = true;
+    }
     setGenerating(true);
     setError(null);
     try {
       const res = await fetch(`/api/admin/studio/pillars/${pillar.id}/outline`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error ?? 'Failed to generate outline');
       onSectionsUpdate(data.sections);
       onPillarUpdate({ ...pillar, status: 'outline' });
     } catch (err) {

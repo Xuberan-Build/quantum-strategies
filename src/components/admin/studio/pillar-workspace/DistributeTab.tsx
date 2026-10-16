@@ -3,6 +3,13 @@
 import { useState } from 'react';
 import styles from '@/app/admin/admin-layout.module.css';
 import type { Pillar, Section, Piece } from './types';
+import {
+  parseEmailSequence,
+  parseSingleEmail,
+  textToEmailHtml,
+  MIN_EMAIL_BODY_WORDS,
+  type ParsedEmail,
+} from '@/lib/content/email-sequence';
 
 const DISTRIBUTE_FORMATS: Array<{ type: string; label: string; desc: string; scope: 'section' | 'pillar' }> = [
   { type: 'blog',            label: 'Blog Post',           desc: 'One per section — 800-1200 word article', scope: 'section' },
@@ -16,37 +23,6 @@ const DISTRIBUTE_FORMATS: Array<{ type: string; label: string; desc: string; sco
 
 interface Campaign { id: string; name: string; trigger_type: string; status: string; step_count?: number; }
 interface CampaignStep { id: string; step_number: number; delay_hours: number; subject: string; }
-
-function extractSubject(body: string): string {
-  const match = body.match(/^Subject:\s*(.+)$/m);
-  return match ? match[1].trim() : '';
-}
-
-// Parse email_sequence body into individual emails.
-// Tries several common delimiters the distribute route might use.
-function parseSequenceEmails(body: string): Array<{ subject: string; html_body: string }> {
-  // Try splitting by "Email N:" header (case-insensitive)
-  const byHeader = body.split(/\n(?=Email\s+\d+\s*[:\-])/i).filter(s => s.trim());
-  if (byHeader.length >= 2) {
-    return byHeader.slice(0, 5).map(block => ({
-      subject: extractSubject(block) || block.split('\n')[0].replace(/^Email\s+\d+\s*[:\-]\s*/i, '').trim(),
-      html_body: block,
-    }));
-  }
-  // Try splitting by "---" delimiter
-  const byDash = body.split(/\n-{3,}\n/).filter(s => s.trim());
-  if (byDash.length >= 2) {
-    return byDash.slice(0, 5).map(block => ({
-      subject: extractSubject(block) || block.split('\n')[0].trim(),
-      html_body: block,
-    }));
-  }
-  // Fallback: treat whole body as one email, duplicate 5 times with note
-  return Array.from({ length: 5 }, (_, i) => ({
-    subject: `Email ${i + 1}`,
-    html_body: body,
-  }));
-}
 
 export function DistributeTab({ pillar, sections, pieces, onPiecesUpdate }: {
   pillar: Pillar;
@@ -81,6 +57,8 @@ export function DistributeTab({ pillar, sections, pieces, onPiecesUpdate }: {
   const [seqDelays, setSeqDelays]       = useState([0, 48, 96, 144, 192]);
   const [creatingSeq, setCreatingSeq]   = useState(false);
   const [seqSuccess, setSeqSuccess]     = useState<string | null>(null);
+  const [seqEmails, setSeqEmails]       = useState<ParsedEmail[]>([]);
+  const [seqError, setSeqError]         = useState<string | null>(null);
 
   function toggleType(type: string) {
     setSelectedTypes((prev) => {
@@ -151,10 +129,10 @@ export function DistributeTab({ pillar, sections, pieces, onPiecesUpdate }: {
   }
 
   async function openCampaignModal(piece: Piece) {
-    const body = piece.body ?? '';
-    const subject = extractSubject(body);
-    setCampaignModal({ pieceId: piece.id, body });
-    setStepSubject(subject);
+    // Strip the SUBJECT/PREVIEW header lines; the rest is the email that gets sent.
+    const email = parseSingleEmail(piece.body ?? '');
+    setCampaignModal({ pieceId: piece.id, body: email.body });
+    setStepSubject(email.subject);
     setStepDelay(0);
     setSelCampaignId('');
     setCampaignSteps([]);
@@ -198,8 +176,8 @@ export function DistributeTab({ pillar, sections, pieces, onPiecesUpdate }: {
         body: JSON.stringify({
           delay_hours: stepDelay,
           subject: stepSubject || pillar.title,
-          html_body: campaignModal.body,
-          text_body: campaignModal.body.replace(/<[^>]+>/g, ''),
+          html_body: textToEmailHtml(campaignModal.body),
+          text_body: campaignModal.body,
           content_angle_id: pillar.id,
           distribute_format: piece.piece_type,
         }),
@@ -216,17 +194,40 @@ export function DistributeTab({ pillar, sections, pieces, onPiecesUpdate }: {
     }
   }
 
+  /** Why a parsed sequence can't become campaign steps, or null if it can. */
+  function sequenceProblem(emails: ParsedEmail[]): string | null {
+    if (emails.length === 0) {
+      return 'Could not find individual emails in this sequence. Regenerate it, or add it to a campaign one email at a time.';
+    }
+    const short = emails.filter((e) => e.isSummary);
+    if (short.length > 0) {
+      return `Email ${short.map((e) => e.index).join(', ')} ${short.length === 1 ? 'is' : 'are'} under ${MIN_EMAIL_BODY_WORDS} words, so ${short.length === 1 ? 'it looks' : 'they look'} like a summary, not an email. Regenerate the sequence to get full email bodies.`;
+    }
+    const noSubject = emails.filter((e) => !e.subject);
+    if (noSubject.length > 0) return `Email ${noSubject.map((e) => e.index).join(', ')} has no SUBJECT line.`;
+    return null;
+  }
+
   async function openSeqModal(piece: Piece) {
+    const emails = parseEmailSequence(piece.body ?? '').slice(0, 5);
     setSeqModal({ pieceId: piece.id, body: piece.body ?? '' });
+    setSeqEmails(emails);
+    setSeqError(sequenceProblem(emails));
     setSeqName(`${pillar.title} — Nurture Sequence`);
     setSeqTrigger('manual');
-    setSeqDelays([0, 48, 96, 144, 192]);
+    setSeqDelays(emails.map((_, i) => i * 48));
     setSeqSuccess(null);
   }
 
   async function confirmCreateSequence() {
     if (!seqModal) return;
+    const problem = sequenceProblem(seqEmails);
+    if (problem) {
+      setSeqError(problem);
+      return;
+    }
     setCreatingSeq(true);
+    setSeqError(null);
     try {
       // Create campaign
       const campRes = await fetch('/api/admin/campaigns', {
@@ -237,32 +238,33 @@ export function DistributeTab({ pillar, sections, pieces, onPiecesUpdate }: {
       const camp = await campRes.json();
       if (!campRes.ok) throw new Error(camp.error);
 
-      // Parse sequence body into 5 emails
-      const emails = parseSequenceEmails(seqModal.body);
-
-      // Create steps sequentially
-      for (let i = 0; i < Math.min(emails.length, 5); i++) {
-        const email = emails[i];
-        await fetch(`/api/admin/campaigns/${camp.id}/steps`, {
+      // Create steps sequentially; stop at the first failure and say which step.
+      for (let i = 0; i < seqEmails.length; i++) {
+        const email = seqEmails[i];
+        const stepRes = await fetch(`/api/admin/campaigns/${camp.id}/steps`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             step_number: i + 1,
             delay_hours: seqDelays[i] ?? i * 48,
-            subject: email.subject || `Email ${i + 1}`,
-            html_body: email.html_body,
-            text_body: email.html_body.replace(/<[^>]+>/g, ''),
+            subject: email.subject,
+            html_body: textToEmailHtml(email.body),
+            text_body: email.body,
             content_angle_id: pillar.id,
             distribute_format: 'email_sequence',
           }),
         });
+        if (!stepRes.ok) {
+          const data = await stepRes.json().catch(() => ({}));
+          throw new Error(`Campaign "${camp.name}" was created, but step ${i + 1} failed: ${data.error ?? stepRes.status}`);
+        }
       }
 
       setSeqSuccess(camp.name);
       setAddedMap(prev => ({ ...prev, [seqModal.pieceId]: camp.name }));
       setTimeout(() => setSeqModal(null), 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create campaign');
+      setSeqError(err instanceof Error ? err.message : 'Failed to create campaign');
     } finally {
       setCreatingSeq(false);
     }
@@ -406,14 +408,16 @@ export function DistributeTab({ pillar, sections, pieces, onPiecesUpdate }: {
                             </span>
                           ) : (
                             <>
-                              <button
-                                type="button"
-                                className={`${styles.btn} ${styles.btnSmall}`}
-                                style={{ color: 'var(--admin-primary)', borderColor: 'var(--admin-primary)' }}
-                                onClick={() => openCampaignModal(piece)}
-                              >
-                                + Add to Campaign
-                              </button>
+                              {piece.piece_type === 'email' && (
+                                <button
+                                  type="button"
+                                  className={`${styles.btn} ${styles.btnSmall}`}
+                                  style={{ color: 'var(--admin-primary)', borderColor: 'var(--admin-primary)' }}
+                                  onClick={() => openCampaignModal(piece)}
+                                >
+                                  + Add to Campaign
+                                </button>
+                              )}
                               {piece.piece_type === 'email_sequence' && (
                                 <button
                                   type="button"
@@ -621,10 +625,12 @@ export function DistributeTab({ pillar, sections, pieces, onPiecesUpdate }: {
 
               <div>
                 <label style={{ fontSize: '0.8125rem', fontWeight: 500, display: 'block', marginBottom: '0.5rem' }}>Email delays (hours after previous)</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(seqDelays.length, 1)}, 1fr)`, gap: '0.5rem' }}>
                   {seqDelays.map((d, i) => (
                     <div key={i}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginBottom: '0.25rem', textAlign: 'center' }}>Email {i + 1}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginBottom: '0.25rem', textAlign: 'center' }} title={seqEmails[i]?.subject}>
+                        Email {i + 1}{seqEmails[i] ? ` · ${seqEmails[i].wordCount}w` : ''}
+                      </div>
                       <input
                         type="number"
                         className={styles.formInput}
@@ -638,9 +644,15 @@ export function DistributeTab({ pillar, sections, pieces, onPiecesUpdate }: {
                 </div>
               </div>
 
+              {seqError && (
+                <div role="alert" style={{ background: '#fef2f2', border: '1px solid var(--admin-danger)', borderRadius: 6, padding: '0.625rem 0.875rem', color: 'var(--admin-danger)', fontSize: '0.875rem' }}>
+                  {seqError}
+                </div>
+              )}
+
               {seqSuccess && (
                 <div style={{ background: '#f0fdf4', border: '1px solid var(--admin-success)', borderRadius: 6, padding: '0.625rem 0.875rem', color: 'var(--admin-success)', fontSize: '0.875rem', fontWeight: 500 }}>
-                  ✓ Campaign "{seqSuccess}" created with 5 steps
+                  ✓ Campaign &ldquo;{seqSuccess}&rdquo; created with {seqEmails.length} steps
                 </div>
               )}
 
@@ -652,7 +664,7 @@ export function DistributeTab({ pillar, sections, pieces, onPiecesUpdate }: {
                 <button
                   type="button"
                   className={`${styles.btn} ${styles.btnPrimary}`}
-                  disabled={creatingSeq || !seqName}
+                  disabled={creatingSeq || !seqName || sequenceProblem(seqEmails) !== null}
                   onClick={confirmCreateSequence}
                 >
                   {creatingSeq ? 'Creating…' : 'Create Campaign'}

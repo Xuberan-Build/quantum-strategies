@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { sendEmailViaResend } from '@/lib/email/resend-sender';
+import { getVoicePack } from '@/lib/content/voice-pack';
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -74,6 +75,7 @@ export async function GET(request: NextRequest) {
       if (hdType || sunSign) {
         try {
           const OpenAI = (await import('openai')).default;
+          const voicePack = await getVoicePack();
           const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
           const chartContext = [
             hdType && `HD Type: ${hdType}`,
@@ -87,7 +89,7 @@ export async function GET(request: NextRequest) {
             messages: [
               {
                 role: 'system',
-                content: 'You personalize email copy using astrology and Human Design. Keep the structure, links, and CTA identical. Naturally weave in 1-2 chart references that make the email feel specifically written for this person. Return JSON only: { "html_body": "...", "text_body": "..." }',
+                content: `You personalize email copy using astrology and Human Design. Keep the structure, links, and CTA identical. Naturally weave in 1-2 chart references that make the email feel specifically written for this person.\n\nChart policy (non-negotiable): ${voicePack.chartPolicy}\nNever add any of these phrases: ${voicePack.bannedTerms.map((t) => `"${t}"`).join(', ')}.\n\nReturn JSON only: { "html_body": "...", "text_body": "..." }`,
               },
               {
                 role: 'user',

@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
+import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
+import { evidenceTag } from '@/lib/corpus/evidence';
+import type { Database } from '@/types/supabase';
+
+type ChunkRow = Pick<Database['public']['Tables']['knowledge_chunks']['Row'], 'id' | 'tradition' | 'text_name' | 'content' | 'themes'>;
+type LinkRow = { curated: boolean | null; similarity: number | null; knowledge_chunks: ChunkRow | null };
+type OutlineSection = { title?: string; angle?: string; word_count?: number; chunk_ids?: string[] };
 
 const FORMAT_WORD_COUNTS: Record<string, number> = {
   blog: 1500,
@@ -18,7 +25,7 @@ export async function POST(req: NextRequest) {
   const { admin, error: authError } = await validateAdminApiRequest();
   if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const { angle_id, word_count_target } = body ?? {};
 
   if (!angle_id?.trim()) return NextResponse.json({ error: 'angle_id is required' }, { status: 400 });
@@ -42,7 +49,7 @@ export async function POST(req: NextRequest) {
   const { data: links } = await supabaseAdmin
     .from('content_corpus_links')
     .select(`
-      curated,
+      curated, similarity,
       knowledge_chunks!inner(id, tradition, text_name, content, themes)
     `)
     .eq('angle_id', angle_id)
@@ -50,7 +57,7 @@ export async function POST(req: NextRequest) {
     .order('similarity', { ascending: false })
     .limit(10);
 
-  const chunks = (links ?? []).map((l: any) => l.knowledge_chunks);
+  const linked = ((links ?? []) as unknown as LinkRow[]).filter((l): l is LinkRow & { knowledge_chunks: ChunkRow } => !!l.knowledge_chunks);
 
   // ── Check for existing brief agent run ────────────────────────────────────
   let briefContext = '';
@@ -75,11 +82,13 @@ Key claims: ${(b.key_claims as string[] ?? []).join(' | ')}`;
     }
   } catch { /* no brief yet — that's fine */ }
 
-  const chunkList = chunks.length > 0
-    ? chunks.map((c: any, i: number) =>
-        `[${i + 1}] id:${c.id} | ${c.tradition} — ${c.text_name}\nThemes: ${(c.themes ?? []).join(', ')}`
+  const chunkList = linked.length > 0
+    ? linked.map(({ knowledge_chunks: c, similarity }, i) =>
+        `[${i + 1}] id:${c.id} ${evidenceTag(similarity)} | ${c.tradition} — ${c.text_name}\nThemes: ${(c.themes ?? []).join(', ')}`
       ).join('\n\n')
-    : 'No corpus chunks linked yet.';
+    : 'No corpus chunks linked yet. Leave chunk_ids empty; do not invent ids.';
+
+  const pack = await getVoicePack();
 
   // ── Create agent run ──────────────────────────────────────────────────────
   let runId: string | null = null;
@@ -90,7 +99,7 @@ Key claims: ${(b.key_claims as string[] ?? []).join(' | ')}`;
         content_angle_id: angle_id,
         agent_type: 'outline',
         status: 'running',
-        input: { angle_id, word_count_target: targetWords },
+        input: { angle_id, word_count_target: targetWords, voice_pack_version: pack.version },
       })
       .select('id')
       .single();
@@ -107,7 +116,9 @@ Key claims: ${(b.key_claims as string[] ?? []).join(' | ')}`;
       messages: [
         {
           role: 'system',
-          content: `You are a senior content strategist generating section outlines. Your outlines are designed for writers who will produce second-person, experience-first long-form content — not academic essays. Each section should have a clear argumentative or narrative function within the whole.
+          content: `${buildVoiceSystemPrompt(pack, {
+            role: 'You are a senior content strategist generating section outlines. Your outlines are for writers who follow the voice rules below; they are not academic essays. Each section should have a clear argumentative or narrative function within the whole.',
+          })}
 
 Return JSON:
 {
@@ -122,7 +133,7 @@ Return JSON:
   "total_word_count": 0
 }
 
-Word counts per section should sum to approximately the target. chunk_ids must reference actual IDs from the provided corpus list.`,
+Word counts per section should sum to approximately the target. chunk_ids must reference actual IDs from the provided corpus list. Prefer [evidence] passages; a WEAK MATCH can only support resonance, never a claim.`,
         },
         {
           role: 'user',
@@ -150,7 +161,7 @@ Requirements:
     });
 
     const raw = completion.choices[0].message.content ?? '{}';
-    let parsed: { sections: unknown[]; total_word_count: number };
+    let parsed: { sections?: OutlineSection[]; total_word_count?: number };
     try {
       parsed = JSON.parse(raw);
     } catch {
@@ -158,9 +169,9 @@ Requirements:
     }
 
     // Recalculate total from sections if not present
-    const sections = parsed.sections ?? [];
+    const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
     const totalWordCount = parsed.total_word_count
-      || (sections as any[]).reduce((n: number, s: any) => n + (s.word_count ?? 0), 0);
+      || sections.reduce((n, s) => n + (typeof s.word_count === 'number' ? s.word_count : 0), 0);
 
     if (runId) {
       try {
@@ -172,16 +183,17 @@ Requirements:
     }
 
     return NextResponse.json({ run_id: runId, sections, total_word_count: totalWordCount });
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown';
     if (runId) {
       try {
         await supabaseAdmin
           .from('content_agent_runs')
-          .update({ status: 'failed', output: { error: err?.message }, completed_at: new Date().toISOString() })
+          .update({ status: 'failed', output: { error: message }, completed_at: new Date().toISOString() })
           .eq('id', runId);
       } catch { /* table not yet migrated */ }
     }
     console.error('[outline agent]', err);
-    return NextResponse.json({ error: 'Model call failed', detail: err?.message }, { status: 500 });
+    return NextResponse.json({ error: 'Model call failed', detail: message }, { status: 500 });
   }
 }

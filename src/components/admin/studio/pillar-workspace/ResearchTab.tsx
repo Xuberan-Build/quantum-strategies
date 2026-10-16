@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from '@/app/admin/admin-layout.module.css';
+import { EVIDENCE_SIMILARITY_FLOOR, evidenceStrength } from '@/lib/corpus/evidence';
 import type { Pillar, CorpusLink } from './types';
 import { TRADITION_META } from './constants';
 
@@ -199,6 +200,14 @@ export function ResearchTab({
           {link.similarity !== null && (
             <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', flexShrink: 0 }}>
               {(link.similarity * 100).toFixed(0)}%
+            </span>
+          )}
+          {evidenceStrength(link.similarity) === 'weak' && (
+            <span
+              title={`Below the ${EVIDENCE_SIMILARITY_FLOOR} similarity evidence floor (or a keyword-only match): resonance at most, not evidence.`}
+              style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#b45309', background: '#fef3c7', borderRadius: 4, padding: '0.1rem 0.4rem', flexShrink: 0, textTransform: 'uppercase' }}
+            >
+              Weak
             </span>
           )}
           <button

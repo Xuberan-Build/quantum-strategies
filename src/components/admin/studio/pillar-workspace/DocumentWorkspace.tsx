@@ -10,27 +10,9 @@ import { ResearchTab } from './ResearchTab';
 import { OutlineTab } from './OutlineTab';
 import { DraftTab } from './DraftTab';
 import { DistributeTab } from './DistributeTab';
+import { AISidebar } from '../AISidebar';
 
 type DocSection = 'brief' | 'research' | 'outline' | 'draft' | 'distribute';
-
-function AISidebarStub({ activeSection }: { activeSection: DocSection }) {
-  return (
-    <div className={styles.aiSidebarStub}>
-      <div className={styles.aiSidebarHeader}>
-        <span className={styles.aiSidebarIcon}>✦</span>
-        <span className={styles.aiSidebarTitle}>AI Assistant</span>
-      </div>
-      <div className={styles.aiSidebarSection}>
-        <div className={styles.aiSidebarLabel}>Current section</div>
-        <div className={styles.aiSidebarValue} style={{ textTransform: 'capitalize' }}>{activeSection}</div>
-      </div>
-      <div className={styles.aiSidebarPlaceholder}>
-        <p>AI sidebar connects here.</p>
-        <p>Context-aware suggestions, corpus gaps, and voice scoring will appear as you work through each section.</p>
-      </div>
-    </div>
-  );
-}
 
 export function DocumentWorkspace({
   pillar: initialPillar,
@@ -48,6 +30,20 @@ export function DocumentWorkspace({
   const [pieces, setPieces]             = useState(initialPieces);
   const [corpusLinks, setCorpusLinks]   = useState(initialCorpusLinks);
   const [activeSection, setActiveSection] = useState<DocSection>('brief');
+  const [draftSectionId, setDraftSectionId] = useState<string>(initialSections[0]?.id ?? '');
+  const draftSection = sections.find((s) => s.id === draftSectionId) ?? sections[0] ?? null;
+
+  /** Saves sidebar-writer output into a section (the PATCH route keeps version history). */
+  async function applySectionContent(sectionId: string, body: string) {
+    const res = await fetch(`/api/admin/studio/sections/${sectionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body, status: 'draft' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.section) throw new Error(data.error ?? 'Could not save the section');
+    setSections((prev) => prev.map((s) => (s.id === sectionId ? (data.section as Section) : s)));
+  }
 
   const sectionRefs = useRef<Partial<Record<DocSection, HTMLElement | null>>>({});
 
@@ -185,7 +181,12 @@ export function DocumentWorkspace({
               </span>
             )}
           </div>
-          <DraftTab sections={sections} onSectionsUpdate={setSections} />
+          <DraftTab
+            sections={sections}
+            onSectionsUpdate={setSections}
+            selectedId={draftSection?.id}
+            onSelect={setDraftSectionId}
+          />
         </section>
 
         {/* DISTRIBUTE */}
@@ -209,7 +210,14 @@ export function DocumentWorkspace({
 
       {/* Sticky AI sidebar */}
       <div className={styles.documentSidebar}>
-        <AISidebarStub activeSection={activeSection} />
+        <AISidebar
+          angleId={pillar.id}
+          currentSection={activeSection}
+          corpusLinks={corpusLinks}
+          onLinksUpdate={setCorpusLinks}
+          draftSection={draftSection}
+          onApplySectionContent={applySectionContent}
+        />
       </div>
     </div>
   );

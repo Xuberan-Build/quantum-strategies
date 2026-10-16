@@ -4,14 +4,23 @@ import { useState, useRef, useCallback } from 'react';
 import styles from '@/app/admin/admin-layout.module.css';
 import type { Section } from './types';
 
-export function DraftTab({ sections, onSectionsUpdate }: {
+export function DraftTab({ sections, onSectionsUpdate, selectedId, onSelect }: {
   sections: Section[];
   onSectionsUpdate: (s: Section[]) => void;
+  /** Optional controlled selection (the AI sidebar follows the selected section). */
+  selectedId?: string;
+  onSelect?: (id: string) => void;
 }) {
-  const [selected, setSelected]         = useState<string>(sections[0]?.id ?? '');
+  const [internalSelected, setInternalSelected] = useState<string>(sections[0]?.id ?? '');
+  const selected = selectedId ?? internalSelected;
+  const setSelected = (id: string) => {
+    setInternalSelected(id);
+    onSelect?.(id);
+  };
   const [generating, setGenerating]     = useState<Set<string>>(new Set());
   const [autoSaveTimers, setTimers]     = useState<Record<string, ReturnType<typeof setTimeout>>>({});
   const bodiesRef                       = useRef<Record<string, string>>({});
+  const [draftError, setDraftError]     = useState<string | null>(null);
 
   const selectedSection = sections.find((s) => s.id === selected);
   const draftedCount    = sections.filter((s) => s.body).length;
@@ -22,16 +31,18 @@ export function DraftTab({ sections, onSectionsUpdate }: {
 
   async function generateDraft(sectionId: string) {
     setGenerating((prev) => new Set(prev).add(sectionId));
+    setDraftError(null);
     try {
       const res = await fetch(`/api/admin/studio/sections/${sectionId}/draft`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      const data = await res.json();
-      if (data.section) {
-        updateSectionLocally(sectionId, { body: data.section.body, status: 'draft' });
-        bodiesRef.current[sectionId] = data.section.body ?? '';
-      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.section) throw new Error(data.error ?? 'Draft generation failed');
+      updateSectionLocally(sectionId, { body: data.section.body, status: 'draft' });
+      bodiesRef.current[sectionId] = data.section.body ?? '';
+    } catch (err) {
+      setDraftError(err instanceof Error ? err.message : 'Draft generation failed');
     } finally {
       setGenerating((prev) => { const s = new Set(prev); s.delete(sectionId); return s; });
     }
@@ -124,6 +135,11 @@ export function DraftTab({ sections, onSectionsUpdate }: {
             </button>
           </div>
           <div style={{ padding: '1rem 1.5rem' }}>
+            {draftError && (
+              <div role="alert" style={{ marginBottom: '0.75rem', padding: '0.5rem 0.75rem', borderRadius: 6, border: '1px solid var(--admin-danger)', color: 'var(--admin-danger)', fontSize: '0.8125rem' }}>
+                {draftError}
+              </div>
+            )}
             <textarea
               value={selectedSection.body ?? ''}
               onChange={(e) => handleBodyChange(selectedSection.id, e.target.value)}

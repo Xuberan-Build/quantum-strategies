@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { MDXRemote, compileMDX } from "next-mdx-remote/rsc";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import styles from "./article.module.css";
@@ -29,6 +29,28 @@ function getAllMdxArticles() {
   });
 
   return articles;
+}
+
+// ── DB body rendering ───────────────────────────────────────────────────────
+// DB bodies can come from model output. Compile first; if the MDX doesn't parse,
+// show it as plain paragraphs instead of failing the whole page.
+async function renderDbBody(source: string) {
+  try {
+    const { content } = await compileMDX({ source });
+    return content;
+  } catch (err) {
+    console.error("[articles] MDX compile failed; rendering as plain text", err);
+    return (
+      <>
+        {source
+          .split(/\n{2,}/)
+          .filter((para) => para.trim())
+          .map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
+      </>
+    );
+  }
 }
 
 // ── Static params (MDX slugs; DB slugs render dynamically) ────────────────
@@ -172,7 +194,7 @@ export default async function ArticlePage({ params }: PageProps) {
         </section>
         <div className={styles.divider} />
         <article className={`article-prose ${styles.prose}`}>
-          <MDXRemote source={post.body ?? ""} />
+          {await renderDbBody(post.body ?? "")}
         </article>
       </div>
     );

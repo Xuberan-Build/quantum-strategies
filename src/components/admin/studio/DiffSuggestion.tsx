@@ -23,22 +23,47 @@ export function DiffSuggestion({
 }: DiffSuggestionProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(proposed);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleAccept() {
-    if (agentRunId) {
-      fetch(`/api/admin/studio/agent-runs/${agentRunId}`, {
+  /** Records the review on the agent run. Returns false (and shows why) if it failed. */
+  async function recordReview(approved: boolean, feedback?: string): Promise<boolean> {
+    if (!agentRunId) return true; // run wasn't logged; nothing to record
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/studio/agent-runs/${agentRunId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ human_approved: true }),
-      }).catch(() => {});
+        body: JSON.stringify({ human_approved: approved, ...(feedback ? { feedback } : {}) }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Request failed (${res.status})`);
+      }
+      return true;
+    } catch (e) {
+      setError(`Couldn't record the ${approved ? 'approval' : 'rejection'}: ${e instanceof Error ? e.message : 'unknown error'}`);
+      return false;
+    } finally {
+      setSaving(false);
     }
-    onAccept();
   }
 
-  function handleEdit() {
+  async function handleAccept() {
+    if (await recordReview(true)) onAccept();
+  }
+
+  async function handleReject() {
+    if (await recordReview(false)) onReject();
+  }
+
+  async function handleEdit() {
     if (editing) {
-      onEdit(editValue);
-      setEditing(false);
+      if (await recordReview(true, 'Edited before applying.')) {
+        onEdit(editValue);
+        setEditing(false);
+      }
     } else {
       setEditing(true);
     }
@@ -67,6 +92,7 @@ export function DiffSuggestion({
           <button
             type="button"
             onClick={handleAccept}
+            disabled={saving}
             style={{
               padding: '0.25rem 0.625rem',
               borderRadius: 4,
@@ -83,6 +109,7 @@ export function DiffSuggestion({
           <button
             type="button"
             onClick={handleEdit}
+            disabled={saving}
             style={{
               padding: '0.25rem 0.625rem',
               borderRadius: 4,
@@ -98,7 +125,8 @@ export function DiffSuggestion({
           </button>
           <button
             type="button"
-            onClick={onReject}
+            onClick={handleReject}
+            disabled={saving}
             style={{
               padding: '0.25rem 0.625rem',
               borderRadius: 4,
@@ -114,6 +142,12 @@ export function DiffSuggestion({
           </button>
         </div>
       </div>
+
+      {error && (
+        <div role="alert" style={{ padding: '0.5rem 0.875rem', background: '#fef2f2', borderBottom: '1px solid var(--admin-danger)', color: 'var(--admin-danger)', fontSize: '0.75rem' }}>
+          {error}
+        </div>
+      )}
 
       {editing ? (
         <textarea
@@ -140,10 +174,9 @@ export function DiffSuggestion({
             <div style={{ padding: '0.375rem 0.75rem', fontSize: '0.6875rem', fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--admin-border)' }}>
               Current
             </div>
-            <div
-              style={{ padding: '0.75rem', fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--admin-text-muted)', opacity: 0.7 }}
-              dangerouslySetInnerHTML={{ __html: original || '<em style="opacity:0.5">Empty</em>' }}
-            />
+            <div style={{ padding: '0.75rem', fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--admin-text-muted)', opacity: 0.7, whiteSpace: 'pre-wrap' }}>
+              {original || <em style={{ opacity: 0.5 }}>Empty</em>}
+            </div>
           </div>
 
           {/* Proposed */}
@@ -151,10 +184,10 @@ export function DiffSuggestion({
             <div style={{ padding: '0.375rem 0.75rem', fontSize: '0.6875rem', fontWeight: 700, color: 'var(--admin-success)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--admin-border)' }}>
               Proposed
             </div>
-            <div
-              style={{ padding: '0.75rem', fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--admin-text)' }}
-              dangerouslySetInnerHTML={{ __html: proposed }}
-            />
+            {/* Model output is rendered as text, never as HTML. */}
+            <div style={{ padding: '0.75rem', fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--admin-text)', whiteSpace: 'pre-wrap' }}>
+              {proposed}
+            </div>
           </div>
         </div>
       )}

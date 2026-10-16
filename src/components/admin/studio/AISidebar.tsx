@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { DiffSuggestion } from './DiffSuggestion';
+import { evidenceStrength } from '@/lib/corpus/evidence';
 
 interface CorpusLink {
   id: string;
@@ -16,12 +17,35 @@ interface CorpusLink {
   };
 }
 
-interface AISidebarProps {
+/** The draft section the sidebar's writer and voice check act on. */
+export interface SidebarDraftSection {
+  id: string;
+  title: string;
+  description: string | null;
+  body: string | null;
+}
+
+interface AISidebarProps<L extends CorpusLink = CorpusLink> {
   angleId: string;
   currentSection: string;
-  corpusLinks: CorpusLink[];
-  onSectionContent?: string;
-  onLinksUpdate?: (links: CorpusLink[]) => void;
+  corpusLinks: L[];
+  onLinksUpdate?: (links: L[]) => void;
+  draftSection?: SidebarDraftSection | null;
+  /** Persist accepted writer output into the section. Throw to surface an error. */
+  onApplySectionContent?: (sectionId: string, body: string) => Promise<void>;
+}
+
+function isWeak(similarity: number | null): boolean {
+  return evidenceStrength(similarity) === 'weak';
+}
+
+interface Brief {
+  hook?: string;
+  thesis?: string;
+  key_claims?: string[];
+  target_reader?: string;
+  voice_notes?: string;
+  corpus_gaps?: string[];
 }
 
 // ── Spinner ────────────────────────────────────────────────────────────────────
@@ -131,11 +155,7 @@ function VoiceBar({ score }: { score: number }) {
 function BriefSection({ angleId }: { angleId: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{
-    brief_prose: string;
-    key_claims: string[];
-    corpus_gaps: string[];
-  } | null>(null);
+  const [result, setResult] = useState<Brief | null>(null);
 
   async function generate() {
     setLoading(true);
@@ -148,7 +168,7 @@ function BriefSection({ angleId }: { angleId: string }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Failed');
-      setResult(data);
+      setResult((data.brief ?? {}) as Brief);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Brief generation failed');
     } finally {
@@ -165,10 +185,25 @@ function BriefSection({ angleId }: { angleId: string }) {
       {error && <InlineError message={error} />}
       {result && (
         <div style={{ marginTop: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div style={{ fontSize: '0.8125rem', lineHeight: 1.65, color: 'var(--admin-text)', borderLeft: '3px solid var(--admin-primary)', paddingLeft: '0.75rem' }}>
-            {result.brief_prose}
-          </div>
-          {result.key_claims.length > 0 && (
+          {result.hook && (
+            <div style={{ fontSize: '0.8125rem', lineHeight: 1.65, color: 'var(--admin-text)', borderLeft: '3px solid var(--admin-primary)', paddingLeft: '0.75rem', fontWeight: 600 }}>
+              {result.hook}
+            </div>
+          )}
+          {result.thesis && (
+            <div style={{ fontSize: '0.8125rem', lineHeight: 1.65, color: 'var(--admin-text)' }}>{result.thesis}</div>
+          )}
+          {result.target_reader && (
+            <div style={{ fontSize: '0.75rem', lineHeight: 1.6, color: 'var(--admin-text-muted)' }}>
+              <strong>Reader:</strong> {result.target_reader}
+            </div>
+          )}
+          {result.voice_notes && (
+            <div style={{ fontSize: '0.75rem', lineHeight: 1.6, color: 'var(--admin-text-muted)' }}>
+              <strong>Voice:</strong> {result.voice_notes}
+            </div>
+          )}
+          {result.key_claims && result.key_claims.length > 0 && (
             <div>
               <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.375rem' }}>Key Claims</div>
               <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -178,7 +213,7 @@ function BriefSection({ angleId }: { angleId: string }) {
               </ul>
             </div>
           )}
-          {result.corpus_gaps.length > 0 && (
+          {result.corpus_gaps && result.corpus_gaps.length > 0 && (
             <div>
               <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--admin-warning)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.375rem' }}>Corpus Gaps</div>
               <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -195,16 +230,17 @@ function BriefSection({ angleId }: { angleId: string }) {
 }
 
 // ── Research section ───────────────────────────────────────────────────────────
-function ResearchSection({
+function ResearchSection<L extends CorpusLink>({
   angleId, corpusLinks, onLinksUpdate,
 }: {
   angleId: string;
-  corpusLinks: CorpusLink[];
-  onLinksUpdate?: (links: CorpusLink[]) => void;
+  corpusLinks: L[];
+  onLinksUpdate?: (links: L[]) => void;
 }) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [toggling, setToggling] = useState<Set<string>>(new Set());
 
   const curated = corpusLinks.filter((l) => l.curated);
@@ -216,6 +252,7 @@ function ResearchSection({
     if (!query.trim()) return;
     setLoading(true);
     setError(null);
+    setNotice(null);
     try {
       const res = await fetch(`/api/admin/studio/agents/corpus-researcher`, {
         method: 'POST',
@@ -224,7 +261,10 @@ function ResearchSection({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Search failed');
-      if (data.links && onLinksUpdate) onLinksUpdate(data.links);
+      if (Array.isArray(data.links) && onLinksUpdate) onLinksUpdate(data.links as L[]);
+      const found = typeof data.count === 'number' ? data.count : 0;
+      const weak = typeof data.weak_count === 'number' ? data.weak_count : 0;
+      setNotice(data.message ?? `${found} passage${found === 1 ? '' : 's'} found${weak ? `, ${weak} weak` : ''}.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Search failed');
     } finally {
@@ -232,17 +272,24 @@ function ResearchSection({
     }
   }
 
-  async function curate(link: CorpusLink) {
+  async function curate(link: L) {
     setToggling((s) => new Set(s).add(link.id));
+    setError(null);
     try {
-      await fetch(`/api/admin/studio/corpus-links/${link.id}`, {
+      const res = await fetch(`/api/admin/studio/corpus-links/${link.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ curated: true }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Curate failed');
+      }
       if (onLinksUpdate) {
         onLinksUpdate(corpusLinks.map((l) => l.id === link.id ? { ...l, curated: true } : l));
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Curate failed');
     } finally {
       setToggling((s) => { const n = new Set(s); n.delete(link.id); return n; });
     }
@@ -280,12 +327,15 @@ function ResearchSection({
           <ActionBtn onClick={search} loading={loading} disabled={!query.trim()}>Go</ActionBtn>
         </div>
         {error && <InlineError message={error} />}
+        {notice && !error && (
+          <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>{notice}</div>
+        )}
       </div>
 
       {/* Gaps */}
       {gaps.length > 0 && (
         <div>
-          <SectionLabel>Potential Gaps (low similarity)</SectionLabel>
+          <SectionLabel>Uncurated (lowest similarity first)</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
             {gaps.map((link) => (
               <div key={link.id} style={{
@@ -295,6 +345,11 @@ function ResearchSection({
                 <span style={{ fontSize: '0.75rem', flex: 1, color: 'var(--admin-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {link.knowledge_chunks.text_name.replace(/_/g, ' ')}
                 </span>
+                {isWeak(link.similarity) && (
+                  <span title="Below the evidence floor: resonance only, not evidence" style={{ flexShrink: 0, fontSize: '0.625rem', fontWeight: 700, color: 'var(--admin-warning)', textTransform: 'uppercase' }}>
+                    Weak
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => curate(link)}
@@ -317,7 +372,15 @@ function ResearchSection({
 }
 
 // ── Draft section ──────────────────────────────────────────────────────────────
-function DraftSection({ angleId, content }: { angleId: string; content: string }) {
+function DraftSection({
+  angleId, section, curatedChunkIds, onApply,
+}: {
+  angleId: string;
+  section: SidebarDraftSection | null;
+  curatedChunkIds: string[];
+  onApply?: (sectionId: string, body: string) => Promise<void>;
+}) {
+  const content = section?.body ?? '';
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [voiceResult, setVoiceResult] = useState<{
     score: number;
@@ -327,7 +390,12 @@ function DraftSection({ angleId, content }: { angleId: string; content: string }
   const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const [writeLoading, setWriteLoading] = useState(false);
-  const [writeResult, setWriteResult] = useState<{ content: string; agentRunId?: string } | null>(null);
+  const [writeResult, setWriteResult] = useState<{
+    sectionId: string;
+    content: string;
+    agentRunId?: string;
+    unsupportedClaims: string[];
+  } | null>(null);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
 
@@ -351,17 +419,30 @@ function DraftSection({ angleId, content }: { angleId: string; content: string }
   }
 
   async function writeSection() {
+    if (!section) return;
     setWriteLoading(true);
     setWriteError(null);
     try {
       const res = await fetch(`/api/admin/studio/agents/section-writer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ angle_id: angleId, existing_content: content }),
+        body: JSON.stringify({
+          angle_id: angleId,
+          section_title: section.title,
+          section_angle: section.description?.trim() || section.title,
+          chunk_ids: curatedChunkIds,
+          existing_content: content || undefined,
+          mode: content ? 'improve' : 'write',
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Write failed');
-      setWriteResult({ content: data.content, agentRunId: data.agent_run_id });
+      setWriteResult({
+        sectionId: section.id,
+        content: data.content ?? '',
+        agentRunId: data.run_id ?? undefined,
+        unsupportedClaims: Array.isArray(data.unsupported_claims) ? data.unsupported_claims : [],
+      });
       setAccepted(false);
     } catch (e) {
       setWriteError(e instanceof Error ? e.message : 'Write failed');
@@ -370,8 +451,30 @@ function DraftSection({ angleId, content }: { angleId: string; content: string }
     }
   }
 
+  async function apply(body: string) {
+    if (!writeResult) return;
+    setWriteError(null);
+    try {
+      if (onApply) await onApply(writeResult.sectionId, body);
+      setAccepted(true);
+      setWriteResult(null);
+    } catch (e) {
+      setWriteError(e instanceof Error ? e.message : 'Could not save the section');
+    }
+  }
+
+  if (!section) {
+    return (
+      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--admin-text-muted)', lineHeight: 1.5 }}>
+        Generate an outline, then pick a section in the Draft list to write or check it here.
+      </p>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--admin-text)' }}>{section.title}</div>
+
       {/* Voice check */}
       <div>
         <SectionLabel>Voice Calibration</SectionLabel>
@@ -406,21 +509,36 @@ function DraftSection({ angleId, content }: { angleId: string; content: string }
         <ActionBtn onClick={writeSection} loading={writeLoading} variant="secondary">
           {content ? 'Improve Section' : 'Write Section'}
         </ActionBtn>
+        {curatedChunkIds.length === 0 && (
+          <div style={{ marginTop: '0.375rem', fontSize: '0.6875rem', color: 'var(--admin-warning)' }}>
+            No curated passages: the writer will flag every claim as unsupported.
+          </div>
+        )}
         {writeError && <InlineError message={writeError} />}
-        {writeResult && !accepted && (
-          <DiffSuggestion
-            original={content}
-            proposed={writeResult.content}
-            agentType="section_writer"
-            agentRunId={writeResult.agentRunId}
-            onAccept={() => setAccepted(true)}
-            onReject={() => setWriteResult(null)}
-            onEdit={(edited) => { setWriteResult({ ...writeResult, content: edited }); setAccepted(true); }}
-          />
+        {writeResult && writeResult.sectionId === section.id && !accepted && (
+          <>
+            {writeResult.unsupportedClaims.length > 0 && (
+              <div style={{ marginTop: '0.625rem', padding: '0.5rem 0.625rem', borderRadius: 5, border: '1px solid var(--admin-warning)', fontSize: '0.75rem' }}>
+                <div style={{ fontWeight: 700, color: 'var(--admin-warning)', marginBottom: '0.25rem' }}>Unsupported claims</div>
+                <ul style={{ margin: 0, paddingLeft: '1rem' }}>
+                  {writeResult.unsupportedClaims.map((c, i) => <li key={i}>{c}</li>)}
+                </ul>
+              </div>
+            )}
+            <DiffSuggestion
+              original={content}
+              proposed={writeResult.content}
+              agentType="section_writer"
+              agentRunId={writeResult.agentRunId}
+              onAccept={() => apply(writeResult.content)}
+              onReject={() => setWriteResult(null)}
+              onEdit={(edited) => apply(edited)}
+            />
+          </>
         )}
         {accepted && (
           <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--admin-success)', fontWeight: 600 }}>
-            ✓ Applied
+            ✓ Applied to the section
           </div>
         )}
       </div>
@@ -456,6 +574,9 @@ function OutlineSection({ angleId }: { angleId: string }) {
   return (
     <div>
       <SectionLabel>Outline Agent</SectionLabel>
+      <p style={{ margin: '0 0 0.625rem', fontSize: '0.75rem', color: 'var(--admin-text-muted)', lineHeight: 1.5 }}>
+        Preview only: it uses the brief and maps passages to sections. Nothing is saved; edit sections in the Outline tab.
+      </p>
       <ActionBtn onClick={generate} loading={loading}>
         Generate Outline
       </ActionBtn>
@@ -507,6 +628,7 @@ function IngestDrawer() {
   const [evalError, setEvalError] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   async function evaluate() {
     setEvalLoading(true);
@@ -536,6 +658,7 @@ function IngestDrawer() {
 
   async function submit() {
     setSubmitLoading(true);
+    setSubmitError(null);
     try {
       const body: Record<string, unknown> = {
         source_type: tab,
@@ -549,13 +672,16 @@ function IngestDrawer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Submission failed');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Submission failed');
+      }
       setSubmitted(true);
       setUrl('');
       setText('');
       setEvalResult(null);
-    } catch {
-      /* show nothing — drawer stays open */
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Submission failed');
     } finally {
       setSubmitLoading(false);
     }
@@ -649,6 +775,7 @@ function IngestDrawer() {
           </div>
 
           {evalError && <InlineError message={evalError} />}
+          {submitError && <InlineError message={submitError} />}
 
           {evalResult && (
             <div style={{ padding: '0.5rem 0.625rem', borderRadius: 5, border: `1px solid ${scoreColor}`, fontSize: '0.8125rem' }}>
@@ -676,20 +803,21 @@ function IngestDrawer() {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export function AISidebar({ angleId, currentSection, corpusLinks, onSectionContent, onLinksUpdate }: AISidebarProps) {
+export function AISidebar<L extends CorpusLink>({
+  angleId, currentSection, corpusLinks, onLinksUpdate, draftSection = null, onApplySectionContent,
+}: AISidebarProps<L>) {
+  const curatedChunkIds = corpusLinks.filter((l) => l.curated).map((l) => l.knowledge_chunks.id).slice(0, 6);
   return (
     <>
       <style>{`
         @keyframes aispin { to { transform: rotate(360deg); } }
       `}</style>
       <div style={{
-        width: 280,
-        flexShrink: 0,
-        borderLeft: '1px solid var(--admin-border)',
+        width: '100%',
         background: 'var(--admin-surface)',
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
+        minHeight: '100%',
         overflow: 'hidden',
       }}>
         {/* Header */}
@@ -724,7 +852,13 @@ export function AISidebar({ angleId, currentSection, corpusLinks, onSectionConte
             <ResearchSection angleId={angleId} corpusLinks={corpusLinks} onLinksUpdate={onLinksUpdate} />
           )}
           {currentSection === 'draft' && (
-            <DraftSection angleId={angleId} content={onSectionContent ?? ''} />
+            <DraftSection
+              key={draftSection?.id ?? 'none'}
+              angleId={angleId}
+              section={draftSection}
+              curatedChunkIds={curatedChunkIds}
+              onApply={onApplySectionContent}
+            />
           )}
           {currentSection === 'outline' && <OutlineSection angleId={angleId} />}
           {currentSection === 'distribute' && <DistributeSection />}

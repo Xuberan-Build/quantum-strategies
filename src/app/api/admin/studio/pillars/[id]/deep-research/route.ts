@@ -3,9 +3,11 @@ import { openai } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { expandQuery, rerankChunks } from '@/lib/corpus/expand-query';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
+import { EVIDENCE_SIMILARITY_FLOOR, evidenceStrength, type EvidenceStrength } from '@/lib/corpus/evidence';
 
 const EMBED_MODEL      = 'text-embedding-3-small';
-const VECTOR_THRESHOLD = 0.10;   // low — HNSW + re-ranker handle precision
+// Vector hits must clear the evidence floor. Keyword/theme hits can still appear but are labelled weak.
+const VECTOR_THRESHOLD = EVIDENCE_SIMILARITY_FLOOR;
 const VECTOR_COUNT     = 12;     // per query; dedup reduces final set
 const KEYWORD_COUNT    = 10;
 const RERANK_THRESHOLD = 5;
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           .select('id, tradition, text_name, author, section, chapter, content, themes, source_url, priority')
           .overlaps('themes', expansion.tradition_bridges)
           .limit(10)
-      : Promise.resolve({ data: [] as any[], error: null }),
+      : Promise.resolve({ data: [] as Hit[], error: null }),
   ]);
 
   // ── Step 4: Merge and deduplicate ────────────────────────────────────────────
@@ -127,8 +129,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   // ── Step 5: Re-rank with lightweight LLM ────────────────────────────────────
-  type RelevanceEntry = { score: number; reason: string; matched_via: string[] };
+  type RelevanceEntry = { score: number; reason: string; matched_via: string[]; similarity: number | null; strength: EvidenceStrength };
   const relevanceMap: Record<string, RelevanceEntry> = {};
+  const similarityOf = (c: Hit) => (typeof c.similarity === 'number' ? c.similarity : null);
 
   if (candidates.length >= RERANK_THRESHOLD) {
     const ranked = await rerankChunks(openai, pillar, candidates.map((c) => ({
@@ -139,21 +142,37 @@ export async function POST(req: NextRequest, { params }: Params) {
     })), query.trim());
     for (const r of ranked) {
       const candidate = candidates.find((c) => c.id === r.chunk_id);
-      relevanceMap[r.chunk_id] = { score: r.score, reason: r.reason, matched_via: candidate?.matched_via ?? [] };
+      const similarity = candidate ? similarityOf(candidate) : null;
+      relevanceMap[r.chunk_id] = {
+        score: r.score,
+        reason: r.reason,
+        matched_via: candidate?.matched_via ?? [],
+        similarity,
+        strength: evidenceStrength(similarity),
+      };
     }
   } else {
+    // Too few candidates to re-rank: score from similarity only. Unscored hits
+    // (keyword/theme) get 0 and the weak label instead of a made-up middle score.
     for (const c of candidates) {
+      const similarity = similarityOf(c);
       relevanceMap[c.id as string] = {
-        score: Math.round(((c.similarity as number) ?? 0.5) * 10),
-        reason: '',
+        score: similarity === null ? 0 : Math.round(similarity * 10),
+        reason: similarity === null ? 'Keyword/theme match only (no similarity score).' : '',
         matched_via: c.matched_via,
+        similarity,
+        strength: evidenceStrength(similarity),
       };
     }
   }
 
-  const finalIds = candidates
-    .filter((c) => !relevanceMap[c.id as string] || (relevanceMap[c.id as string]?.score ?? 0) >= 5)
-    .map((c) => c.id as string);
+  // Re-ranked: drop passages the ranker scored below 5 (unranked ones stay, as before).
+  // Not re-ranked: keep everything; weak rows stay visible, labelled, for the human to judge.
+  const reranked = candidates.length >= RERANK_THRESHOLD;
+  const finalCandidates = reranked
+    ? candidates.filter((c) => !relevanceMap[c.id as string] || relevanceMap[c.id as string].score >= 5)
+    : candidates;
+  const finalIds = finalCandidates.map((c) => c.id as string);
 
   if (finalIds.length === 0) {
     return NextResponse.json({
@@ -167,7 +186,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { error: upsertErr } = await supabaseAdmin
     .from('content_corpus_links')
     .upsert(
-      candidates.map((c) => ({
+      finalCandidates.map((c) => ({
         angle_id: id,
         chunk_id: c.id as string,
         similarity: typeof c.similarity === 'number' ? c.similarity : null,
@@ -201,6 +220,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     relevance: relevanceMap,
     expansion_queries: allQueries,
     count: finalIds.length,
+    weakCount: finalIds.filter((cid) => relevanceMap[cid]?.strength !== 'evidence').length,
+    evidenceFloor: EVIDENCE_SIMILARITY_FLOOR,
     corpusTotal: candidates.length,
   });
 }

@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
 import fs from "fs";
 import path from "path";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
-export const dynamic = "force-static";
-export const revalidate = false;
+// Static, refreshed hourly and on demand: the studio publish route calls
+// revalidatePath("/sitemap.xml") so new DB posts appear without a redeploy.
+export const revalidate = 3600;
 
 const base = "https://quantumstrategies.online";
 const contentRoot = path.join(process.cwd(), "src/content");
@@ -82,7 +84,28 @@ function getProductEntries(): MetadataRoute.Sitemap {
     });
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
+/** Published DB articles (content_posts, type blog) served at /articles/[slug]. */
+async function getDbArticleEntries(): Promise<MetadataRoute.Sitemap> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("content_posts")
+      .select("slug, updated_at, published_at")
+      .eq("is_published", true)
+      .eq("type", "blog");
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((post: { slug: string; updated_at: string | null; published_at: string | null }) => ({
+      url: `${base}/articles/${post.slug}/`,
+      lastModified: new Date(post.updated_at ?? post.published_at ?? Date.now()),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    }));
+  } catch (err) {
+    console.error("[sitemap] could not load DB articles", err);
+    return [];
+  }
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${base}/`, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
     { url: `${base}/meet/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
@@ -93,7 +116,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // These are thin pages that dilute crawl budget on a new domain
   ];
 
-  const articles = getArticleEntries();
+  // DB posts win over MDX files with the same slug (most DB posts were seeded from MDX).
+  const dbArticles = await getDbArticleEntries();
+  const dbUrls = new Set(dbArticles.map((entry) => entry.url));
+  const articles = [...dbArticles, ...getArticleEntries().filter((entry) => !dbUrls.has(entry.url))];
   const whitepapers = getMdxEntries(path.join(contentRoot, "whitepapers"), "/whitepapers");
   const products = getProductEntries();
 
