@@ -205,7 +205,7 @@ run_claude() { # name prompt_file context [read-only add-dir ...]
   ( cd "$WT" && "$CLAUDE_BIN" "${args[@]}" <"$full" ) >"$out"
   local subtype is_error cost
   subtype="$(jq -r '.subtype // "unknown"' "$out")"
-  is_error="$(jq -r '.is_error // true' "$out")"
+  is_error="$(jq -r 'if has("is_error") then (.is_error|tostring) else "true" end' "$out")"
   cost="$(jq -r '.total_cost_usd // 0' "$out")"
   LAST_RESULT="$(jq -r '.result // ""' "$out")"
   log "claude $name: subtype=$subtype is_error=$is_error cost=\$$cost turns=$(jq -r '.num_turns // "?"' "$out")"
