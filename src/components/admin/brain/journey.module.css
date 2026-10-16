@@ -1,0 +1,246 @@
+.timeline {
+  position: relative;
+  margin: 0.5rem 0 1.25rem;
+  border-bottom: 1px solid var(--axis);
+  min-width: 0;
+}
+
+.month {
+  position: absolute;
+  top: 0;
+  bottom: -1.4rem;
+  width: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+
+.month span {
+  position: absolute;
+  bottom: 0;
+  left: 4px;
+  font-size: 0.66rem;
+  color: var(--ink-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.era {
+  position: absolute;
+  height: 30px;
+  border: 0;
+  border-radius: 4px;
+  background: #b97d45;
+  color: #16120e;
+  cursor: pointer;
+  padding: 0 0.5rem;
+  text-align: left;
+  overflow: hidden;
+  transition: background-color 0.15s, filter 0.15s;
+}
+
+.era:hover {
+  filter: brightness(1.2);
+}
+
+.eraActive {
+  background: var(--jewel);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.eraLabel {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 30px;
+  color: #16120e;
+}
+
+.eraDetail {
+  margin-top: 2.25rem;
+  padding: 1.25rem 1.4rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.eraTitle {
+  font-family: var(--serif);
+  font-size: 1.8rem;
+  font-weight: 500;
+  color: var(--ink);
+  margin: 0.35rem 0 0.5rem !important;
+}
+
+.eraSummary {
+  margin: 0 !important;
+  color: var(--ink-2);
+  line-height: 1.6;
+  max-width: 56rem;
+}
+
+.eraList {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.35rem 1rem;
+}
+
+.eraListItem {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.eraListItem:hover {
+  background: var(--surface-2);
+}
+
+.eraListActive {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.eraListNum {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--bronze);
+}
+
+.eraListTitle {
+  font-size: 0.86rem;
+}
+
+.eraListDate {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* incidents */
+.incidents {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.incident {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 1.25rem;
+  padding: 1rem 1.2rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.incidentDate {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--ink-3);
+  padding-top: 0.25rem;
+}
+
+.incidentTitle {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 0.6rem !important;
+}
+
+.flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.flowLabel {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+
+.impact .flowLabel {
+  color: #d0607a;
+}
+
+.guardrail .flowLabel {
+  color: var(--jewel);
+}
+
+.flow p {
+  margin: 0 !important;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.arrow {
+  color: var(--bronze);
+  padding-top: 1rem;
+}
+
+/* learnings + questions */
+.themeGrid {
+  columns: 3 300px;
+  column-gap: 1rem;
+}
+
+.theme {
+  break-inside: avoid;
+  margin-bottom: 1rem;
+}
+
+.question {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr;
+  gap: 0.4rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.questionMark {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  color: var(--jewel);
+  line-height: 1.1;
+}
+
+@media (max-width: 900px) {
+  .incident {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+  .flow {
+    grid-template-columns: 1fr;
+  }
+  .arrow {
+    padding-top: 0;
+    transform: rotate(90deg);
+    justify-self: start;
+  }
+}

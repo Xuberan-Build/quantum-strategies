@@ -125,6 +125,12 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
       section: 'Intelligence',
       items: [
         {
+          label: 'Brain',
+          href: '/admin/brain',
+          icon: BrainIcon,
+          active: pathname?.startsWith('/admin/brain'),
+        },
+        {
           label: 'Strategy',
           href: '/admin/strategy',
           icon: StrategyIcon,
@@ -451,6 +457,14 @@ function TaoSituationsIcon({ className }: { className?: string }) {
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 3a4.5 4.5 0 010 9 4.5 4.5 0 000 9" />
       <circle cx="12" cy="7.5" r="0.9" fill="currentColor" stroke="none" />
       <circle cx="12" cy="16.5" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function BrainIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-7m0 0c0-3-2.5-4.5-5-6m5 6c0-3 2.5-4.5 5-6M7 8C5.5 7 4.5 5.5 4.5 3.5M7 8c1-1.5 1.2-3 1-4.5M17 8c1.5-1 2.5-2.5 2.5-4.5M17 8c-1-1.5-1.2-3-1-4.5M12 14c-2.5.8-4.5 2.4-6 4.5m6-4.5c2.5.8 4.5 2.4 6 4.5" />
     </svg>
   );
 }

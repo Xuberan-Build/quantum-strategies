@@ -1,0 +1,142 @@
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1.75rem;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.tab:hover {
+  border-color: var(--axis);
+}
+
+.tabActive {
+  background: var(--surface-2);
+  border-color: var(--jewel);
+  color: var(--ink);
+}
+
+.tabTop {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tabTitle {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.tabMeter {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.tabMeter span {
+  display: block;
+  height: 100%;
+  border-radius: 0 2px 2px 0;
+}
+
+.tabMeta {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--ink-3);
+}
+
+.panelHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.evidenceRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 0.6rem;
+}
+
+.voiceCol {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1.1rem 1.2rem 1.2rem;
+}
+
+.voiceTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0 0 0.9rem !important;
+}
+
+.voiceRule {
+  width: 18px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.enemy {
+  position: relative;
+  margin-top: 3rem;
+  padding: 2rem 2rem 1.25rem;
+  border-radius: 20px;
+  border: 1px solid rgba(208, 96, 122, 0.28);
+  background:
+    radial-gradient(600px 260px at 0% 0%, rgba(208, 96, 122, 0.1), transparent 70%),
+    var(--surface);
+}
+
+.enemyTitle {
+  font-family: var(--serif);
+  font-size: clamp(1.8rem, 1.3rem + 1.5vw, 2.6rem);
+  font-weight: 500;
+  font-style: italic;
+  color: var(--ink);
+  margin: 0.35rem 0 0.75rem !important;
+}
+
+.enemySummary {
+  max-width: 52rem;
+  color: var(--ink-2);
+  line-height: 1.6;
+  margin: 0 0 1.5rem !important;
+}
+
+@media (max-width: 900px) {
+  .evidenceRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+  .enemy {
+    padding: 1.25rem 1rem 0.5rem;
+  }
+}
