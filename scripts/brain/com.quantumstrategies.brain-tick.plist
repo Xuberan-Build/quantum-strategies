@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template. install-launchd.sh replaces __TICK__, __HOME__, __PATH__ and __LOGDIR__.
+  Weekly safety-net brain tick: Sunday 21:00 local time.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.quantumstrategies.brain-tick</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__TICK__</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>0</integer>
+    <key>Hour</key>
+    <integer>21</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>__HOME__</string>
+    <key>PATH</key>
+    <string>__PATH__</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__LOGDIR__/launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>__LOGDIR__/launchd.log</string>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+</dict>
+</plist>
