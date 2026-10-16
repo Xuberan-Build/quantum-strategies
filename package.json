@@ -51,7 +51,8 @@
     "drive:delete": "node --import tsx scripts/drive/drive-delete.ts",
     "drive:rename": "node --import tsx scripts/drive/drive-rename.ts",
     "drive:create-beta-feedback-sheet": "node --import tsx scripts/drive/create-beta-feedback-sheet.ts",
-    "drive:init-beta-feedback-sheet": "node --import tsx scripts/drive/init-beta-feedback-sheet.ts"
+    "drive:init-beta-feedback-sheet": "node --import tsx scripts/drive/init-beta-feedback-sheet.ts",
+    "backup:content": "tsx scripts/backup/backup-content.ts"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.1.1",

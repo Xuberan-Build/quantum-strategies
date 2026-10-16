@@ -69,3 +69,17 @@ supabase/.temp/
 # Python (ingest scripts)
 **/__pycache__/
 scripts/ingest/.venv/
+
+# YouTube research sweep: local venv + raw transcript/comment cache (never commit full transcripts)
+scripts/research/.venv/
+scripts/research/.cache/
+
+# Second brain lives in its own PRIVATE repo (Xuberan-Build/quantum-brain), cloned here
+/brain/
+
+# Brain tick runtime state (scripts/brain/README.md)
+scripts/brain/.queue/
+scripts/brain/.lock
+scripts/brain/logs/
+scripts/brain/.state.json
+scripts/research/creators.json

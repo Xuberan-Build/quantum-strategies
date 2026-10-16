@@ -27,6 +27,12 @@ This exports all critical tables to CSV files in `backups/<timestamp>/`:
 - affiliate_transactions, referral_hierarchy
 - course_enrollments, course_progress
 
+Before touching the content engine or the knowledge corpus (knowledge_chunks/sources, content_pillars/topics/angles/sections/pieces/posts, corpus links, agent runs, ingestion queue), ALSO run:
+```bash
+npm run backup:content -- backups/<same-timestamp>
+```
+This exports those tables, including embeddings, as JSONL, and fails if any row count doesn't match.
+
 Backups are stored locally in the `backups/` folder (gitignored).
 The script will FAIL if any critical table cannot be backed up.
 
@@ -57,6 +63,16 @@ Agent worktrees accumulate in `.claude/worktrees/` and can slow the dev server t
    ```
 
 **Do NOT leave worktrees around.** They are watched by Next.js and compiled by TypeScript, adding seconds of latency per page load per worktree.
+
+## BUILD JOURNAL (brain/journey/)
+
+The second brain at `brain/` is the strategy source of truth. `brain/journey/` is the running record of building QS.
+At the end of any meaningful session (a feature, fix, investigation, decision, or failure):
+
+1. Add `brain/journey/log/YYYY-MM-DD-short-slug.md` using the template in `brain/journey/README.md`. Cover the goal, the approaches tried (including dead ends), hurdles, decisions, learnings, outcome and open questions.
+2. Fold anything durable into `brain/journey/decisions.md`, `learnings.md`, `incidents.md` or `open-questions.md`.
+3. Be honest. Failures are the most valuable entries. Tag build-in-public candidates with `#content`.
+4. Never include secrets, keys, env values, or customer PII.
 
 ## INCIDENT HISTORY
 
