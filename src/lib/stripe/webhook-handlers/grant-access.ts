@@ -9,6 +9,9 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { BUNDLE_CONTENTS } from '@/lib/constants/bundles';
+
+export { BUNDLE_CONTENTS };
 
 export interface GrantAccessResult {
   userId: string;
@@ -21,22 +24,6 @@ export interface GrantAccessResult {
  * For bundles: reads bundle_products JSONB from product_definitions.
  * For single products: returns [productSlug].
  */
-export const BUNDLE_CONTENTS: Record<string, string[]> = {
-  'perception-rite-bundle': [
-    'perception-rite-scan-1',
-    'perception-rite-scan-2',
-    'perception-rite-scan-3',
-    'perception-rite-scan-4',
-    'perception-rite-scan-5',
-  ],
-  'orientation-bundle': ['personal-alignment', 'business-alignment', 'brand-alignment'],
-  'declaration-rite-bundle': [
-    'declaration-rite-life-vision',
-    'declaration-rite-business-model',
-    'declaration-rite-strategic-path',
-  ],
-};
-
 export async function resolveProductSlugs(productSlug: string): Promise<string[]> {
   const known = BUNDLE_CONTENTS[productSlug];
   if (known) {
@@ -149,21 +136,26 @@ export async function grantProductAccess(params: {
 
     if (accessError) {
       if (accessError.code === '23505') {
-        // User already has access — update the existing record
-        console.log(`⚠️ Duplicate access for ${slug} — updating existing record`);
-
-        await supabaseAdmin
-          .from('product_access')
-          .update(accessRecord)
-          .eq('user_id', userId)
-          .eq('product_slug', slug);
-
+        // User already has a row for this product.
         const { data: existingAccess } = await supabaseAdmin
           .from('product_access')
-          .select('id')
+          .select('id, access_granted')
           .eq('user_id', userId)
           .eq('product_slug', slug)
           .single();
+
+        if (existingAccess?.access_granted) {
+          // Already owned (earlier purchase, beta, or a "complete the Rite" upgrade).
+          // Keep the row as is so the original purchase data survives.
+          console.log(`⚠️ ${slug} already owned — keeping existing record`);
+        } else {
+          console.log(`⚠️ Duplicate access for ${slug} — updating existing record`);
+          await supabaseAdmin
+            .from('product_access')
+            .update(accessRecord)
+            .eq('user_id', userId)
+            .eq('product_slug', slug);
+        }
 
         if (existingAccess?.id) productAccessIds.push(existingAccess.id);
       } else {

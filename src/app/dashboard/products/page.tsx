@@ -6,6 +6,8 @@ import { getProductBySlug } from '@/lib/constants/products';
 import ProductTable from '@/components/dashboard/ProductTable';
 import Link from 'next/link';
 import { ALL_BETA_PRODUCTS } from '@/lib/beta/constants';
+import { getUserCompleteRiteOffers } from '@/lib/pricing/complete-the-rite-server';
+import { RITE_INFO } from '@/lib/constants/bundles';
 import BetaCommitmentModal from '@/components/beta/BetaCommitmentModal';
 
 export const dynamic = 'force-dynamic';
@@ -185,6 +187,11 @@ export default async function ProductsDashboardPage() {
     ? await getLatestUnpaidBetaCompletion(session.user.id)
     : null;
 
+  const riteOffers = await getUserCompleteRiteOffers(session.user.id).catch((e) => {
+    console.error('Error fetching Complete the Rite offers:', e?.message || e);
+    return [];
+  });
+
   const commitmentProduct = unpaidBetaCompletion
     ? getProductBySlug(unpaidBetaCompletion.product_slug)
     : null;
@@ -245,6 +252,26 @@ export default async function ProductsDashboardPage() {
             )}
           </div>
         </section>
+
+        {riteOffers.map((offer) => {
+          const rite = RITE_INFO[offer.bundleSlug];
+          return (
+            <section className={styles.section} key={offer.bundleSlug}>
+              <div className={styles.nextActionCard}>
+                <div>
+                  <h2 className={styles.nextActionTitle}>Complete the {rite?.name} Rite</h2>
+                  <p className={styles.nextActionSubtitle}>
+                    You own {offer.ownedSlugs.length} of {offer.ownedSlugs.length + offer.missingSlugs.length}.
+                    Get the rest and save ${offer.savings}.
+                  </p>
+                </div>
+                <Link href={`${rite?.pagePath}#bundle`} className={styles.nextActionButton}>
+                  Complete the Rite for ${offer.price}
+                </Link>
+              </div>
+            </section>
+          );
+        })}
 
         <section className={styles.section}>
           <h2>Your Products</h2>

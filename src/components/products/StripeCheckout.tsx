@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { redirectToCheckout } from "@/lib/stripe/checkout";
+import { BUNDLE_CONTENTS, RITE_INFO } from "@/lib/constants/bundles";
 import styles from "./stripe-checkout.module.css";
 
 interface StripeCheckoutProps {
@@ -11,9 +12,33 @@ interface StripeCheckoutProps {
   productSlug?: string;
 }
 
+function formatUsd(amount: number): string {
+  return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+}
+
 export default function StripeCheckout({ paymentLink, productName, price, productSlug }: StripeCheckoutProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [offer, setOffer] = useState<{ price: number; savings: number; ownedCount: number } | null>(null);
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+  // "Complete the Rite": if the signed-in user owns part of this Rite bundle, show their price.
+  // Display only. The checkout route recomputes the price on the server.
+  useEffect(() => {
+    if (!productSlug || !BUNDLE_CONTENTS[productSlug]) return;
+    let cancelled = false;
+    fetch("/api/offers/complete-the-rite")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const found = data?.offers?.find((o: { bundleSlug: string }) => o.bundleSlug === productSlug);
+        if (!cancelled && found) {
+          setOffer({ price: found.price, savings: found.savings, ownedCount: found.ownedSlugs.length });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [productSlug]);
 
   const handleCheckout = async () => {
     if (isProcessing) return;
@@ -87,8 +112,18 @@ export default function StripeCheckout({ paymentLink, productName, price, produc
         className={styles.checkoutButton}
         disabled={isProcessing}
       >
-        {isProcessing ? 'Processing...' : `Purchase ${productName} - $${price}`}
+        {isProcessing
+          ? 'Processing...'
+          : offer
+            ? `Complete the Rite for ${formatUsd(offer.price)}`
+            : `Purchase ${productName} - $${price}`}
       </button>
+      {offer && productSlug && (
+        <p className={styles.checkoutNote}>
+          You already own {offer.ownedCount} of {BUNDLE_CONTENTS[productSlug].length} in {RITE_INFO[productSlug]?.name}.
+          This gets you the rest and saves {formatUsd(offer.savings)}.
+        </p>
+      )}
       <p className={styles.checkoutNote}>
         Secure checkout powered by Stripe • Instant access
       </p>

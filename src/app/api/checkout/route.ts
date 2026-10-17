@@ -16,6 +16,9 @@ import { cookies } from 'next/headers';
 import { supabaseAdmin, createServerSupabaseClient } from '@/lib/supabase/server';
 import { getProductBySlug } from '@/lib/constants/products';
 import { APP_URL, MARKETING_URL } from '@/lib/config/urls';
+import { BUNDLE_CONTENTS, RITE_INFO } from '@/lib/constants/bundles';
+import { getCompleteRiteOffer, ownsWholeRite } from '@/lib/pricing/complete-the-rite';
+import { getUserAccessRows } from '@/lib/pricing/complete-the-rite-server';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY?.trim() || '', {
   apiVersion: '2026-02-25.clover',
@@ -45,8 +48,32 @@ export async function POST(req: NextRequest) {
     const { data: definition } = await supabaseAdmin
       .from('product_definitions')
       .select('post_purchase_redirect, allow_promo_codes, bundle_products')
-      .eq('slug', productSlug)
-      .single();
+      .eq('product_slug', productSlug)
+      .maybeSingle();
+
+    // "Complete the Rite": a Rite bundle bought by someone who owns part of it is
+    // priced on the server from their access rows. The client never sends a price.
+    let unitAmountCents = product.price * 100;
+    let lineItemName = product.name;
+    let lineItemDescription = `${product.estimatedDuration || '15-30 minutes'} guided experience`;
+    let upgradeMetadata: Record<string, string> = {};
+
+    if (BUNDLE_CONTENTS[productSlug]) {
+      const accessRows = await getUserAccessRows(user.id);
+
+      if (ownsWholeRite(accessRows, productSlug)) {
+        return NextResponse.json({ error: 'You already own everything in this Rite' }, { status: 409 });
+      }
+
+      const offer = getCompleteRiteOffer(accessRows, productSlug);
+      if (offer) {
+        const riteName = RITE_INFO[productSlug]?.name ?? product.name;
+        unitAmountCents = Math.round(offer.price * 100);
+        lineItemName = `Complete ${riteName}`;
+        lineItemDescription = `The remaining ${offer.missingSlugs.length} in the ${riteName} Rite`;
+        upgradeMetadata = { upgrade: 'complete_rite', missing: offer.missingSlugs.join(',') };
+      }
+    }
 
     // Determine success URL from product_definitions.post_purchase_redirect (default: /dashboard)
     const requestOrigin = new URL(req.url).origin;
@@ -74,6 +101,7 @@ export async function POST(req: NextRequest) {
       referralCode: referralCode || 'none',
       successUrl,
       allowPromoCodes,
+      upgrade: upgradeMetadata.upgrade || 'none',
     });
 
     const session = await stripe.checkout.sessions.create({
@@ -83,19 +111,20 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: product.name,
-              description: `${product.estimatedDuration || '15-30 minutes'} guided experience`,
+              name: lineItemName,
+              description: lineItemDescription,
             },
-            unit_amount: product.price * 100,
+            unit_amount: unitAmountCents,
           },
           quantity: 1,
         },
       ],
       success_url: successUrl,
-      cancel_url: `${marketingBaseUrl}/products/${productSlug}`,
+      cancel_url: `${marketingBaseUrl}${RITE_INFO[productSlug]?.pagePath ?? `/products/${productSlug}`}`,
       metadata: {
         product_slug: productSlug,
         referral_code: referralCode,
+        ...upgradeMetadata,
         ...(bundleProducts.length > 0 && { bundle_products: bundleProducts.join(',') }),
       },
       allow_promotion_codes: allowPromoCodes,
