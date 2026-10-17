@@ -131,6 +131,10 @@ export async function POST(request: NextRequest) {
       amountPaid: amount,
       purchaseDate: timestamp,
       authUserId,
+      upgradeSlugs:
+        session.metadata?.upgrade === 'complete_rite'
+          ? session.metadata?.missing?.split(',').filter(Boolean)
+          : undefined,
     });
   } catch (err: any) {
     console.error('⚠️ Grant access failed (non-fatal):', err.message);

@@ -9,6 +9,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import {
   FOUNDING_MEMBER_SLUG,
   checkFoundingEligibility,
+  isFoundingOfferEnabled,
   computePriorPayments,
   getFoundingMemberPrice,
   stageForRite,
@@ -90,7 +91,9 @@ export async function getFoundingOffer(
   now: Date = new Date()
 ): Promise<FoundingOffer> {
   const participant = await getBetaParticipant(userId);
-  const eligibility = checkFoundingEligibility(participant, now);
+  const eligibility: FoundingEligibility = isFoundingOfferEnabled()
+    ? checkFoundingEligibility(participant, now)
+    : { eligible: false, reason: 'closed' };
   if (!eligibility.eligible || !participant) {
     return { participant, eligibility, pricing: null };
   }

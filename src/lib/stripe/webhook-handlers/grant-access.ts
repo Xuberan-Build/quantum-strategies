@@ -27,7 +27,7 @@ export interface GrantAccessResult {
 export async function resolveProductSlugs(productSlug: string): Promise<string[]> {
   const known = BUNDLE_CONTENTS[productSlug];
   if (known) {
-    console.log(`🎁 Bundle ${productSlug} → granting ${known.length} products`);
+    console.log(`🎁 Bundle ${productSlug} → ${known.length} products`);
     return known;
   }
 
@@ -56,12 +56,17 @@ export async function grantProductAccess(params: {
   amountPaid: number;
   purchaseDate: string;
   authUserId?: string;
+  /** "Complete the Rite" upgrade: grant only these bundle components (the ones that were missing). */
+  upgradeSlugs?: string[];
 }): Promise<GrantAccessResult> {
-  const { customerEmail, customerName, productSlug, sessionId, amountPaid, purchaseDate, authUserId } = params;
+  const { customerEmail, customerName, productSlug, sessionId, amountPaid, purchaseDate, authUserId, upgradeSlugs } = params;
 
   // Resolve which products to grant (handles bundles via DB lookup)
-  const productsToGrant = await resolveProductSlugs(productSlug);
-  const isBundle = productsToGrant.length > 1;
+  const bundleSlugs = await resolveProductSlugs(productSlug);
+  const isUpgrade = !!upgradeSlugs?.length;
+  // An upgrade only grants the missing components, never the whole bundle.
+  const productsToGrant = isUpgrade ? bundleSlugs.filter((s) => upgradeSlugs!.includes(s)) : bundleSlugs;
+  const isBundle = bundleSlugs.length > 1;
 
   // Find or create user.
   // Prefer authUserId (the Supabase auth UUID) when available — it's the authoritative ID
@@ -125,7 +130,7 @@ export async function grantProductAccess(params: {
       amount_paid: amountPaid,
       access_granted: true,
       purchase_date: purchaseDate,
-      purchase_source: isBundle ? 'bundle' : 'single',
+      purchase_source: isUpgrade ? 'upgrade' : isBundle ? 'bundle' : 'single',
       bundle_slug: isBundle ? productSlug : null,
     };
 

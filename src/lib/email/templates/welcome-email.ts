@@ -119,7 +119,7 @@ export function welcomeSubject(data: WelcomeEmailData): string {
     return `${data.riteName ?? data.purchaseName} is yours. Start with ${data.start.name}.`;
   }
   if (data.kind === 'upgrade') {
-    return `You own all of ${data.riteName ?? data.purchaseName} now. Next up: ${data.start.name}.`;
+    return `${data.riteName ?? data.purchaseName} is complete. Start with ${data.start.name}.`;
   }
   return data.start.duration
     ? `${data.start.name} is ready. It takes about ${data.start.duration}.`
@@ -153,7 +153,7 @@ export function renderWelcomeEmail(data: WelcomeEmailData): RenderedEmail {
   const startIntro =
     data.kind === 'single'
       ? `The best time to do it is today, while the reason you bought it is still fresh.`
-      : `Start with ${data.start.name}. The rest are waiting in your dashboard when you finish.`;
+      : `Start with ${data.start.name}. Everything else is already in your dashboard.`;
 
   const expect = [
     `It takes ${durationLine}. Your progress saves, so you can stop and come back.`,

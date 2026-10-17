@@ -9,7 +9,7 @@ import { ALL_BETA_PRODUCTS } from '@/lib/beta/constants';
 import { getUserCompleteRiteOffers } from '@/lib/pricing/complete-the-rite-server';
 import { RITE_INFO } from '@/lib/constants/bundles';
 import BetaCommitmentModal from '@/components/beta/BetaCommitmentModal';
-import { checkFoundingEligibility } from '@/lib/beta/founding-member';
+import { checkFoundingEligibility, isFoundingOfferEnabled } from '@/lib/beta/founding-member';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,7 +139,9 @@ export default async function ProductsDashboardPage() {
   ]);
 
   const isBetaParticipant = Boolean(betaParticipant?.id);
-  const foundingEligibility = checkFoundingEligibility(betaParticipant ?? null);
+  const foundingEligibility = isFoundingOfferEnabled()
+    ? checkFoundingEligibility(betaParticipant ?? null)
+    : ({ eligible: false, reason: 'closed' } as const);
   const showFoundingOffer = foundingEligibility.eligible;
   const isFoundingMember = !foundingEligibility.eligible && foundingEligibility.reason === 'already_member';
 

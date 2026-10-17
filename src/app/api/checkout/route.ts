@@ -73,6 +73,11 @@ export async function POST(req: NextRequest) {
         lineItemDescription = `The remaining ${offer.missingSlugs.length} in the ${riteName} Rite`;
         upgradeMetadata = { upgrade: 'complete_rite', missing: offer.missingSlugs.join(',') };
       }
+    } else {
+      const accessRows = await getUserAccessRows(user.id);
+      if (accessRows.some((row) => row.product_slug === productSlug && row.access_granted)) {
+        return NextResponse.json({ error: 'You already own this product' }, { status: 409 });
+      }
     }
 
     // Determine success URL from product_definitions.post_purchase_redirect (default: /dashboard)

@@ -25,6 +25,11 @@ export const FOUNDING_OFFER_CLOSES_AT = '2026-11-15T23:59:59-08:00';
 /** Stripe won't charge less than $0.50, so a smaller balance counts as paid in full. */
 export const MIN_CHARGE = 0.5;
 
+/** The offer stays hidden until the founder approves its terms and sets FEATURE_FOUNDING_OFFER=true. */
+export function isFoundingOfferEnabled(): boolean {
+  return process.env.FEATURE_FOUNDING_OFFER === 'true';
+}
+
 export type FoundingIneligibleReason =
   | 'not_beta'
   | 'withdrawn'

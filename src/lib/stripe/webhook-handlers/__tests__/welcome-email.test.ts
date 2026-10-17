@@ -140,7 +140,7 @@ describe('welcome email', () => {
     );
     const email = renderWelcomeEmail(data);
     expect(data.kind).toBe('upgrade');
-    expect(email.subject).toBe('You own all of Orientation now. Next up: Business Alignment Orientation.');
+    expect(email.subject).toBe('Orientation is complete. Start with Business Alignment Orientation.');
     expect(email.html).toContain('/products/business-alignment/experience?');
   });
 
