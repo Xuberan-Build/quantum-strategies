@@ -2,14 +2,34 @@
  * Webhook Handler: Send Welcome Email
  *
  * Sends the post-purchase welcome email to the customer.
- * Branding (name, colors) comes from BUSINESS config.
- * Product details (name, included items for bundles) come from product_definitions.
+ * Copy and layout live in src/lib/email/templates/welcome-email.ts (pure).
+ * This module resolves the data (product names, Rite, next offer) and sends via Gmail.
+ *
+ * Failure-safety: the offer lookup is optional. If it fails, the email goes out
+ * without the offer block. The webhook also wraps this call in try/catch.
+ *
+ * Bundle contents come from BUNDLE_CONTENTS (bundles have no product_definitions
+ * row, and product_definitions has no bundle_products column).
  */
 
 import { google } from 'googleapis';
 import { BUSINESS } from '../../../../config/business.config';
-import { APP_URL } from '@/lib/config/urls';
+import { APP_URL, MARKETING_URL } from '@/lib/config/urls';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { BUNDLE_CONTENTS, RITE_INFO } from '@/lib/constants/bundles';
+import { PRODUCTS } from '@/lib/constants/products';
+import {
+  getCompleteRiteOffer,
+  ownsWholeRite,
+  type AccessRowInput,
+} from '@/lib/pricing/complete-the-rite';
+import { getUserAccessRows } from '@/lib/pricing/complete-the-rite-server';
+import {
+  renderWelcomeEmail,
+  type WelcomeEmailData,
+  type WelcomeOfferBlock,
+  type WelcomeNextRiteBlock,
+} from '@/lib/email/templates/welcome-email';
 
 function getGmailCredentials() {
   const client_email = process.env.GOOGLE_GMAIL_CLIENT_EMAIL || process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
@@ -20,27 +40,179 @@ function getGmailCredentials() {
   return { client_email, private_key };
 }
 
-/**
- * Fetch bundle product names for display in welcome email.
- * Reads product_definitions for each slug in bundle_products JSONB.
- */
-async function getBundleProductNames(bundleSlugs: string[]): Promise<string[]> {
-  const { data } = await supabaseAdmin
-    .from('product_definitions')
-    .select('name')
-    .in('slug', bundleSlugs);
-  return (data || []).map(d => d.name);
+/** The Rites in the order a buyer moves through them. */
+export const RITE_ORDER = ['perception-rite-bundle', 'orientation-bundle', 'declaration-rite-bundle'] as const;
+const RITE_NUMERALS = ['I', 'II', 'III'];
+
+export function findRiteForSlug(slug: string): string | null {
+  if (BUNDLE_CONTENTS[slug]) return slug;
+  return Object.keys(BUNDLE_CONTENTS).find((b) => BUNDLE_CONTENTS[b].includes(slug)) ?? null;
 }
 
-export async function sendWelcomeEmail(params: {
+/**
+ * Display names for product slugs. Code constants first; anything unknown falls
+ * back to product_definitions (the column is product_slug), then to the slug itself.
+ */
+async function getProductNames(slugs: string[]): Promise<Record<string, string>> {
+  const names: Record<string, string> = {};
+  const unknown: string[] = [];
+  for (const slug of slugs) {
+    const name = PRODUCTS[slug]?.name;
+    if (name) names[slug] = name;
+    else unknown.push(slug);
+  }
+  if (unknown.length > 0) {
+    try {
+      const { data } = await supabaseAdmin
+        .from('product_definitions')
+        .select('product_slug, name')
+        .in('product_slug', unknown);
+      for (const row of (data ?? []) as { product_slug: string; name: string }[]) {
+        if (row.name) names[row.product_slug] = row.name;
+      }
+    } catch (err: any) {
+      console.warn('[welcome-email] product name lookup failed:', err?.message);
+    }
+  }
+  for (const slug of slugs) names[slug] ??= slug;
+  return names;
+}
+
+/**
+ * Pick the secondary block from the buyer's access rows (which already include
+ * this purchase, since access is granted before the email is sent).
+ * Walks the purchased Rite, then the Rites after it. The first Rite they don't
+ * fully own wins: a "complete the Rite" offer if they own part of it, otherwise
+ * the next Rite at its bundle price. Returns null when nothing fits.
+ */
+export function pickNextBlock(
+  accessRows: AccessRowInput[],
+  purchasedRite: string | null,
+  names: Record<string, string>,
+  marketingUrl: string,
+): WelcomeOfferBlock | WelcomeNextRiteBlock | null {
+  const startIndex = purchasedRite ? (RITE_ORDER as readonly string[]).indexOf(purchasedRite) : -1;
+  if (startIndex < 0) return null;
+
+  for (let i = startIndex; i < RITE_ORDER.length; i++) {
+    const rite = RITE_ORDER[i];
+    const info = RITE_INFO[rite];
+    if (!info || ownsWholeRite(accessRows, rite)) continue;
+
+    const offer = getCompleteRiteOffer(accessRows, rite);
+    if (offer) {
+      return {
+        type: 'complete-rite',
+        riteName: info.name,
+        missingNames: offer.missingSlugs.map((s) => names[s] ?? PRODUCTS[s]?.name ?? s),
+        price: offer.price,
+        savings: offer.savings,
+        pageUrl: `${marketingUrl}${info.pagePath}`,
+      };
+    }
+
+    // Owns none of a later Rite: point to it at the bundle price. Owning part of
+    // a Rite with no saving to offer leaves nothing useful to say, so move on.
+    const components = BUNDLE_CONTENTS[rite];
+    const ownsAny = accessRows.some((r) => r.access_granted && components.includes(r.product_slug));
+    if (i > startIndex && !ownsAny && PRODUCTS[rite]) {
+      return {
+        type: 'next-rite',
+        riteName: info.name,
+        riteNumber: RITE_NUMERALS[i],
+        includedNames: components.map((s) => names[s] ?? PRODUCTS[s]?.name ?? s),
+        price: PRODUCTS[rite].price,
+        pageUrl: `${marketingUrl}${info.pagePath}`,
+      };
+    }
+  }
+  return null;
+}
+
+export interface SendWelcomeEmailParams {
   to: string;
   name: string;
   productName: string;
   productSlug: string;
   productsGranted: string[];
-}): Promise<void> {
+  /** Supabase user id from grant-access; needed for the offer block. */
+  userId?: string;
+  /** True for a "complete the Rite" checkout (session.metadata.upgrade === 'complete_rite'). */
+  isUpgrade?: boolean;
+  /** Slugs the upgrade added (session.metadata.missing). */
+  upgradeMissingSlugs?: string[];
+}
+
+export interface WelcomeEmailDeps {
+  loadAccessRows?: (userId: string) => Promise<AccessRowInput[]>;
+  appUrl?: string;
+  marketingUrl?: string;
+}
+
+/** Resolve everything the template needs. Never throws on the offer lookup. */
+export async function buildWelcomeEmailData(
+  params: SendWelcomeEmailParams,
+  deps: WelcomeEmailDeps = {},
+): Promise<WelcomeEmailData> {
+  const loadAccessRows = deps.loadAccessRows ?? getUserAccessRows;
+  const appUrl = deps.appUrl ?? APP_URL;
+  const marketingUrl = deps.marketingUrl ?? MARKETING_URL;
+
   const { to, name, productName, productSlug, productsGranted } = params;
-  const isBundle = productsGranted.length > 1;
+  const granted = productsGranted.length > 0 ? productsGranted : [productSlug];
+  const isMulti = Boolean(BUNDLE_CONTENTS[productSlug]) || granted.length > 1;
+  const kind: WelcomeEmailData['kind'] = isMulti ? (params.isUpgrade ? 'upgrade' : 'bundle') : 'single';
+
+  const purchasedRite = findRiteForSlug(productSlug);
+  const riteName = purchasedRite ? RITE_INFO[purchasedRite]?.name : undefined;
+
+  const names = await getProductNames(Array.from(new Set([...granted, ...Object.values(BUNDLE_CONTENTS).flat()])));
+
+  let startSlug = kind === 'single' ? productSlug : granted[0];
+  if (kind === 'upgrade') {
+    const firstNew = (params.upgradeMissingSlugs ?? []).find((s) => granted.includes(s));
+    if (firstNew) startSlug = firstNew;
+  }
+
+  let next: WelcomeEmailData['next'] = null;
+  if (params.userId) {
+    try {
+      const rows = await loadAccessRows(params.userId);
+      next = pickNextBlock(rows, purchasedRite, names, marketingUrl);
+    } catch (err: any) {
+      console.warn('[welcome-email] offer lookup failed, sending without the offer block:', err?.message);
+      next = null;
+    }
+  }
+
+  return {
+    name,
+    email: to,
+    kind,
+    purchaseName: kind === 'single' ? names[productSlug] ?? productName : riteName ?? productName,
+    riteName,
+    start: {
+      slug: startSlug,
+      name: names[startSlug] ?? productName,
+      duration: PRODUCTS[startSlug]?.estimatedDuration,
+    },
+    includedNames: kind === 'single' ? [] : granted.map((s) => names[s] ?? s),
+    appUrl,
+    next,
+    founderName: 'Austin',
+    businessName: BUSINESS.name && BUSINESS.name !== 'Your Business' ? BUSINESS.name : 'Quantum Strategies',
+    replyEmail: BUSINESS.sender.email,
+  };
+}
+
+/** RFC 2047 encode a header value so a non-ASCII subject survives. */
+function encodeHeader(value: string): string {
+  return /^[\x20-\x7e]*$/.test(value) ? value : `=?UTF-8?B?${Buffer.from(value, 'utf8').toString('base64')}?=`;
+}
+
+export async function sendWelcomeEmail(params: SendWelcomeEmailParams): Promise<void> {
+  const data = await buildWelcomeEmailData(params);
+  const email = renderWelcomeEmail(data);
 
   const credentials = getGmailCredentials();
   const auth = new google.auth.JWT({
@@ -51,157 +223,32 @@ export async function sendWelcomeEmail(params: {
   });
   const gmail = google.gmail({ version: 'v1', auth });
 
-  const baseUrl = APP_URL;
-  const signupUrl = `${baseUrl}/signup`;
-  const redirectPath = isBundle ? '/dashboard' : `/products/${productSlug}/experience`;
-  const loginUrl = `${baseUrl}/login?redirect=${encodeURIComponent(redirectPath)}`;
-
-  // Fetch bundle item names from DB if this is a bundle
-  let bundleItemsHtml = '';
-  let bundleItemsText = '';
-  if (isBundle) {
-    const itemNames = await getBundleProductNames(productsGranted);
-    bundleItemsHtml = itemNames.map(n => `<li style="margin-bottom:8px;"><strong>${n}</strong></li>`).join('');
-    bundleItemsText = itemNames.map(n => `• ${n}`).join('\n');
-  }
-
-  const primaryColor = BUSINESS.brand.primary;
-  const accentColor = BUSINESS.brand.accent;
-
-  const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
-    .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .header { background: linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%); color: #fff; padding: 40px 30px; text-align: center; }
-    .header h1 { margin: 0; font-size: 26px; font-weight: 700; }
-    .content { padding: 40px 30px; }
-    .content p { margin: 0 0 16px 0; }
-    .button { display: inline-block; background: ${accentColor}; color: white !important; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 24px 0; }
-    .instructions { background: #e8f5e9; padding: 20px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #4caf50; }
-    .instructions h3 { margin: 0 0 12px 0; color: #2e7d32; font-size: 18px; }
-    .instructions ol { margin: 0; padding-left: 20px; }
-    .instructions li { margin-bottom: 8px; }
-    .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #666; font-size: 14px; }
-    .footer a { color: ${accentColor}; text-decoration: none; }
-    hr { border: none; border-top: 1px solid #eee; margin: 30px 0; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Welcome to ${productName}!</h1>
-    </div>
-    <div class="content">
-      <p>Hi ${name},</p>
-      <p><strong>Thank you for your purchase!</strong> Your personalized product experience is ready.</p>
-
-      ${isBundle ? `
-      <div style="background:#f0f7ff;padding:20px;border-radius:8px;margin:24px 0;border-left:4px solid #2196f3;">
-        <h3 style="margin:0 0 12px 0;color:#1976d2;font-size:18px;">Your Bundle Includes:</h3>
-        <ul style="margin:0;padding-left:20px;">${bundleItemsHtml}</ul>
-        <p style="margin:12px 0 0 0;color:#1565c0;">All products are now available in your dashboard!</p>
-      </div>
-      ` : ''}
-
-      <div class="instructions">
-        <h3>Getting Started (3 Steps):</h3>
-        <ol>
-          <li><strong>Create your account</strong> — use the same email you purchased with</li>
-          <li><strong>Log in to begin</strong> — use the link below</li>
-          <li><strong>Start your experience</strong> — ${isBundle ? 'all products are' : `"${productName}" is`} ready in your dashboard</li>
-        </ol>
-      </div>
-
-      <div style="text-align:center;">
-        <a href="${signupUrl}" class="button">Create Your Account</a>
-      </div>
-      <p style="text-align:center;margin-top:8px;">
-        Already have an account? <a href="${loginUrl}" style="color:${accentColor};">Log in here</a>
-      </p>
-
-      <p><strong>What to Expect:</strong></p>
-      <ul>
-        <li>Step-by-step guided questionnaire</li>
-        <li>AI-powered insights based on your responses</li>
-        <li>Personalized deliverable generated at the end</li>
-        <li>Full progress tracking — pause and resume anytime</li>
-      </ul>
-
-      <hr>
-      <p><strong>Need Help?</strong></p>
-      <ul>
-        <li><strong>First time?</strong> Create your account using: ${to}</li>
-        <li><strong>Questions?</strong> Email us at ${BUSINESS.sender.email}</li>
-      </ul>
-    </div>
-    <div class="footer">
-      <p><strong>${BUSINESS.name}</strong></p>
-      <p><a href="${BUSINESS.domain}">${BUSINESS.domain.replace(/^https?:\/\//, '')}</a></p>
-      <p style="margin-top:16px;font-size:12px;color:#999;">
-        This email was sent because you purchased ${productName}.<br>
-        If you have questions, reply to this email.
-      </p>
-    </div>
-  </div>
-</body>
-</html>`;
-
-  const emailText = `
-Welcome to ${productName}!
-
-Hi ${name},
-
-Thank you for your purchase! Your personalized product experience is ready.
-
-${isBundle ? `YOUR BUNDLE INCLUDES:\n${bundleItemsText}\n\nAll products are now available in your dashboard!\n` : ''}
-GETTING STARTED:
-1. Create your account — visit: ${signupUrl}
-2. Log in to begin: ${loginUrl}
-3. Start your experience in your dashboard
-
-WHAT TO EXPECT:
-- Step-by-step guided questionnaire
-- AI-powered insights based on your responses
-- Personalized deliverable generated at the end
-- Full progress tracking
-
-NEED HELP?
-- First time? Create your account using: ${to}
-- Questions? Email: ${BUSINESS.sender.email}
-
-— ${BUSINESS.name}
-${BUSINESS.domain}
-`.trim();
-
+  const boundary = `qs-welcome-${Date.now().toString(36)}`;
   const raw = [
     `From: "${BUSINESS.sender.name}" <${BUSINESS.sender.email}>`,
-    `To: ${to}`,
-    `Subject: Your ${productName} is Ready!`,
+    `To: ${params.to}`,
+    `Reply-To: ${BUSINESS.sender.email}`,
+    `Subject: ${encodeHeader(email.subject)}`,
     'MIME-Version: 1.0',
-    'Content-Type: multipart/alternative; boundary="boundary123"',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
     '',
-    '--boundary123',
+    `--${boundary}`,
     'Content-Type: text/plain; charset="UTF-8"',
     '',
-    emailText,
+    email.text,
     '',
-    '--boundary123',
+    `--${boundary}`,
     'Content-Type: text/html; charset="UTF-8"',
     '',
-    emailHtml,
+    email.html,
     '',
-    '--boundary123--',
+    `--${boundary}--`,
   ].join('\n');
 
   const encoded = Buffer.from(raw).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
   await gmail.users.messages.send({ userId: 'me', requestBody: { raw: encoded } });
-  console.log('✅ Welcome email sent to:', to);
+  console.log('✅ Welcome email sent to:', params.to, `(${data.kind}, next: ${data.next?.type ?? 'none'})`);
 }
 
 export async function sendAdminNotification(params: {

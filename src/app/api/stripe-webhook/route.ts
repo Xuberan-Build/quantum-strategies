@@ -114,6 +114,9 @@ export async function POST(request: NextRequest) {
       productName,
       productSlug,
       productsGranted: accessResult.productsGranted,
+      userId: accessResult.userId || undefined,
+      isUpgrade: session.metadata?.upgrade === 'complete_rite',
+      upgradeMissingSlugs: session.metadata?.missing?.split(',').filter(Boolean),
     });
     emailSent = '✅ Sent';
   } catch (err: any) {
