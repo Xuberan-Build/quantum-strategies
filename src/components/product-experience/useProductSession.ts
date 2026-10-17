@@ -126,7 +126,6 @@ export function useProductSession({
               sessionId: session.id,
               userId,
               productSlug: product.product_slug,
-              systemPrompt: product.system_prompt,
               productName: product.name,
             }),
           });
@@ -141,7 +140,7 @@ export function useProductSession({
       }
     };
     sendIntro();
-  }, [placementsConfirmed, assistantReply, currentStep, showIntroReply, isLoaded, placements, product.system_prompt, product.name]);
+  }, [placementsConfirmed, assistantReply, currentStep, showIntroReply, isLoaded, placements, product.name]);
 
   useEffect(() => {
     const seedInsight = async () => {
@@ -166,7 +165,6 @@ export function useProductSession({
               sessionId: session.id,
               userId,
               productSlug: product.product_slug,
-              systemPrompt: product.system_prompt,
               productName: product.name,
             }),
           });
@@ -185,7 +183,7 @@ export function useProductSession({
       }
     };
     seedInsight();
-  }, [placementsConfirmed, currentStep, seedInsightShown, isLoaded, placements, product.system_prompt, product.name]);
+  }, [placementsConfirmed, currentStep, seedInsightShown, isLoaded, placements, product.name]);
 
   const appendConversation = async (
     stepNumber: number,
@@ -331,7 +329,6 @@ export function useProductSession({
               sessionId: session.id,
               userId,
               productSlug: product.product_slug,
-              systemPrompt: product.system_prompt,
               productName: product.name,
             }),
           });

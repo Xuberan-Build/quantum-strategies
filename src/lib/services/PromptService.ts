@@ -18,6 +18,25 @@ interface PromptOptions {
 
 export class PromptService {
   /**
+   * Load a product's system prompt server-side (service role).
+   * Never accept this from the client: product_definitions prompt columns are
+   * not readable by anon/authenticated roles.
+   */
+  static async getProductSystemPrompt(productSlug: string): Promise<string> {
+    try {
+      const { data } = await supabaseAdmin
+        .from('product_definitions')
+        .select('system_prompt')
+        .eq('product_slug', productSlug)
+        .maybeSingle();
+      return data?.system_prompt ?? '';
+    } catch (err) {
+      console.error('[PromptService] Failed to load product system prompt:', err);
+      return '';
+    }
+  }
+
+  /**
    * Load prompt from database with fallback support
    */
   static async getPrompt(options: PromptOptions): Promise<string> {

@@ -19,7 +19,6 @@ export async function POST(req: Request) {
       stepData,
       mainResponse,
       placements,
-      systemPrompt,
       productName,
       priorMessages = [],
       productSlug = 'business-alignment',
@@ -58,6 +57,9 @@ export async function POST(req: Request) {
 Astrology: Sun ${astro.sun || 'UNKNOWN'}, Moon ${astro.moon || 'UNKNOWN'}, Rising ${astro.rising || 'UNKNOWN'}, Houses ${astro.houses || 'UNKNOWN'} (if 2nd house is empty, note its sign/ruler), Mercury ${astro.mercury || 'UNKNOWN'}, Venus ${astro.venus || 'UNKNOWN'}, Mars ${astro.mars || 'UNKNOWN'}, Jupiter ${astro.jupiter || 'UNKNOWN'}, Saturn ${astro.saturn || 'UNKNOWN'}, Uranus ${astro.uranus || 'UNKNOWN'}, Neptune ${astro.neptune || 'UNKNOWN'}, Pluto ${astro.pluto || 'UNKNOWN'}
 Human Design: Type ${hd.type || 'UNKNOWN'}, Strategy ${hd.strategy || 'UNKNOWN'}, Authority ${hd.authority || 'UNKNOWN'}, Profile ${hd.profile || 'UNKNOWN'}, Centers ${hd.centers || 'UNKNOWN'}, Gifts ${hd.gifts || 'UNKNOWN'}
 `.trim();
+
+    // System prompt is loaded server-side only (never trust/send it via the client)
+    const systemPrompt = await PromptService.getProductSystemPrompt(productSlug || 'quantum-initiation');
 
     // Load prompt from database with fallback
     const basePrompt = await PromptService.getPrompt({

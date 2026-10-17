@@ -1,10 +1,22 @@
 import { redirect } from 'next/navigation';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
 import ProductExperience from '@/components/product-experience/ProductExperience';
 import { isPlacementsEmpty } from '@/lib/utils/placements';
 import { ALL_BETA_PRODUCTS } from '@/lib/beta/constants';
 
 export const dynamic = 'force-dynamic';
+
+/** Remove prompt columns (system_prompt, final_deliverable_prompt, steps[].prompt) before sending to the browser. */
+function toClientSafeProduct<T extends Record<string, any>>(row: T) {
+  const { system_prompt: _sp, final_deliverable_prompt: _fp, ...rest } = row;
+  const steps = Array.isArray(rest.steps)
+    ? rest.steps.map((step: any) => {
+        const { prompt: _p, ...safeStep } = step ?? {};
+        return safeStep;
+      })
+    : rest.steps;
+  return { ...rest, steps };
+}
 
 export default async function ProductExperiencePage({
   params,
@@ -42,12 +54,17 @@ export default async function ProductExperiencePage({
   }
 
   // Get product definition (must be active)
-  const { data: product } = await supabase
+  // Read server-side with the service role (access was verified above) so the
+  // prompt columns never need to be readable by anon/authenticated roles, then
+  // strip the prompt IP before handing the product to a client component.
+  const { data: productRow } = await supabaseAdmin
     .from('product_definitions')
     .select('*')
     .eq('product_slug', slug)
     .eq('is_active', true)
     .single();
+
+  const product = productRow ? toClientSafeProduct(productRow) : null;
 
   if (!product) {
     redirect('/dashboard?error=product-not-found');

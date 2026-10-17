@@ -743,7 +743,6 @@ export default function ProductExperience({
           sessionId={session.id}
           stepNumber={currentStep}
           stepData={currentStepData}
-          systemPrompt={product.system_prompt}
           mainResponse={stepResponse}
           productSlug={product.product_slug}
           followUpCount={followUpCount}

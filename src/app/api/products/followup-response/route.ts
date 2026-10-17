@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
       sessionId,
       stepNumber,
       stepData,
-      systemPrompt,
       mainResponse,
       followUpQuestion,
       conversationHistory,
@@ -56,6 +55,9 @@ export async function POST(request: NextRequest) {
 Astrology: Sun ${astro.sun || 'UNKNOWN'}, Moon ${astro.moon || 'UNKNOWN'}, Rising ${astro.rising || 'UNKNOWN'}, 2nd house ${astro.houses || 'UNKNOWN'}, Mars ${astro.mars || 'UNKNOWN'}, Venus ${astro.venus || 'UNKNOWN'}, Mercury ${astro.mercury || 'UNKNOWN'}, Saturn ${astro.saturn || 'UNKNOWN'}, Pluto ${astro.pluto || 'UNKNOWN'}
 Human Design: Type ${hd.type || 'UNKNOWN'}, Strategy ${hd.strategy || 'UNKNOWN'}, Authority ${hd.authority || 'UNKNOWN'}, Profile ${hd.profile || 'UNKNOWN'}, Centers ${hd.centers || 'UNKNOWN'}, Gifts ${hd.gifts || 'UNKNOWN'}
 `.trim();
+
+    // System prompt is loaded server-side only (never trust/send it via the client)
+    const systemPrompt = await PromptService.getProductSystemPrompt(productSlug || 'quantum-initiation');
 
     // Load prompt from database with fallback
     const basePrompt = await PromptService.getPrompt({

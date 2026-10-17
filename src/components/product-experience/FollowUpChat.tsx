@@ -15,7 +15,6 @@ interface FollowUpChatProps {
   sessionId: string;
   stepNumber: number;
   stepData: any;
-  systemPrompt: string;
   productSlug: string;
   mainResponse: string;
   followUpCount: number;
@@ -29,7 +28,6 @@ export function FollowUpChat({
   sessionId,
   stepNumber,
   stepData,
-  systemPrompt,
   productSlug,
   mainResponse,
   followUpCount,
@@ -142,8 +140,7 @@ export function FollowUpChat({
           stepNumber,
           stepData,
           productSlug,
-          systemPrompt,
-          mainResponse,
+                  mainResponse,
           followUpQuestion: input,
           conversationHistory: messages,
           userId,
