@@ -9,12 +9,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { SAFE_ID } from './archive';
+import { isNodeId } from './graph';
 
 export const BRAIN_FEEDBACK_TABLE = 'brain_feedback';
 
 export const FEEDBACK_KINDS = ['agree', 'change', 'question', 'idea'] as const;
 export const FEEDBACK_STATUSES = ['open', 'answered', 'applied', 'resolved', 'dismissed'] as const;
-export const FEEDBACK_TARGETS = ['deck', 'slide', 'doc'] as const;
+export const FEEDBACK_TARGETS = ['deck', 'slide', 'doc', 'node'] as const;
 
 export const FeedbackKindSchema = z.enum(FEEDBACK_KINDS);
 export const FeedbackStatusSchema = z.enum(FEEDBACK_STATUSES);
@@ -28,7 +29,13 @@ export const FeedbackAnchorSchema = z.object({
   docPath: z.string().max(300).optional(), // brain-relative path of the doc
 });
 
-const Id = z.string().min(1).max(160).regex(SAFE_ID, 'invalid id');
+// Decks, slides and docs use SAFE_ID; knowledge-graph nodes use `<type>:<slug>` (graph.ts NODE_ID).
+const Id = z.string().min(1).max(265);
+
+/** Whether target_id is valid for the given target type. */
+export function isValidTargetId(targetType: string, targetId: string): boolean {
+  return targetType === 'node' ? isNodeId(targetId) : SAFE_ID.test(targetId);
+}
 
 export const FeedbackInputSchema = z
   .object({
@@ -40,6 +47,7 @@ export const FeedbackInputSchema = z
     body: z.string().trim().min(1, 'Write a note first.').max(4000),
   })
   .superRefine((v, ctx) => {
+    if (!isValidTargetId(v.target_type, v.target_id)) ctx.addIssue({ code: 'custom', path: ['target_id'], message: 'invalid id' });
     if (v.target_type === 'slide' && !v.slide_id) ctx.addIssue({ code: 'custom', path: ['slide_id'], message: 'slide_id is required for a slide' });
     if (v.target_type !== 'slide' && v.slide_id) ctx.addIssue({ code: 'custom', path: ['slide_id'], message: 'slide_id only applies to slides' });
     if (v.target_type !== 'doc' && v.anchor) ctx.addIssue({ code: 'custom', path: ['anchor'], message: 'anchor only applies to docs' });
@@ -102,9 +110,11 @@ export async function insertFeedback(client: SupabaseClient, input: FeedbackInpu
   return client.from(BRAIN_FEEDBACK_TABLE).insert(feedbackInsertRow(input, authorId)).select(FEEDBACK_COLUMNS).single<BrainFeedbackRow>();
 }
 
-export async function listFeedbackFor(client: SupabaseClient, targetType: 'deck' | 'doc', targetId: string) {
+export type FeedbackListTarget = 'deck' | 'doc' | 'node';
+
+export async function listFeedbackFor(client: SupabaseClient, targetType: FeedbackListTarget, targetId: string) {
   // Deck pages show deck-level and slide-level notes together.
-  const types = targetType === 'deck' ? ['deck', 'slide'] : ['doc'];
+  const types = targetType === 'deck' ? ['deck', 'slide'] : [targetType];
   return client
     .from(BRAIN_FEEDBACK_TABLE)
     .select(FEEDBACK_COLUMNS)
@@ -132,6 +142,7 @@ export interface InboxContext {
   deckTitles?: Record<string, string>;
   slideTitles?: Record<string, string>; // key: `${deckId}/${slideId}`
   docs?: Record<string, { title: string; path: string }>; // key: doc slug
+  nodes?: Record<string, { label: string; type: string; sourcePath?: string | null }>; // key: node id
 }
 
 const oneLine = (s: string) => s.replace(/\s+/g, ' ').trim();
@@ -151,6 +162,13 @@ export function formatInboxEntry(row: BrainFeedbackRow, ctx: InboxContext = {}):
     lines.push(`- section: ${heading}`);
     if (row.anchor?.quote) lines.push(`- quoted: "${oneLine(row.anchor.quote)}"`);
     if (row.anchor?.versionHash) lines.push(`- version: \`${row.anchor.versionHash}\``);
+  } else if (row.target_type === 'node') {
+    const node = ctx.nodes?.[row.target_id];
+    lines.push(`## ${when} · ${row.kind} · node ${row.target_id}`);
+    lines.push(`<!-- feedback-id: ${row.id} -->`);
+    lines.push(`- id: \`${row.id}\``);
+    lines.push(`- node: \`${row.target_id}\`${node?.label ? ` (${node.label})` : ''}`);
+    if (node?.sourcePath) lines.push(`- source: \`${node.sourcePath}\``);
   } else {
     const deckTitle = ctx.deckTitles?.[row.target_id];
     lines.push(`## ${when} · ${row.kind} · deck ${row.target_id}${row.slide_id ? ` / ${row.slide_id}` : ''}`);
@@ -176,7 +194,7 @@ export function formatInboxEntry(row: BrainFeedbackRow, ctx: InboxContext = {}):
 }
 
 export function inboxHeader(date: string): string {
-  return `# Feedback inbox ${date}\n\nComments left in /admin/brain (decks, slides, docs), written by scripts/brain/pull-feedback.ts. Append-only; one entry per comment, body verbatim.\n\n`;
+  return `# Feedback inbox ${date}\n\nComments left in /admin/brain (decks, slides, docs, graph nodes), written by scripts/brain/pull-feedback.ts. Append-only; one entry per comment, body verbatim.\n\n`;
 }
 
 /** Ids already written to an inbox file (so a re-run never duplicates an entry). */
