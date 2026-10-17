@@ -220,7 +220,9 @@ def whisper_transcribe(video_id: str, binary: str, timeout_cap: float | None) ->
         t1 = time.time()
         cmd = [binary, str(audio), "--model", WHISPER_MODEL, "--output-format", "json",
                "--output-dir", str(tmp), "--output-name", video_id, "--language", "en",
-               "--verbose", "False"]
+               "--verbose", "False",
+               # Stops Whisper looping on one line (seen on 2 of 18 videos, 2026-10-17).
+               "--condition-on-previous-text", "False"]
         try:
             subprocess.run(cmd, check=True, timeout=timeout, capture_output=True, text=True,
                            env=subprocess_env())
