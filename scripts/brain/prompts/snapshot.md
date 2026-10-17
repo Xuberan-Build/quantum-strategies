@@ -20,6 +20,41 @@ LIVE vs TO BUILD stated plainly, no AI prose), and the wording of `voicePack` ru
 the sources below. They never override the schema, the founder decisions or the data. Don't add fields
 for them, and list both files in `sources`.
 
+## The briefing standard (every deck must meet it)
+Founder feedback, 2026-10-17: "Your briefings need work please ensure you give me a little more context
+when bringing points and insights to the table". The daily briefing he read was a row of competitor
+follower counts and scraper fetch counts with no meaning attached. Read `content/briefing-standard.md`
+in full before writing any deck (if it isn't in this worktree yet, apply the rules below, which are its core),
+and list it in `sources`. For every slide in every deck:
+1. **The test.** The slide answers, in plain words for a reader who hasn't opened the brain since last week:
+   what is this (who, what, when, where the number came from), why it matters to Austin's goals (his own
+   thought leadership and authority, the Rites, the front door quiz, revenue), and what to do next. A point
+   that moves none of those goals gets no slide.
+2. **`takeaway` is required on every slide.** One or two plain sentences: the implication for Austin, then the
+   next move (or the decision it feeds and what's missing). Never repeat the title or summarise the slide.
+3. **Context before the number.** Titles are plain claims, never labels like "Day over day" or "Asset count".
+   Say who and what before any figure. Never use an internal name, file, id or error code without a plain gloss
+   (write "YouTube blocked our IP address", never `IpBlocked`).
+4. **Every number has a baseline** (vs last run, the channel's own median, our target or the field), **its source**
+   in words (e.g. "YouTube sweep, 17 Oct") plus the path in `sources`, and, where it informs a choice, what would
+   change the decision. "31.57x" is written as "31.6 times his channel's median views".
+5. **Austin is the subject.** Creators appear only as context for his move: a pattern to use, a gap to fill, a
+   mistake to avoid, lineage to credit. Competitor follower counts and day-over-day drift never headline a slide;
+   drop them unless they change what he does.
+6. **Plumbing goes last.** Transcript, comment and upload fetch counts, blocks, retries and validator runs go on
+   one final slide titled `Pipeline health` (kind `list`), each item saying what broke in plain words, whether
+   any insight was lost, and what is being done (owner, or "unassigned"). Never mix them into insight slides or
+   the deck `summary`. Every tick briefing deck ends with this slide when the sweep reported anything.
+7. **LIVE / TO BUILD** on every asset a slide mentions, checked against `strategy/live-vs-build.md` and newer
+   journal entries; "status unverified" if the brain doesn't say.
+8. **Quotes** carry the speaker's role (never a username), where and when, and why it matters. Likes show
+   attention and say nothing about agreement.
+9. **One idea per slide,** and an `Evidence:` line at the end of each slide's `subtitle` or `body`
+   (strong / medium / thin, with the sample behind it; mark inference "(inferred)").
+10. **Voice:** `content/tonality.md`, no em-dashes, no "X, not Y" reveals.
+Deck shape: slide 1 is the answer (what changed for Austin and the move it points to), then one insight per
+slide ordered by impact on his goals, then next moves with LIVE / TO BUILD, then `Pipeline health`.
+
 ## Where each field comes from (read these files; never invent data)
 - `decks`: newest first. `decks[0]` is the current briefing, built from the newest
   `briefings/*.md` (or, if there are no briefings, from `research/social-listening.md` +
@@ -28,7 +63,10 @@ for them, and list both files in `sources`.
   `headline` for the thesis, `stats` for numbers, `quotes` for voices, `bars` for ranked numbers
   (outliers, pain counts), `list` for angles and next moves, `comparison` for QS vs a creator or
   an enemy. Tag slides with rite/pillar/domain where it's clear, and set `sources` to the
-  brain-relative paths backing each slide. `period` is the ISO week (e.g. `2026-W42`) or the date.
+  brain-relative paths backing each slide. Every slide follows the briefing standard above, with a
+  `takeaway` on each one. In the briefing deck, competitor stats appear only where they back one of
+  Austin's angles, and the sweep's fetch counts and gaps go on the final `Pipeline health` slide.
+  The worked example in `content/briefing-standard.md` §3 shows the 17 Oct "Day over day" slide rewritten. `period` is the ISO week (e.g. `2026-W42`) or the date.
 - `marketVoice`: one entry per pillar slug that has evidence, from
   `research/conversation/*.md`, `research/social-listening.md` and `content/pillars.md`. Map the
   taxonomy's pillar names to slugs: Architecture of Self → `architecture-of-self`,

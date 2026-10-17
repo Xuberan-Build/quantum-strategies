@@ -233,6 +233,8 @@ NODE_PATH=$PWD/node_modules node --env-file=.env --import tsx scripts/brain/inge
 - **Decks** live as files in the brain at `decks/<YYYY-MM-DD>-<slug>.json` (optional metadata: `source`, `createdAt`,
   `status` current|superseded|archived, `supersedes`, `externalUrl`, `tags`). `/admin/brain/decks` lists every
   retained deck; the presenter loads snapshot decks first, then archived ones from Storage.
+  Every deck meets `brain/content/briefing-standard.md`: a `takeaway` ("Why it matters") on every slide, context and a
+  baseline before every number, competitors only as context, and pipeline stats on a final "Pipeline health" slide.
 - **Docs** to publish are listed in `brain/docs.json` (`{"docs": ["gtm/free-quiz-spec.md", "research/language/*.md"]}`).
   `/admin/brain/docs` renders them split into sections; notes anchor on heading path + quoted text + version hash,
   so they are re-found after edits (or listed as unplaced if the text is gone).
