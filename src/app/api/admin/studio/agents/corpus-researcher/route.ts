@@ -3,8 +3,8 @@ import { openai } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { expandQuery, rerankChunks } from '@/lib/corpus/expand-query';
-import { vectorSearch, type VectorHit } from '@/lib/corpus/vector-search';
-import { EVIDENCE_SIMILARITY_FLOOR, evidenceStrength, type EvidenceStrength } from '@/lib/corpus/evidence';
+import { filterHitsByTier, vectorSearch, type VectorHit } from '@/lib/corpus/vector-search';
+import { EVIDENCE_SIMILARITY_FLOOR, EVIDENCE_TIERS, evidenceStrength, parseTiers, type EvidenceStrength } from '@/lib/corpus/evidence';
 
 const EMBED_MODEL      = 'text-embedding-3-small';
 // Vector hits must clear the evidence floor; keyword hits can still appear but are labelled weak.
@@ -20,6 +20,9 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { angle_id, queries, tradition_filter } = body ?? {};
+  // These hits become citation cards (content_corpus_links), so default to the source tiers.
+  // Callers doing market research may pass tiers that include market_signal.
+  const tiers = parseTiers(body?.tiers) ?? EVIDENCE_TIERS;
 
   if (!angle_id?.trim()) return NextResponse.json({ error: 'angle_id is required' }, { status: 400 });
   if (!Array.isArray(queries) || queries.length === 0) {
@@ -54,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     // ── Parallel retrieval ────────────────────────────────────────────────────
     const [vectorResultArrays, kwResult] = await Promise.all([
-      Promise.all(embeddings.map((emb) => vectorSearch(emb, VECTOR_THRESHOLD, VECTOR_COUNT, effectiveTradition))),
+      Promise.all(embeddings.map((emb) => vectorSearch(emb, VECTOR_THRESHOLD, VECTOR_COUNT, effectiveTradition, tiers))),
       supabaseAdmin.rpc('search_knowledge_keyword', {
         query_text: primaryQuery,
         match_count: KEYWORD_COUNT,
@@ -82,7 +85,7 @@ export async function POST(req: NextRequest) {
         : `vector:${allQueries[qi]?.slice(0, 30) ?? `q${qi}`}`;
       for (const hit of vectorResultArrays[qi]) addHit(hit, label);
     }
-    for (const hit of (kwResult.data ?? []) as VectorHit[]) addHit(hit, 'keyword');
+    for (const hit of await filterHitsByTier((kwResult.data ?? []) as VectorHit[], tiers)) addHit(hit, 'keyword');
 
     merged.sort((a, b) => ((b.similarity as number) ?? 0) - ((a.similarity as number) ?? 0));
     const candidates = merged.slice(0, MAX_CANDIDATES);
@@ -157,7 +160,7 @@ export async function POST(req: NextRequest) {
         id, similarity, curated, created_at,
         knowledge_chunks!inner(
           id, tradition, text_name, author, section, chapter,
-          content, themes, source_url, priority
+          content, themes, source_url, priority, tier
         )
       `)
       .eq('angle_id', angle_id)
@@ -175,7 +178,7 @@ export async function POST(req: NextRequest) {
           content_angle_id: angle_id,
           agent_type: 'corpus_researcher',
           status: 'completed',
-          input: { queries, tradition_filter: tradition_filter ?? null },
+          input: { queries, tradition_filter: tradition_filter ?? null, tiers },
           output: { count: finalCandidates.length, weak_count: weakCount, expansion_queries: allQueries },
           completed_at: new Date().toISOString(),
         })
@@ -193,6 +196,7 @@ export async function POST(req: NextRequest) {
       count: finalCandidates.length,
       weak_count: weakCount,
       evidence_floor: EVIDENCE_SIMILARITY_FLOOR,
+      tiers,
       message: finalCandidates.length === 0
         ? 'No passages cleared the evidence floor. Try different terms.'
         : weakCount === finalCandidates.length

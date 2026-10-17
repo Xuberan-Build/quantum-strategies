@@ -13,6 +13,9 @@
  * Options:
  *   --dry-run                 (default) plan only
  *   --execute                 embed and write. Requires today's backup (see below)
+ *   --file <file.jsonl>       same as the positional file argument
+ *   --replace-by-source       the default upsert-by-source diff (below), spelled out;
+ *                             accepted so callers can state the intent explicitly
  *   --replace-source <path>   only touch rows whose metadata.source_path = <path>:
  *                             delete ALL of them and re-insert that source's records
  *                             from the file. If the file has no records for <path>,
@@ -58,6 +61,9 @@ const INSERT_BATCH = 50;
 const DELETE_BATCH = 100;
 const MAX_WORDS = 400;
 const MAX_QUOTE_WORDS = 25;
+// third_party_internal_research_only: creator transcripts and audience comments (tier market_signal),
+// retrievable by admins and internal tools only, never published or cited as evidence.
+const COPYRIGHT_VALUES = ['public_domain', 'cc_by', 'summary_fair_use', 'internal', 'third_party_internal_research_only'];
 const TIERS = ['evidence', 'model', 'contested', 'lineage', 'market_signal', 'internal', 'enemy'] as const;
 const COLUMNS = [
   'tradition', 'text_name', 'author', 'translator', 'date_composed', 'book', 'chapter', 'verse', 'lines',
@@ -91,7 +97,9 @@ const val = (f: string) => {
   const i = argv.indexOf(f);
   return i >= 0 ? argv[i + 1] : undefined;
 };
-const FILE = argv.find((a, i) => !a.startsWith('--') && !['--replace-source', '--batch', '--samples'].includes(argv[i - 1] ?? ''));
+const FILE =
+  val('--file') ??
+  argv.find((a, i) => !a.startsWith('--') && !['--replace-source', '--batch', '--samples'].includes(argv[i - 1] ?? ''));
 const EXECUTE = flag('--execute');
 const REPLACE_SOURCE = val('--replace-source');
 const EMBED_BATCH = Number(val('--batch') ?? 100);
@@ -252,8 +260,11 @@ function loadAndValidate(path: string): { records: StagedRecord[]; problems: str
     if (typeof m.source_path !== 'string' || !m.source_path) problems.push(`${at}: metadata.source_path is required (upsert key)`);
     if (typeof m.citation !== 'string' || !m.citation) problems.push(`${at}: metadata.citation is required`);
     if (typeof m.verify !== 'boolean') problems.push(`${at}: metadata.verify must be boolean`);
-    if (!['public_domain', 'cc_by', 'summary_fair_use', 'internal'].includes(String(m.copyright))) {
-      problems.push(`${at}: metadata.copyright must be public_domain | cc_by | summary_fair_use | internal`);
+    if (!COPYRIGHT_VALUES.includes(String(m.copyright))) {
+      problems.push(`${at}: metadata.copyright must be ${COPYRIGHT_VALUES.join(' | ')}`);
+    }
+    if (m.copyright === 'third_party_internal_research_only' && m.tier !== 'market_signal') {
+      problems.push(`${at}: third_party_internal_research_only content must be tier market_signal`);
     }
     if (typeof r.content === 'string') {
       const hash = sha256(r.content);

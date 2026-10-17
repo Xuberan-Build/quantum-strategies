@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { openai } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
+import { EVIDENCE_TIERS } from '@/lib/corpus/evidence';
 
 const FAST_MODEL = 'gpt-4o-mini';
 
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
       knowledge_chunks!inner(id, tradition, text_name, content, themes)
     `)
     .eq('angle_id', angle_id)
+    .in('knowledge_chunks.tier', [...EVIDENCE_TIERS]) // only sources count as support
     .order('curated', { ascending: false })
     .limit(20);
 

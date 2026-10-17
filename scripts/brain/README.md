@@ -19,6 +19,7 @@ manual: tick.sh [flags] ────────────┘
                                  tick.sh   (lock, log, worktree ~/.quantum-brain-auto @ auto, merge origin/main)
    a) journal    every tick    extract-transcript.py → claude(prompts/journal.md)      → journey/log/*, decisions/learnings/incidents/open-questions
    b) research   ≥24h          youtube_sweep.py --fill-missing, then 2–3 rotating creators --top 3 (≤10 transcripts)
+                               → stage_youtube_corpus.py + ingest dry run (real ingest only with BRAIN_YOUTUBE_CORPUS=1; see "YouTube → corpus")
                                → claude(prompts/research.md) → research/transcripts|creators|conversation, briefings/<date>.md
    c) customers  ≥7d           customer-signal.ts (read-only, anonymised JSON) → claude(prompts/customers.md) → research/conversation/customers.md
    lenses        ≥7d           for each prompts/lenses/*.md: [lenses/<name>.data.ts] → claude(lens prompt)
@@ -41,6 +42,8 @@ manual: tick.sh [flags] ────────────┘
 | `prompts/{journal,research,customers,snapshot}.md` | Stage prompts. Run-specific paths are appended under `## Run context` |
 | `prompts/lenses/*.md` + `lenses/*.data.ts` | Pluggable lenses (see `prompts/lenses/README.md`) |
 | `sync-brain-to-corpus.ts` | Brain → corpus: stage brain notes as `internal`-tier chunks (dry run by default) |
+| `../research/stage_youtube_corpus.py` | YouTube cache day → `market_signal` staging JSONL (transcripts + audience comments) |
+| `ingest-staged-corpus.ts` | Staging JSONL → `knowledge_chunks` (dry run by default; `--execute` needs today's backup) |
 | `com.quantumstrategies.brain-tick.plist` + `install-launchd.sh` | Weekly safety-net run |
 
 ## Triggers
@@ -74,7 +77,8 @@ manual: tick.sh [flags] ────────────┘
 Environment overrides: `BRAIN_MODEL` (default `opus`), `BRAIN_MAX_TURNS` (60), `BRAIN_MAX_BUDGET_USD`
 (5 per claude call), `BRAIN_MIN_USER_TURNS` (5), `BRAIN_TRANSCRIPT_BUDGET` (10), `BRAIN_WORKTREE`
 (`~/.quantum-brain-auto`), `CLAUDE_BIN` (`~/.local/bin/claude`), `BRAIN_CORPUS_SYNC` (unset; `1` lets the
-bridge stage really sync, see below). The tick exports `BRAIN_DIR` (its worktree) for data scripts.
+bridge stage really sync, see below), `BRAIN_YOUTUBE_CORPUS` (unset; `1` lets the research stage really ingest
+YouTube research, see "YouTube → corpus"). The tick exports `BRAIN_DIR` (its worktree) for data scripts.
 
 **Journal skip rule:** a session is skipped when it has fewer than 5 user turns, or when it has no
 file edits and fewer than 10 user turns. The journal prompt can also decline a session (`NO_CHANGES`).
@@ -166,6 +170,56 @@ scripts/brain/tick.sh --dry-run --only bridge
 7. **Failure isolation.** A refused or failed sync is logged and opens a `brain-tick` issue, but never fails the tick.
 
 Optional per-brain override: `<brain>/.corpus-sync.json` `{"include": [...], "exclude": [...]}` (path prefixes; exclude wins).
+
+## YouTube → corpus (market_signal)
+
+Founder decision 2026-10-16: YouTube transcripts and audience comments go into the knowledge corpus, so the
+second brain and the corpus share the same research. They go in as tier **`market_signal`**: they show what the
+market says and responds to, and are never evidence for a mechanism.
+
+**Staging:** `scripts/research/stage_youtube_corpus.py` (python3 -I, stdlib only) turns one cache day
+(`scripts/research/.cache/youtube/<date>/*.json`) into `<brain>/.snapshots/corpus-youtube/<date>.jsonl`
+(gitignored in the brain repo; nothing reaches either repo's git).
+- **Transcripts:** ~300–400 words per chunk on caption-segment boundaries, with `start_s`/`end_s` kept and
+  `source_url` = `watch?v=<id>&t=<start>s`. `text_name` `yt_<creator-key>`, `source_path` `youtube/<videoId>#<n>`,
+  `origin: youtube_transcript`.
+- **Comments:** per video, sorted by likes, ~25 per chunk (fewer if the chunk would pass 400 words).
+  Comments under 30 characters are dropped, and so are links, the seeded book plugs and "quiz" plants, and promo codes.
+  `@handles` are stripped, and the cache stores no author names. `text_name` `yt_comments_<creator-key>`,
+  `source_path` `youtube/<videoId>/comments#<n>`, `origin: youtube_comments`.
+- Every row: `tradition: creator_research`, `content_type: market_signal`, `metadata.tier: market_signal`,
+  `not_evidence: true`, `copyright: third_party_internal_research_only`, plus video id/title, creator key,
+  views, outlier and `swept_on`. `themes[]` comes from a small keyword map (self_image, manifestation, identity,
+  willpower, habit, subconscious, nlp, frequency, values).
+
+**In the tick:** after the research sweep, the tick stages the latest cache day and runs
+`ingest-staged-corpus.ts --file <jsonl> --replace-by-source`. That is a dry run (SELECT only, no embeddings) unless
+`BRAIN_YOUTUBE_CORPUS=1`, this isn't a `--dry-run` tick, and a successful backup from today exists. Then it adds
+`--execute`. The ingest script needs today's backup even to plan, so with no backup the staging counts are the dry run.
+Staging or ingest failures, or `BRAIN_YOUTUBE_CORPUS=1` without a backup, open a `brain-tick` issue but never fail the tick.
+Re-ingesting a day is idempotent: unchanged chunks keep their hash and aren't re-embedded. Caveat: if a video
+re-stages into fewer chunks, the higher-numbered `source_path`s stay until removed with `--replace-source`.
+
+**Retrieval hygiene:** evidence-facing callers (citation cards, draft/section context labelled as sources) pass
+`tiers: ['evidence','model','lineage']` to `vectorSearch`, so market_signal can't be cited. Market-research
+callers (hooks, angles, voice of market) include `market_signal`.
+
+```bash
+python3 -I scripts/research/stage_youtube_corpus.py --date 2026-10-16          # stage + counts + cost
+NODE_PATH=$PWD/node_modules node --env-file=.env --import tsx scripts/brain/ingest-staged-corpus.ts \
+  --file brain/.snapshots/corpus-youtube/2026-10-16.jsonl --replace-by-source  # dry run
+```
+
+**Real ingest (only after the founder's go-ahead; not run by default):**
+
+```bash
+npm run backup && npm run backup:content -- backups/<that-folder> && \
+NODE_PATH=$PWD/node_modules node --env-file=.env --import tsx scripts/brain/ingest-staged-corpus.ts \
+  --file brain/.snapshots/corpus-youtube/2026-10-16.jsonl --replace-by-source --execute
+```
+
+`<that-folder>` is the `backups/<timestamp>/` folder that `npm run backup` just printed. After that, set
+`BRAIN_YOUTUBE_CORPUS=1` in the tick's environment (launchd plist / shell) to keep ingesting new sweeps automatically.
 
 ## Run it manually
 

@@ -83,3 +83,4 @@ scripts/brain/.lock
 scripts/brain/logs/
 scripts/brain/.state.json
 scripts/research/creators.json
+scripts/brain/tick.env

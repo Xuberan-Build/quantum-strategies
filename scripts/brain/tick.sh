@@ -11,6 +11,7 @@
 # Usage: scripts/brain/tick.sh [--dry-run] [--force-research] [--force-lenses] [--no-upload]
 #                              [--only journal|research|customers|lenses|bridge|snapshot]
 # Env: BRAIN_CORPUS_SYNC=1 lets the bridge stage really sync brain -> corpus (still needs today's backup).
+#      BRAIN_YOUTUBE_CORPUS=1 lets the research stage really ingest YouTube research (market_signal tier; same guard).
 # See scripts/brain/README.md.
 
 set -Eeuo pipefail
@@ -22,6 +23,11 @@ export BRAIN_TICK=1
 canon() { /bin/realpath "$1" 2>/dev/null || python3 -I -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"; }
 SCRIPT_DIR="$(canon "$(dirname "${BASH_SOURCE[0]}")")"
 APP_ROOT="$(canon "$SCRIPT_DIR/../..")"
+# Local, untracked switches (e.g. BRAIN_YOUTUBE_CORPUS=1, BRAIN_MODEL=sonnet). The session-end
+# hook and launchd don't share a shell profile, so both read them from here.
+if [ -f "$SCRIPT_DIR/tick.env" ]; then
+  set -a; . "$SCRIPT_DIR/tick.env"; set +a
+fi
 BRAIN_SRC="$APP_ROOT/brain"                       # user's checkout (main) — only used to host the worktree
 WT="${BRAIN_WORKTREE:-$HOME/.quantum-brain-auto}" # the tick's isolated worktree (branch auto)
 BRAIN_REPO="Xuberan-Build/quantum-brain"
@@ -222,6 +228,60 @@ run_ts() { # script.ts args... (run from app root with .env)
   ( cd "$APP_ROOT" && NODE_PATH="$APP_ROOT/node_modules" node --env-file="$APP_ROOT/.env" --import tsx "$@" )
 }
 
+todays_backup() { # prints backups/<today>* with a clean _manifest.json (same rule as the ingest script)
+  local d found=""
+  shopt -s nullglob
+  for d in "$APP_ROOT"/backups/"$(date +%F)"* "$APP_ROOT"/backups/"$(date -u +%F)"*; do
+    if [ -f "$d/_manifest.json" ] && [ "$(jq -r '.failed_tables // 1' "$d/_manifest.json" 2>/dev/null || echo 1)" = 0 ]; then found="$d"; fi
+  done
+  shopt -u nullglob
+  if [ -n "$found" ]; then echo "$found"; return 0; fi
+  return 1
+}
+
+# YouTube research -> corpus (tier market_signal). Stages the latest cache day as JSONL in the
+# worktree's gitignored .snapshots/corpus-youtube/, then runs the ingest: a dry run (SELECTs only)
+# unless BRAIN_YOUTUBE_CORPUS=1, this is not a --dry-run tick and today's backup exists.
+# Failure-isolated: problems are logged and open a brain-tick issue; this never fails the tick.
+youtube_corpus() {
+  local day jsonl stage_log ingest_log backup mode="dry-run" rc=0
+  day="$(find "$CACHE_DIR" -mindepth 1 -maxdepth 1 -type d -name '20??-??-??' -exec basename {} \; 2>/dev/null | sort | tail -n 1 || true)"
+  if [ -z "$day" ]; then log "youtube corpus: no cache day yet"; return 0; fi
+  jsonl="$WT/.snapshots/corpus-youtube/$day.jsonl"
+  stage_log="$WORK/youtube-corpus-stage-$TS.txt"
+  ingest_log="$WORK/youtube-corpus-ingest-$TS.txt"
+  python3 -I "$RESEARCH_DIR/stage_youtube_corpus.py" --cache-day "$CACHE_DIR/$day" --brain "$WT" --out "$jsonl" >"$stage_log" 2>&1 || rc=$?
+  sed 's/^/    /' "$stage_log" || true
+  if [ "$rc" != 0 ]; then
+    warn "youtube corpus: staging failed (exit $rc) — continuing"
+    open_issue "youtube corpus (staging)"
+    return 0
+  fi
+  if ! backup="$(todays_backup)"; then
+    if [ "${BRAIN_YOUTUBE_CORPUS:-0}" = 1 ] && ! dry; then
+      warn "youtube corpus: BRAIN_YOUTUBE_CORPUS=1 but no successful backup from today — not ingesting (run npm run backup)"
+      open_issue "youtube corpus (refused: no backup today)"
+    else
+      log "youtube corpus: dry run = the staging counts above (no backup from today, and the ingest script needs one even to plan)"
+    fi
+    return 0
+  fi
+  local ingest_args=(--file "$jsonl" --replace-by-source)
+  if [ "${BRAIN_YOUTUBE_CORPUS:-0}" = 1 ] && ! dry; then mode="execute"; ingest_args+=(--execute); fi
+  log "youtube corpus: ingest $day ($mode, backup ${backup##*/})"
+  rc=0
+  run_ts scripts/brain/ingest-staged-corpus.ts "${ingest_args[@]}" >"$ingest_log" 2>&1 || rc=$?
+  sed -n '1,12p' "$ingest_log" | sed 's/^/    /' || true
+  if [ "$rc" != 0 ]; then
+    tail -n 5 "$ingest_log" | sed 's/^/    /' || true
+    warn "youtube corpus: ingest failed (exit $rc) — continuing"
+    open_issue "youtube corpus (ingest)"
+    return 0
+  fi
+  if [ "$mode" = execute ]; then SUMMARY+=("[research] YouTube cache $day ingested into the corpus (market_signal tier)"); fi
+  return 0
+}
+
 # ---------------------------------------------------------------- a) journal
 if want journal; then
   STEP="journal"
@@ -305,6 +365,9 @@ if want research && { [ "$FORCE_RESEARCH" = 1 ] || [ -n "$ONLY" ] || due researc
   else
     log "research: transcript budget used by fill-missing; no new sweep this tick"
   fi
+  STEP="research:youtube-corpus"
+  youtube_corpus || warn "youtube corpus: unexpected failure (ignored)"
+  STEP="research"
   if [ ${#days[@]} -gt 0 ]; then
     ctx="- Research cache days to digest (raw JSON, input only):"
     for d in $(printf '%s\n' "${days[@]}" | sort -u); do ctx+=$'\n'"  - $CACHE_DIR/$d/"; done

@@ -3,7 +3,7 @@ import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
-import { evidenceTag } from '@/lib/corpus/evidence';
+import { EVIDENCE_TIERS, evidenceTag } from '@/lib/corpus/evidence';
 import type { Database } from '@/types/supabase';
 
 type ChunkRow = Pick<Database['public']['Tables']['knowledge_chunks']['Row'], 'id' | 'tradition' | 'text_name' | 'author' | 'content'>;
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   if (chunk_ids.length > 0) {
     const ids = (chunk_ids as unknown[]).filter((id): id is string => typeof id === 'string').slice(0, 6);
     const [{ data }, { data: linkRows }] = await Promise.all([
-      supabaseAdmin.from('knowledge_chunks').select('id, tradition, text_name, author, content').in('id', ids),
+      supabaseAdmin.from('knowledge_chunks').select('id, tradition, text_name, author, content').in('id', ids).in('tier', [...EVIDENCE_TIERS]), // sources only
       supabaseAdmin.from('content_corpus_links').select('chunk_id, similarity').eq('angle_id', angle_id).in('chunk_id', ids),
     ]);
     chunks = (data ?? []) as ChunkRow[];

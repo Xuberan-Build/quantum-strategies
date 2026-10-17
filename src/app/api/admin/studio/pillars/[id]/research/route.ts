@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { openai } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
+import { EVIDENCE_TIERS, parseTiers } from '@/lib/corpus/evidence';
+import { filterHitsByTier } from '@/lib/corpus/vector-search';
 
 const EMBED_MODEL = 'text-embedding-3-small';
 
@@ -11,7 +13,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { admin, error: authError } = await validateAdminApiRequest();
   if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const { id } = await params;
-  const { query, tradition_filter, count = 20, threshold = 0.42 } = await req.json();
+  const body = await req.json();
+  const { query, tradition_filter, count = 20, threshold = 0.42 } = body;
+  // Hits become citation cards (content_corpus_links): default to the source tiers.
+  // Market-research callers may pass tiers that include market_signal.
+  const tiers = parseTiers(body?.tiers) ?? EVIDENCE_TIERS;
 
   if (!query?.trim()) {
     return NextResponse.json({ error: 'query is required' }, { status: 400 });
@@ -32,6 +38,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     filter_tradition: tradition_filter || null,
     filter_priority: null,
     filter_themes: null,
+    filter_tiers: tiers,
   });
   if (vecError) throw new Error(vecError.message);
 
@@ -46,7 +53,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   type Hit = { id: string; similarity?: number; rank?: number; [key: string]: unknown };
   const seen = new Set<string>();
   const merged: Hit[] = [];
-  for (const c of [...(vectorMatches ?? []), ...(kwMatches ?? [])] as Hit[]) {
+  const kwHits = await filterHitsByTier((kwMatches ?? []) as Hit[], tiers);
+  for (const c of [...(vectorMatches ?? []), ...kwHits] as Hit[]) {
     if (!seen.has(c.id)) { seen.add(c.id); merged.push(c); }
   }
 
@@ -85,11 +93,11 @@ export async function POST(req: NextRequest, { params }: Params) {
       id, similarity, curated, created_at,
       knowledge_chunks!inner(
         id, tradition, text_name, author, section, chapter,
-        content, themes, source_url, priority
+        content, themes, source_url, priority, tier
       )
     `)
     .eq('angle_id', id)
     .order('similarity', { ascending: false });
 
-  return NextResponse.json({ links: links ?? [], count: merged.length, corpusTotal: merged.length });
+  return NextResponse.json({ links: links ?? [], count: merged.length, corpusTotal: merged.length, tiers });
 }

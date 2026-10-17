@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
+import { EVIDENCE_TIERS, parseTiers } from '@/lib/corpus/evidence';
+import { filterHitsByTier } from '@/lib/corpus/vector-search';
 
 const EMBED_MODEL = 'text-embedding-3-small';
 
@@ -28,6 +30,8 @@ export async function POST(req: NextRequest) {
       count?: number;
       threshold?: number;
     };
+    // The answer cites its passages, so default to the source tiers; pass `tiers` to widen.
+    const tiers = parseTiers((body as { tiers?: unknown }).tiers) ?? EVIDENCE_TIERS;
 
     if (!query?.trim()) {
       return NextResponse.json({ error: 'query is required' }, { status: 400 });
@@ -50,6 +54,7 @@ export async function POST(req: NextRequest) {
         filter_tradition: tradition || null,
         filter_priority: null,
         filter_themes: null,
+        filter_tiers: tiers,
       }
     );
     if (vecError) throw new Error(`match_knowledge failed: ${vecError.message}`);
@@ -65,7 +70,8 @@ export async function POST(req: NextRequest) {
     type Chunk = NonNullable<typeof vectorMatches>[number];
     const seen = new Set<string>();
     const chunks: Chunk[] = [];
-    for (const c of [...(vectorMatches ?? []), ...(kwMatches ?? [])] as Chunk[]) {
+    const kwHits = await filterHitsByTier((kwMatches ?? []) as Chunk[], tiers);
+    for (const c of [...(vectorMatches ?? []), ...kwHits] as Chunk[]) {
       if (!seen.has(c.id)) {
         seen.add(c.id);
         chunks.push(c);

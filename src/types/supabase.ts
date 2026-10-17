@@ -2184,6 +2184,7 @@ export type Database = {
           technique_number: number | null
           text_name: string
           themes: string[] | null
+          tier: string
           tradition: string
           translator: string | null
           updated_at: string | null
@@ -2211,6 +2212,7 @@ export type Database = {
           technique_number?: number | null
           text_name: string
           themes?: string[] | null
+          tier?: string
           tradition: string
           translator?: string | null
           updated_at?: string | null
@@ -2238,6 +2240,7 @@ export type Database = {
           technique_number?: number | null
           text_name?: string
           themes?: string[] | null
+          tier?: string
           tradition?: string
           translator?: string | null
           updated_at?: string | null
@@ -4633,6 +4636,7 @@ export type Database = {
         Args: {
           filter_priority?: number
           filter_themes?: string[]
+          filter_tiers?: string[]
           filter_tradition?: string
           match_count?: number
           match_threshold?: number
@@ -4654,6 +4658,7 @@ export type Database = {
           technique_number: number
           text_name: string
           themes: string[]
+          tier: string
           tradition: string
           verse: string
         }[]

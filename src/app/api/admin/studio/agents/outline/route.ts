@@ -3,7 +3,7 @@ import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
-import { evidenceTag } from '@/lib/corpus/evidence';
+import { EVIDENCE_TIERS, evidenceTag } from '@/lib/corpus/evidence';
 import type { Database } from '@/types/supabase';
 
 type ChunkRow = Pick<Database['public']['Tables']['knowledge_chunks']['Row'], 'id' | 'tradition' | 'text_name' | 'content' | 'themes'>;
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
       knowledge_chunks!inner(id, tradition, text_name, content, themes)
     `)
     .eq('angle_id', angle_id)
+    .in('knowledge_chunks.tier', [...EVIDENCE_TIERS]) // sources only: never market_signal/internal/contested/enemy
     .order('curated', { ascending: false })
     .order('similarity', { ascending: false })
     .limit(10);

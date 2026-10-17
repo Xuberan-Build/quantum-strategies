@@ -3,7 +3,7 @@ import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
-import { evidenceTag } from '@/lib/corpus/evidence';
+import { EVIDENCE_TIERS, evidenceTag } from '@/lib/corpus/evidence';
 import {
   buildVideoScriptPieces,
   isVideoDistributeType,
@@ -153,7 +153,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       .from('content_corpus_links')
       .select(`similarity, knowledge_chunks!inner(tradition, text_name, section, content)`)
       .eq('angle_id', id)
-      .eq('curated', true),
+      .eq('curated', true)
+      .in('knowledge_chunks.tier', [...EVIDENCE_TIERS]), // sources only: never market_signal/internal/contested/enemy
   ]);
 
   if (pillarRes.error) return NextResponse.json({ error: 'Pillar not found' }, { status: 404 });

@@ -3,7 +3,8 @@ import { openai } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { expandQuery, rerankChunks } from '@/lib/corpus/expand-query';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
-import { EVIDENCE_SIMILARITY_FLOOR, evidenceStrength, type EvidenceStrength } from '@/lib/corpus/evidence';
+import { EVIDENCE_SIMILARITY_FLOOR, EVIDENCE_TIERS, evidenceStrength, parseTiers, type EvidenceStrength } from '@/lib/corpus/evidence';
+import { filterHitsByTier, vectorSearch } from '@/lib/corpus/vector-search';
 
 const EMBED_MODEL      = 'text-embedding-3-small';
 // Vector hits must clear the evidence floor. Keyword/theme hits can still appear but are labelled weak.
@@ -16,36 +17,15 @@ const MAX_CANDIDATES   = 20;
 type Params = { params: Promise<{ id: string }> };
 type Hit = { id: string; similarity?: number; rank?: number; [key: string]: unknown };
 
-// Supabase JS client mis-serializes vector arrays in the Next.js App Router context
-// (returns 200 with []) — use direct REST calls for vector RPC.
-async function vectorSearch(embedding: number[], threshold: number, count: number, tradition: string | null): Promise<Hit[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/match_knowledge`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
-    },
-    body: JSON.stringify({
-      query_embedding: embedding,
-      match_threshold: threshold,
-      match_count: count,
-      filter_tradition: tradition,
-      filter_priority: null,
-      filter_themes: null,
-    }),
-    cache: 'no-store',
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
-}
-
 export async function POST(req: NextRequest, { params }: Params) {
   const { admin, error: authError } = await validateAdminApiRequest();
   if (!admin) return NextResponse.json({ error: authError }, { status: 401 });
   const { id } = await params;
-  const { query, tradition_filter } = await req.json();
+  const body = await req.json();
+  const { query, tradition_filter } = body;
+  // Hits become citation cards (content_corpus_links): default to the source tiers.
+  // Market-research callers may pass tiers that include market_signal.
+  const tiers = parseTiers(body?.tiers) ?? EVIDENCE_TIERS;
 
   if (!query?.trim()) {
     return NextResponse.json({ error: 'query is required' }, { status: 400 });
@@ -78,7 +58,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // ── Step 3: Parallel retrieval ──────────────────────────────────────────────
   const [vectorResultArrays, kwResult, themeResult] = await Promise.all([
-    Promise.all(embeddings.map((emb) => vectorSearch(emb, VECTOR_THRESHOLD, VECTOR_COUNT, effectiveTradition))),
+    Promise.all(embeddings.map((emb) => vectorSearch(emb, VECTOR_THRESHOLD, VECTOR_COUNT, effectiveTradition, tiers))),
     supabaseAdmin.rpc('search_knowledge_keyword', {
       query_text: query.trim(),
       match_count: KEYWORD_COUNT,
@@ -87,8 +67,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     expansion.tradition_bridges.length > 0
       ? supabaseAdmin
           .from('knowledge_chunks')
-          .select('id, tradition, text_name, author, section, chapter, content, themes, source_url, priority')
+          .select('id, tradition, text_name, author, section, chapter, content, themes, source_url, priority, tier')
           .overlaps('themes', expansion.tradition_bridges)
+          .in('tier', [...tiers])
           .limit(10)
       : Promise.resolve({ data: [] as Hit[], error: null }),
   ]);
@@ -111,7 +92,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const label = qi === 0 ? 'vector:original' : `vector:${expansion.queries[qi - 1]?.slice(0, 30) ?? `q${qi}`}`;
     for (const hit of vectorResultArrays[qi]) addHit(hit, label);
   }
-  for (const hit of (kwResult.data ?? []) as Hit[]) addHit(hit, 'keyword');
+  for (const hit of await filterHitsByTier((kwResult.data ?? []) as Hit[], tiers)) addHit(hit, 'keyword');
   for (const hit of (themeResult.data ?? []) as Hit[]) {
     addHit(hit, `theme:${(hit.themes as string[] | undefined)?.[0] ?? 'tag'}`);
   }
@@ -209,7 +190,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       id, similarity, curated, created_at,
       knowledge_chunks!inner(
         id, tradition, text_name, author, section, chapter,
-        content, themes, source_url, priority
+        content, themes, source_url, priority, tier
       )
     `)
     .eq('angle_id', id)
@@ -222,6 +203,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     count: finalIds.length,
     weakCount: finalIds.filter((cid) => relevanceMap[cid]?.strength !== 'evidence').length,
     evidenceFloor: EVIDENCE_SIMILARITY_FLOOR,
+    tiers,
     corpusTotal: candidates.length,
   });
 }

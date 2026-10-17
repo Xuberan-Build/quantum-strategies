@@ -84,6 +84,12 @@ async function exportTable(table: string, dir: string): Promise<number> {
 async function main() {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const dir = process.argv[2] ? path.resolve(process.argv[2]) : path.join(process.cwd(), 'backups', timestamp);
+  // Never overwrite an earlier snapshot: a folder that already holds a content
+  // backup is a point-in-time record (e.g. the state before a migration).
+  if (fs.existsSync(path.join(dir, 'content-backup-manifest.json'))) {
+    console.error(`Refusing to overwrite: ${dir} already contains a content backup. Pass a new folder.`);
+    process.exit(1);
+  }
   fs.mkdirSync(dir, { recursive: true });
   console.log(`Content & corpus backup -> ${dir}\n`);
 
