@@ -18,6 +18,8 @@ import { processAffiliate } from '@/lib/stripe/webhook-handlers/process-affiliat
 import { syncCustomer } from '@/lib/google-sheets/customer-sync';
 import { FEATURES } from '../../../../config/features.config';
 import { enrollInPurchaseCampaigns } from '@/lib/crm/auto-enroll';
+import { FOUNDING_MEMBER_SLUG } from '@/lib/beta/founding-member';
+import { recordFoundingMemberPayment } from '@/lib/beta/founding-member-server';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-02-25.clover',
@@ -77,6 +79,34 @@ export async function POST(request: NextRequest) {
   if (!productSlug) {
     console.error('Could not determine product slug from session');
     return NextResponse.json({ error: 'Unknown product' }, { status: 400 });
+  }
+
+  // Founding Member (beta cohort): a status, not a product. Record it and stop, so no
+  // product_access row, welcome email, affiliate commission or campaign is triggered.
+  if (productSlug === FOUNDING_MEMBER_SLUG) {
+    const userId = session.client_reference_id;
+    if (!userId) {
+      console.error('Founding Member session without client_reference_id:', session.id);
+      return NextResponse.json({ error: 'Missing user' }, { status: 400 });
+    }
+    let recorded = false;
+    try {
+      ({ recorded } = await recordFoundingMemberPayment({
+        userId,
+        sessionId: session.id,
+        amountPaid: amount,
+        credit: Number(session.metadata?.founding_credit ?? 0) || 0,
+      }));
+    } catch (err: any) {
+      console.error('❌ Founding Member record failed:', err.message);
+      return NextResponse.json({ error: 'Founding Member record failed' }, { status: 500 });
+    }
+    try {
+      await sendAdminNotification({ customerEmail, customerName, productName: recorded ? 'Founding Member' : 'Founding Member (NOT RECORDED, check beta_participants)', amount, sessionId: session.id });
+    } catch (err: any) {
+      console.error('⚠️ Admin notification failed (non-fatal):', err.message);
+    }
+    return NextResponse.json({ received: true, founding: true });
   }
 
   // Validate product exists (constants or DB — just used for fallback name here)
