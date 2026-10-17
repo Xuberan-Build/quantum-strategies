@@ -25,7 +25,8 @@ const STATUS_LABEL: Record<FeedbackStatus, string> = {
 export type FeedbackTargetRef =
   | { target_type: 'deck'; target_id: string }
   | { target_type: 'slide'; target_id: string; slide_id: string }
-  | { target_type: 'doc'; target_id: string; anchor: FeedbackAnchor };
+  | { target_type: 'doc'; target_id: string; anchor: FeedbackAnchor }
+  | { target_type: 'node'; target_id: string };
 
 interface ComposerProps {
   target: FeedbackTargetRef;

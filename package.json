@@ -75,6 +75,9 @@
     "astronomy-engine": "^2.1.19",
     "framer-motion": "^12.23.24",
     "googleapis": "^169.0.0",
+    "graphology": "0.26.0",
+    "graphology-layout-forceatlas2": "0.10.1",
+    "graphology-types": "0.24.8",
     "gray-matter": "^4.0.3",
     "human-design-core": "^0.1.0",
     "jspdf": "^3.0.4",
@@ -91,6 +94,7 @@
     "rehype-slug": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "resend": "^6.12.2",
+    "sigma": "3.0.3",
     "stripe": "^20.4.1"
   },
   "devDependencies": {

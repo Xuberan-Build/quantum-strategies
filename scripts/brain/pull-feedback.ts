@@ -1,5 +1,5 @@
 /**
- * Pull unsynced brain feedback (comments left in /admin/brain on decks, slides and docs)
+ * Pull unsynced brain feedback (comments left in /admin/brain on decks, slides, docs and graph nodes)
  * into the brain as an append-only inbox, then mark the rows synced.
  *
  *   NODE_PATH=$PWD/node_modules node --env-file=.env --import tsx scripts/brain/pull-feedback.ts \
@@ -65,6 +65,15 @@ async function main() {
     if (parsed?.success) for (const d of parsed.data.docs) ctx.docs![d.slug] = { title: d.title, path: d.path };
   } catch {
     // titles are optional
+  }
+  // Graph node labels for comments left in /admin/brain/graph (best effort; kg_nodes may not exist).
+  const nodeIds = [...new Set(rows.filter((r) => r.target_type === 'node').map((r) => r.target_id))];
+  if (nodeIds.length) {
+    const { data: nodes } = await sb.from('kg_nodes').select('id, label, type, source_path').in('id', nodeIds.slice(0, 200));
+    ctx.nodes = {};
+    for (const n of (nodes ?? []) as { id: string; label: string | null; type: string; source_path: string | null }[]) {
+      ctx.nodes[n.id] = { label: n.label ?? n.id, type: n.type, sourcePath: n.source_path };
+    }
   }
 
   const inboxDir = path.join(brainDir, 'feedback', 'inbox');

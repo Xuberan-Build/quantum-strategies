@@ -1,7 +1,7 @@
 /**
  * /api/admin/brain/feedback
  *
- * GET  ?target_type=deck|doc&target_id=<id>  → { rows }   (deck includes its slide notes)
+ * GET  ?target_type=deck|doc|node&target_id=<id>  → { rows }   (deck includes its slide notes)
  * POST { target_type, target_id, slide_id?, anchor?, kind, body } → { row }
  *
  * Admin only (validateAdminApiRequest). brain_feedback has RLS on and no policies,
@@ -9,8 +9,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
-import { SAFE_ID } from '@/lib/brain/archive';
-import { FeedbackInputSchema, insertFeedback, listFeedbackFor } from '@/lib/brain/feedback';
+import { FeedbackInputSchema, insertFeedback, isValidTargetId, listFeedbackFor } from '@/lib/brain/feedback';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -22,8 +21,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const targetType = searchParams.get('target_type') ?? 'deck';
   const targetId = searchParams.get('target_id') ?? searchParams.get('deck_id') ?? '';
-  if ((targetType !== 'deck' && targetType !== 'doc') || !SAFE_ID.test(targetId)) {
-    return NextResponse.json({ error: 'target_type must be deck or doc, with a valid target_id' }, { status: 400 });
+  if ((targetType !== 'deck' && targetType !== 'doc' && targetType !== 'node') || !isValidTargetId(targetType, targetId)) {
+    return NextResponse.json({ error: 'target_type must be deck, doc or node, with a valid target_id' }, { status: 400 });
   }
 
   const { data, error: fetchError } = await listFeedbackFor(supabaseAdmin, targetType, targetId);

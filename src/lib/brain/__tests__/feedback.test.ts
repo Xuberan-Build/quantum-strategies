@@ -100,3 +100,27 @@ describe('inbox formatting', () => {
     expect(md).toContain('- version: `abc123`');
   });
 });
+
+describe('graph node targets', () => {
+  it('accepts <type>:<slug> node ids and rejects malformed ones', () => {
+    const ok = FeedbackInputSchema.safeParse({ target_type: 'node', target_id: 'problem:sample-problem', kind: 'question', body: 'Why?' });
+    expect(ok.success).toBe(true);
+    for (const bad of ['no-colon', 'problem:has space', 'problem:a,b', 'problem:../x']) {
+      expect(FeedbackInputSchema.safeParse({ target_type: 'node', target_id: bad, kind: 'idea', body: 'x' }).success).toBe(false);
+    }
+    // A node id is not a valid deck id; decks, slides and docs keep SAFE_ID.
+    expect(FeedbackInputSchema.safeParse({ target_type: 'deck', target_id: 'problem:x', kind: 'idea', body: 'x' }).success).toBe(false);
+  });
+
+  it('stores node notes without deck/slide/anchor and formats them for the inbox', () => {
+    const r = feedbackInsertRow({ target_type: 'node', target_id: 'claim:c1', kind: 'change', body: 'Weak.' }, null);
+    expect(r).toMatchObject({ target_type: 'node', target_id: 'claim:c1', deck_id: null, slide_id: null, anchor: null });
+    const md = formatInboxEntry(row({ target_type: 'node', target_id: 'claim:c1', deck_id: null, slide_id: null }), {
+      nodes: { 'claim:c1': { label: 'Claim one', type: 'claim', sourcePath: 'notes/claims.md' } },
+    });
+    expect(md).toContain('· node claim:c1');
+    expect(md).toContain('- node: `claim:c1` (Claim one)');
+    expect(md).toContain('- source: `notes/claims.md`');
+    expect(md).toContain(`<!-- feedback-id: ${ID} -->`);
+  });
+});
