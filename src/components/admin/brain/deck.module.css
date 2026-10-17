@@ -295,12 +295,20 @@
 }
 
 .slideStatValue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.5em;
   font-family: var(--sans);
   font-weight: 600;
   font-size: clamp(1.6rem, 5.2cqi, 5rem);
   line-height: 1;
   letter-spacing: -0.03em;
   color: var(--ink);
+}
+
+.slideStatNumber {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
@@ -309,7 +317,7 @@
   font-weight: 500;
   letter-spacing: 0;
   color: var(--ink-2);
-  margin-left: 0.5em;
+  white-space: nowrap;
 }
 
 .slideStatLabel {
@@ -703,4 +711,28 @@
   .kbdHint {
     display: none;
   }
+}
+
+.slideTakeaway {
+  margin-top: 2.2cqi;
+  padding-top: 1.2cqi;
+  border-top: 1px solid var(--axis);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4cqi;
+  max-width: 70ch;
+}
+
+.slideTakeawayLabel {
+  font-family: var(--mono);
+  font-size: clamp(0.6rem, 1cqi, 0.8rem);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--jewel);
+}
+
+.slideTakeawayText {
+  font-size: clamp(0.85rem, 1.6cqi, 1.35rem);
+  line-height: 1.45;
+  color: var(--ink);
 }

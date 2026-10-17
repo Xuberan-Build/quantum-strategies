@@ -52,6 +52,10 @@ export const SlideSchema = z.object({
   title: z.string(),
   subtitle: z.string().optional(),
   body: z.string().optional(),
+  // "Why it matters": what this means for Austin and what to do. Required by the
+  // briefing standard (brain/content/briefing-standard.md); optional in the schema
+  // so older decks stay valid.
+  takeaway: z.string().optional(),
   stats: z.array(StatSchema).optional(),
   quotes: z.array(QuoteSchema).optional(),
   bars: z.array(z.object({ label: z.string(), value: z.number(), note: z.string().optional() })).optional(),

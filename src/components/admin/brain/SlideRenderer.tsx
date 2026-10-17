@@ -50,6 +50,13 @@ export function SlideRenderer({ slide, index, total, pillarTitle, animate = true
       </div>
 
       {!isHeadline && slide.body && <p className={styles.takeaway}>{slide.body}</p>}
+
+      {slide.takeaway && (
+        <aside className={styles.slideTakeaway} aria-label="Why it matters">
+          <span className={styles.slideTakeawayLabel}>Why it matters</span>
+          <p className={styles.slideTakeawayText}>{slide.takeaway}</p>
+        </aside>
+      )}
     </article>
   );
 }
@@ -66,7 +73,7 @@ function SlideContent({ slide, animate }: { slide: BrainSlide; animate: boolean 
           {slide.stats.map((s, i) => (
             <div key={`${s.label}-${i}`} className={styles.slideStat}>
               <div className={styles.slideStatValue}>
-                {formatValue(s.value)}
+                <span className={styles.slideStatNumber}>{formatValue(s.value)}</span>
                 {s.delta && <span className={styles.slideStatDelta}>{s.delta}</span>}
               </div>
               <div className={styles.slideStatLabel}>{s.label}</div>
