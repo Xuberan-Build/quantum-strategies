@@ -28,9 +28,28 @@ export interface VoicePackResult {
 }
 
 /** The fields the format validators (src/lib/content/formats/*) need. */
-export type FormatVoiceRules = Pick<VoicePack, 'bannedTerms' | 'handleWithCare' | 'ctaSpamPatterns' | 'outcomeTimeboxPatterns'>;
+export type FormatVoiceRules = Pick<VoicePack, 'bannedTerms' | 'handleWithCare' | 'ctaSpamPatterns' | 'outcomeTimeboxPatterns' | 'aiProsePatterns'>;
 
 // ── Fallback ────────────────────────────────────────────────────────────────
+
+/**
+ * Generic AI-prose tells (no brand content). The snapshot's `voicePack.aiProsePatterns`
+ * replaces this list when present; the fallback pack uses it as is.
+ */
+export const GENERIC_AI_PROSE_PATTERNS: readonly string[] = [
+  "/\\b(?:isn't|wasn't|aren't|is not|was not)\\s+[^.!?\\n]{1,60}[.;:,—–]\\s+(?:it|this|that|they)(?:'s| is| was| are|'re)\\b/",
+  "/\\b(?:is|was|are|were|it's|that's)\\s+not\\s+[^.;:!?\\n]{1,60}?[,;:—–]\\s*(?:it's|it is|this is|that's|they're|but)\\b/",
+  '/\\bnot because\\b[^.!?\\n]{1,80}\\bbut because\\b/',
+  '/—[^—\\n]{0,140}—/',
+  "/\\b(?:here's the (?:thing|truth|kicker|catch)|the (?:honest|simple|hard|real) truth(?: is)?|let's be (?:honest|real))/",
+  "/\\b(?:let's (?:dive|jump) in|(?<!deep )dive (?:deep )?into|delv(?:e|es|ing)|without further ado)\\b/",
+  "/\\b(?:in today's (?:world|fast-paced|digital)|now more than ever|ever-(?:changing|evolving))\\b/",
+  '/\\b(?:tapestry|testament to|multifaceted|paradigm shift|holistic|transformative|plays? a (?:key|crucial|pivotal|vital) role)\\b/',
+  '/(?:^|[.!?]\\s+)(?:in short|in summary|in conclusion|ultimately|all in all|to sum up|simply put)\\b/m',
+  '/\\b(?:quietly|profoundly|truly|fundamentally|undeniably|genuinely)\\b/',
+  '/(?:^|[.!]\\s+)(?:The (?:result|answer|catch|kicker|fix|difference|best part))\\?\\s+\\S/m',
+  '/\\b(?:studies|research|science) (?:show|shows|prove|proves)\\b/',
+];
 
 export const FALLBACK_VOICE_PACK: VoicePack = {
   version: 'fallback-1',
@@ -85,6 +104,7 @@ export const FALLBACK_VOICE_PACK: VoicePack = {
   chartPolicy:
     'Treat chart or personality-profile data as descriptive input for reflection only. Never present it as the cause of an outcome, a prediction, or a substitute for the mechanism.',
   systemPreamble: 'You write for Quantum Strategies. Write plainly and honestly, to one reader.',
+  aiProsePatterns: [...GENERIC_AI_PROSE_PATTERNS],
 };
 
 // ── Parsing ─────────────────────────────────────────────────────────────────
@@ -200,8 +220,8 @@ export async function getVoicePack(): Promise<VoicePack> {
 
 /** Just the rule lists the format validators need. */
 export async function getFormatVoiceRules(): Promise<FormatVoiceRules> {
-  const { bannedTerms, handleWithCare, ctaSpamPatterns, outcomeTimeboxPatterns } = await getVoicePack();
-  return { bannedTerms, handleWithCare, ctaSpamPatterns, outcomeTimeboxPatterns };
+  const { bannedTerms, handleWithCare, ctaSpamPatterns, outcomeTimeboxPatterns, aiProsePatterns } = await getVoicePack();
+  return { bannedTerms, handleWithCare, ctaSpamPatterns, outcomeTimeboxPatterns, ...(aiProsePatterns ? { aiProsePatterns } : {}) };
 }
 
 // ── Matching helpers ────────────────────────────────────────────────────────
@@ -259,6 +279,16 @@ export function findBannedTerms(text: string, pack: Pick<VoicePack, 'bannedTerms
   return findPatternMatches(text, pack.bannedTerms);
 }
 
+/** AI-prose hits in `text` for the given pack (none when the pack carries no patterns). */
+export function findAiProse(text: string, pack: Pick<VoicePack, 'aiProsePatterns'>): PatternMatch[] {
+  return findPatternMatches(text, pack.aiProsePatterns ?? []);
+}
+
+/** The literal (non-regex) entries of a pattern list, for showing to a model. */
+function literalPatterns(patterns: readonly string[]): string[] {
+  return patterns.filter((p) => p.trim() && !/^\/[\s\S]+\/[a-z]*$/.test(p));
+}
+
 // ── Prompt building ─────────────────────────────────────────────────────────
 
 export interface VoicePromptOptions {
@@ -301,6 +331,14 @@ export function buildVoiceSystemPrompt(pack: VoicePack, options: VoicePromptOpti
   }
   if (pack.handleWithCare.length) {
     blocks.push(`HANDLE WITH CARE:\n${bulletList(pack.handleWithCare.map((h) => `${h.term}: ${h.rule}`))}`);
+  }
+  if (pack.aiProsePatterns?.length) {
+    const literals = literalPatterns(pack.aiProsePatterns);
+    blocks.push(
+      `AI PROSE (rewrite before returning): no contrast reveals ("it's not X, it's Y", "X, not Y", "not just X but Y"), no em-dashes, no triads for rhythm, no rhetorical-question openers, no one-line punchline paragraphs, no summary closers ("In short", "Ultimately"), no "Title: The Subtitle" headings, no intensifiers like "quietly" or "deeply", and no numbers without a named source.${
+        literals.length ? ` Also never write: ${literals.map((t) => `"${t}"`).join(', ')}.` : ''
+      }`,
+    );
   }
   if (includeCanon && pack.canon.length) {
     blocks.push(

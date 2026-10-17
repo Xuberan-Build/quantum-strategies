@@ -131,6 +131,8 @@ export interface VideoScriptRules {
   ctaSpamPatterns?: string[];
   /** Promises about how fast an outcome arrives. Error anywhere, including the title. */
   outcomeTimeboxPatterns?: string[];
+  /** AI-prose tells (contrast reveals, stacked dashes, filler). Warning, one per pattern, outside the lazy-version beat. */
+  aiProsePatterns?: string[];
   /** Phrases that signal a call to action; a match outside the CTA beat is a second CTA. */
   ctaMentionPatterns?: string[];
   /** Markers for citations still to be checked (warning). Default ["VERIFY"]. */
@@ -544,6 +546,16 @@ export function validateVideoScript(input: unknown, rules: VideoScriptRules): Vi
       } else {
         err('language', 'outcome_timebox', f.path, `Outcome-speed promise: "${m[0]}". Timebox the practice, never the outcome.`);
       }
+    }
+  }
+  for (const pattern of rules.aiProsePatterns ?? []) {
+    if (!pattern.trim()) continue;
+    const re = toRegex(pattern);
+    const straight = (text: string) => text.replace(/[‘’ʼ]/g, "'");
+    const hits = fields.filter((f) => f.beat !== 'lazyVersion' && re.test(straight(f.text)));
+    if (hits.length) {
+      const m = straight(hits[0].text).match(re);
+      warn('language', 'ai_prose', hits[0].path, `Reads as AI prose: "${m?.[0] ?? pattern}" (${hits.length}×). Say it plainly.`);
     }
   }
   for (const pattern of rules.ctaSpamPatterns ?? []) {

@@ -89,6 +89,7 @@ export async function buildVideoScriptPieces(args: {
     handleWithCare: voice.pack.handleWithCare,
     ctaSpamPatterns: voice.pack.ctaSpamPatterns,
     outcomeTimeboxPatterns: voice.pack.outcomeTimeboxPatterns,
+    aiProsePatterns: voice.pack.aiProsePatterns,
   };
   const voiceGuide = buildVoiceSystemPrompt(voice.pack, {
     role: 'You write video scripts: spoken word for camera, plus on-screen text and b-roll cues.',

@@ -54,6 +54,9 @@ schema says `.nullable()`.
   3. The public voice spec (`documents/AUSTIN_VOICE_SPEC.md` in the app repo), if it is readable from
      a directory listed under Run context. If it isn't, rely on `content/language.md`, which already
      synthesises it.
+  4. `content/tonality.md`: the founder's real voice, measured from his own writing, and the AI-prose
+     kill list. It supplies `aiProsePatterns` and up to four `voiceRules` (its §10). Where it proposes
+     changes to the spec or `language.md` (its §5), use them only once those files have adopted them.
 
   Field by field:
   - `version`: the language doc's version/status date, or the run date (`YYYY-MM-DD`).
@@ -75,8 +78,14 @@ schema says `.nullable()`.
   - `chartPolicy`: one or two sentences on how chart / profile data may and may not be used.
   - `systemPreamble`: 2–4 sentences that open every content system prompt: who is writing, for whom,
     and the single most important rule. No banned phrases, no hype.
+  - `aiProsePatterns`: from the fenced ```` ```yaml ai-prose-patterns ```` block in `content/tonality.md`.
+    Copy the `match` string **verbatim** (it is already in `/source/flags` or literal form) for every entry
+    whose `severity` is `warn` or `error` (missing = `warn`) and whose `scope` is `line` (missing = `line`).
+    Skip `info` and `paragraph` entries. Keep the file's order and don't invent or edit patterns. Omit the
+    key if the block doesn't exist. These are matched against generated copy by the studio's voice
+    calibration and the video-script validator.
 
-  Keep the whole object compact (aim under ~12 KB): it is injected into model prompts.
+  Keep the whole object compact (aim under ~12 KB, plus ~6 KB for `aiProsePatterns`): it is injected into model prompts.
 - `sources`: every brain file you read, as `{ "path": "<brain-relative>", "updatedAt": "<date>" }`.
   Use the newest date stated in the file, or the run date.
 - `corpus` (optional): only from the `## Summary` section of `research/corpus-links.md`. Omit the key

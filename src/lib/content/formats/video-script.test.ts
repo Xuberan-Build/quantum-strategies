@@ -269,6 +269,20 @@ describe('validateVideoScript: language rules (injected)', () => {
     expect(v.errors.map((e) => e.code)).toContain('outcome_timebox');
   });
 
+  it('warns once per AI-prose pattern, with curly apostrophes, and skips the lazy-version beat', () => {
+    const s = longScript();
+    s.mechanism.spoken = `${s.mechanism.spoken} This isn’t willpower. It’s a pattern.`;
+    s.lazyVersion.spoken = `${s.lazyVersion.spoken} the vision — your real one — shows up`;
+    const v = validateVideoScript(s, {
+      bannedTerms: [],
+      aiProsePatterns: ["/\\b(?:isn't|wasn't)\\s+[^.!?\\n]{1,60}[.;:,]\\s+(?:it|this)(?:'s| is)\\b/", '/—[^—\\n]{0,140}—/'],
+    });
+    const aiProse = v.warnings.filter((w) => w.code === 'ai_prose');
+    expect(aiProse).toHaveLength(1);
+    expect(aiProse[0].path).toBe('mechanism.spoken');
+    expect(v.pass).toBe(true);
+  });
+
   it('applies no language checks when the rules are empty', () => {
     const s = longScript();
     s.mechanism.spoken = `${s.mechanism.spoken} unlock overnight`;

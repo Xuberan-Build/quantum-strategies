@@ -7,7 +7,9 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import {
   FALLBACK_VOICE_PACK,
+  GENERIC_AI_PROSE_PATTERNS,
   buildVoiceSystemPrompt,
+  findAiProse,
   compilePattern,
   findBannedTerms,
   findPatternMatches,
@@ -157,6 +159,47 @@ describe('matching helpers', () => {
     const hits = findPatternMatches('Honestly this changed my whole life in 30 days.', [...PACK.ctaSpamPatterns, ...PACK.outcomeTimeboxPatterns]);
     expect(hits).toHaveLength(2);
     expect(hits[0].excerpt).toContain('changed my whole life');
+  });
+});
+
+describe('AI-prose patterns', () => {
+  it('is optional in the schema and survives a round trip', () => {
+    expect(parseVoicePack(PACK).ok).toBe(true);
+    const result = parseVoicePack({ ...PACK, aiProsePatterns: ['delve', '/\\bnot because\\b/'] });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.pack.aiProsePatterns).toEqual(['delve', '/\\bnot because\\b/']);
+  });
+
+  it('finds nothing when the pack has no patterns', () => {
+    expect(findAiProse("This isn't a quiz. It's a mirror.", PACK)).toHaveLength(0);
+  });
+
+  it('catches generic tells in the fallback pack and leaves plain prose alone', () => {
+    const tells = [
+      "This isn't a quiz. It's a mirror.",
+      'The vision — your real one — shows up.',
+      "Here's the thing about habits.",
+      'Ultimately, it comes down to you.',
+      'The result? Clarity.',
+    ];
+    for (const text of tells) expect(findAiProse(text, FALLBACK_VOICE_PACK).length, text).toBeGreaterThan(0);
+    const plain = 'I audited 52 assets on Friday. Three are ready to sell, so the next three weeks go to the bottom of the funnel.';
+    expect(findAiProse(plain, FALLBACK_VOICE_PACK)).toHaveLength(0);
+    expect(FALLBACK_VOICE_PACK.aiProsePatterns).toEqual([...GENERIC_AI_PROSE_PATTERNS]);
+  });
+
+  it('passes aiProsePatterns through the format rules when the snapshot has them', async () => {
+    resetVoicePackCache();
+    download.mockResolvedValue({ data: blobOf({ voicePack: { ...PACK, aiProsePatterns: ['delve'] } }), error: null });
+    expect((await getFormatVoiceRules()).aiProsePatterns).toEqual(['delve']);
+  });
+
+  it('adds an AI-prose block to the prompt only when the pack has patterns', () => {
+    expect(buildVoiceSystemPrompt(PACK)).not.toContain('AI PROSE');
+    const prompt = buildVoiceSystemPrompt({ ...PACK, aiProsePatterns: ['delve', '/\\bnot because\\b/'] });
+    expect(prompt).toContain('AI PROSE');
+    expect(prompt).toContain('"delve"');
+    expect(prompt).not.toContain('not because\\b');
   });
 });
 

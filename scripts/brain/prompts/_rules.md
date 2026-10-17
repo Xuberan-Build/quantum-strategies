@@ -25,6 +25,10 @@ directories are readable for input only, and writing to them is denied.
    research cache and must never be copied into the brain.
 6. **Index discipline:** if you add a file, add it to the relevant README index in the same run.
 7. **Scope:** only touch the files your task names, plus the indexes they need. Don't reorganise.
-8. When you finish, reply with a 3–8 line plain-text summary of what you changed (file paths
+8. **Voice:** all brain writing follows `content/tonality.md`: the founder's real tonality, plain
+   operator prose. Avoid its AI-prose kill list (§6), especially "it's not X, it's Y" and "X, not Y"
+   reveals, em-dashes, triads for rhythm, rhetorical-question openers and summary closers. Quoted
+   material is exempt.
+9. When you finish, reply with a 3–8 line plain-text summary of what you changed (file paths
    plus one clause each). The tick puts it in the commit message and the PR. If you changed
    nothing, reply exactly `NO_CHANGES` and the reason.

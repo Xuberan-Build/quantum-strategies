@@ -104,6 +104,11 @@ export function videoScriptFormatSpec(variant: VideoVariant, rules: VideoScriptR
         .join('; ')}.`,
     );
   }
+  if (rules.aiProsePatterns?.length) {
+    lines.push(
+      'AI PROSE: no contrast reveals ("it\'s not X, it\'s Y", "X, not Y"), no em-dashes, no triads for rhythm, no rhetorical-question openers, no summary closers. Say each point plainly.',
+    );
+  }
   lines.push(
     '',
     'OUTPUT: one JSON object, no prose, with keys: variant, title, titleOptions (3), thumbnailText, hook, lazyVersion, credibility, mechanism, moves, receipts, caveat, synthesis, cta, tags { rite, pillar, domain }. Beats are objects with "spoken", "onScreenText", "bRoll".',

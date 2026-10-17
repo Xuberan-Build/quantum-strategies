@@ -84,6 +84,9 @@ export const VoicePackSchema = z.object({
   }),
   chartPolicy: z.string(),
   systemPreamble: z.string(),
+  // AI-prose tells to flag in generated copy: phrases or regex sources (case-insensitive).
+  // Added 2026-10; older snapshots omit it.
+  aiProsePatterns: z.array(z.string()).optional(),
 });
 
 export const DeckSchema = z.object({

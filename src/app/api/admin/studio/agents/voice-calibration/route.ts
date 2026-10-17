@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { openai } from '@/lib/openai/client';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
-import { getVoicePack, findBannedTerms, findPatternMatches, type VoicePack } from '@/lib/content/voice-pack';
+import { getVoicePack, findAiProse, findBannedTerms, findPatternMatches, type VoicePack } from '@/lib/content/voice-pack';
 
 const FAST_MODEL = 'gpt-4o-mini';
 
@@ -25,13 +25,14 @@ ${care ? `\nHANDLE WITH CARE (flag uses that break the condition):\n${care}\n` :
 Also check for these forbidden patterns (automatic deductions):
 - Rhetorical triads: three parallel comma-separated items ("X, Y, and Z") used for rhythm. Structural threes (named, numbered, separate beats) and proper nouns are exempt.
 - Exclamation points used for emphasis (not mid-sentence dialogue)
+- AI prose: contrast reveals ("it's not X, it's Y", "X, not Y"), stacked em-dashes, rhetorical-question openers, one-line punchline paragraphs, summary closers ("In short", "Ultimately"), filler intensifiers ("quietly", "deeply")
 ${banned ? `- Banned phrases: ${banned}` : ''}
 
 Return JSON:
 {
   "score": 0-100,
   "violations": [
-    { "type": "second_person | experience_and_sources | sincerity | momentum | triad | forbidden_phrase | exclamation | voice_rule | handle_with_care", "excerpt": "the offending text (max 80 chars)", "suggestion": "how to fix it in one sentence" }
+    { "type": "second_person | experience_and_sources | sincerity | momentum | triad | forbidden_phrase | exclamation | voice_rule | handle_with_care | ai_prose", "excerpt": "the offending text (max 80 chars)", "suggestion": "how to fix it in one sentence" }
   ],
   "strengths": ["what the content does well (2-4 items)"],
   "overall_note": "one sentence calibration note for the writer"
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
   const bannedHits = findBannedTerms(content, pack);
   const ctaHits = findPatternMatches(content, pack.ctaSpamPatterns);
   const timeboxHits = findPatternMatches(content, pack.outcomeTimeboxPatterns);
+  const aiProseHits = findAiProse(content, pack);
 
   // ── Semantic scoring via model ─────────────────────────────────────────────
   let modelResult: {
@@ -104,11 +106,19 @@ export async function POST(req: NextRequest) {
     })),
   ];
 
-  const allViolations = [...deterministic, ...(Array.isArray(modelResult.violations) ? modelResult.violations : [])];
+  const aiProse: Violation[] = aiProseHits.map((v) => ({
+    type: 'ai_prose',
+    excerpt: v.excerpt,
+    suggestion: `"${v.match}" reads as AI prose. Say the claim plainly, without the reveal, the dash or the flourish.`,
+  }));
 
-  // Deduct 5 points per deterministic hit (the model may miss exact phrases)
+  const allViolations = [...deterministic, ...aiProse, ...(Array.isArray(modelResult.violations) ? modelResult.violations : [])];
+
+  // Deduct 5 points per deterministic hit (the model may miss exact phrases), and 3 per
+  // AI-prose pattern hit, capped at 15 so one tic doesn't swamp the score.
   const baseScore = typeof modelResult.score === 'number' ? modelResult.score : 0;
-  const adjustedScore = Math.max(0, Math.min(100, baseScore - deterministic.length * 5));
+  const aiProsePenalty = Math.min(15, aiProse.length * 3);
+  const adjustedScore = Math.max(0, Math.min(100, baseScore - deterministic.length * 5 - aiProsePenalty));
 
   // ── Log agent run if angle_id provided ────────────────────────────────────
   if (angle_id) {
@@ -120,7 +130,7 @@ export async function POST(req: NextRequest) {
           agent_type: 'voice_calibration',
           status: 'completed',
           input: { content_length: content.length, voice_pack_version: pack.version },
-          output: { score: adjustedScore, violation_count: allViolations.length },
+          output: { score: adjustedScore, violation_count: allViolations.length, ai_prose_count: aiProse.length },
           completed_at: new Date().toISOString(),
         });
     } catch { /* table not yet migrated */ }
