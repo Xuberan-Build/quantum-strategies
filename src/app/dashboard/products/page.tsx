@@ -9,6 +9,7 @@ import { ALL_BETA_PRODUCTS } from '@/lib/beta/constants';
 import { getUserCompleteRiteOffers } from '@/lib/pricing/complete-the-rite-server';
 import { RITE_INFO } from '@/lib/constants/bundles';
 import BetaCommitmentModal from '@/components/beta/BetaCommitmentModal';
+import { checkFoundingEligibility } from '@/lib/beta/founding-member';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,7 +125,7 @@ export default async function ProductsDashboardPage() {
     sessions,
   ] = await Promise.all([
     supabase.from('users').select('id, name, email').eq('id', session.user.id).single(),
-    supabase.from('beta_participants').select('id').eq('user_id', session.user.id).maybeSingle(),
+    supabase.from('beta_participants').select('id, status, conversion_decision').eq('user_id', session.user.id).maybeSingle(),
     supabase
       .from('product_definitions')
       .select('product_slug, name, description, price, total_steps, estimated_duration, display_order')
@@ -138,6 +139,9 @@ export default async function ProductsDashboardPage() {
   ]);
 
   const isBetaParticipant = Boolean(betaParticipant?.id);
+  const foundingEligibility = checkFoundingEligibility(betaParticipant ?? null);
+  const showFoundingOffer = foundingEligibility.eligible;
+  const isFoundingMember = !foundingEligibility.eligible && foundingEligibility.reason === 'already_member';
 
   const products = (allProducts || []).map((product) => {
     const access = productAccess?.find(
@@ -183,7 +187,8 @@ export default async function ProductsDashboardPage() {
     return null;
   })();
 
-  const unpaidBetaCompletion = isBetaParticipant
+  // Founding Members have paid for the cohort; don't ask them to pay per product.
+  const unpaidBetaCompletion = isBetaParticipant && !isFoundingMember
     ? await getLatestUnpaidBetaCompletion(session.user.id)
     : null;
 
@@ -252,6 +257,26 @@ export default async function ProductsDashboardPage() {
             )}
           </div>
         </section>
+
+        {(showFoundingOffer || isFoundingMember) && (
+          <section className={styles.section}>
+            <div className={styles.nextActionCard}>
+              <div>
+                <h2 className={styles.nextActionTitle}>
+                  {isFoundingMember ? 'You\'re a Founding Member' : 'Become a Founding Member'}
+                </h2>
+                <p className={styles.nextActionSubtitle}>
+                  {isFoundingMember
+                    ? 'Book your debrief call with Austin.'
+                    : 'The offer from when you joined the beta: $60, minus anything you\'ve already paid.'}
+                </p>
+              </div>
+              <Link href="/dashboard/founding" className={styles.nextActionButton}>
+                {isFoundingMember ? 'Book the call' : 'See the offer'}
+              </Link>
+            </div>
+          </section>
+        )}
 
         {riteOffers.map((offer) => {
           const rite = RITE_INFO[offer.bundleSlug];
