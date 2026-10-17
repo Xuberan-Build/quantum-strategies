@@ -12,6 +12,10 @@ import { z } from 'zod';
 
 export const BRAIN_BUCKET = 'brain';
 export const BRAIN_LATEST_PATH = 'snapshots/latest.json';
+export const BRAIN_DECK_DIR = 'decks';
+export const BRAIN_DECK_INDEX_PATH = 'decks/index.json';
+export const BRAIN_DOC_DIR = 'docs';
+export const BRAIN_DOC_INDEX_PATH = 'docs/index.json';
 
 export const RiteSchema = z.enum(['perception', 'orientation', 'declaration']);
 export const PillarSlugSchema = z.enum([
@@ -95,6 +99,72 @@ export const DeckSchema = z.object({
   period: z.string(), // e.g. "2026-W42" or "2026-10-16"
   summary: z.string(),
   slides: z.array(SlideSchema).min(1),
+});
+
+/**
+ * Deck archive (brain/decks/<YYYY-MM-DD>-<slug>.json). Every field beyond DeckSchema is
+ * optional, so a plain DeckSchema file is a valid archived deck.
+ */
+export const DeckStatusSchema = z.enum(['current', 'superseded', 'archived']);
+
+export const ArchivedDeckSchema = DeckSchema.extend({
+  source: z.string().optional(), // brain-relative path of the report the deck came from
+  createdAt: z.string().optional(), // ISO date or datetime
+  status: DeckStatusSchema.optional(), // missing = 'current'
+  supersedes: z.string().optional(), // id of the deck this one replaces
+  externalUrl: z.string().url().optional(), // e.g. a claude.ai artifact the deck lives as
+  tags: z.array(z.string()).optional(),
+});
+
+/** One row of decks/index.json in the `brain` bucket. */
+export const DeckIndexEntrySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  period: z.string(),
+  summary: z.string(),
+  createdAt: z.string(),
+  status: DeckStatusSchema,
+  source: z.string().optional(),
+  slideCount: z.number().int().nonnegative(),
+  externalUrl: z.string().url().optional(),
+  tags: z.array(z.string()),
+});
+
+export const DeckIndexSchema = z.object({
+  version: z.literal(1),
+  updatedAt: z.string(),
+  decks: z.array(DeckIndexEntrySchema), // newest first
+});
+
+/** One published brain doc in docs/index.json. Old versions stay at docs/<slug>/<hash>.json. */
+export const DocIndexEntrySchema = z.object({
+  slug: z.string(),
+  title: z.string(),
+  path: z.string(), // brain-relative path, e.g. "gtm/free-quiz-spec.md"
+  hash: z.string(), // content hash of the current version
+  updatedAt: z.string(), // last change to the file (brain commit date, else mtime)
+  publishedAt: z.string(),
+  brainCommit: z.string().optional(),
+  bytes: z.number().int().nonnegative(),
+  versions: z.array(z.object({ hash: z.string(), publishedAt: z.string(), brainCommit: z.string().optional() })), // newest first
+});
+
+/** docs/<slug>.json and docs/<slug>/<hash>.json (the bucket only accepts application/json). */
+export const DocFileSchema = z.object({
+  slug: z.string(),
+  path: z.string(),
+  hash: z.string(),
+  brainCommit: z.string().optional(),
+  markdown: z.string(),
+});
+
+export const docLatestPath = (slug: string) => `${BRAIN_DOC_DIR}/${slug}.json`;
+export const docVersionPath = (slug: string, hash: string) => `${BRAIN_DOC_DIR}/${slug}/${hash}.json`;
+
+export const DocIndexSchema = z.object({
+  version: z.literal(1),
+  updatedAt: z.string(),
+  docs: z.array(DocIndexEntrySchema),
 });
 
 const CoverageSchema = z.object({
@@ -201,6 +271,13 @@ export const BrainSnapshotSchema = z.object({
 export type BrainSnapshot = z.infer<typeof BrainSnapshotSchema>;
 export type BrainDeck = z.infer<typeof DeckSchema>;
 export type BrainSlide = z.infer<typeof SlideSchema>;
+export type ArchivedDeck = z.infer<typeof ArchivedDeckSchema>;
+export type DeckStatus = z.infer<typeof DeckStatusSchema>;
+export type DeckIndexEntry = z.infer<typeof DeckIndexEntrySchema>;
+export type DeckIndex = z.infer<typeof DeckIndexSchema>;
+export type DocIndexEntry = z.infer<typeof DocIndexEntrySchema>;
+export type DocIndex = z.infer<typeof DocIndexSchema>;
+export type DocFile = z.infer<typeof DocFileSchema>;
 export type BrainQuote = z.infer<typeof QuoteSchema>;
 export type PillarSlug = z.infer<typeof PillarSlugSchema>;
 export type Rite = z.infer<typeof RiteSchema>;

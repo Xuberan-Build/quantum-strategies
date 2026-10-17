@@ -9,15 +9,24 @@
  *
  * Writes nothing to the database. The only Storage writes are: create bucket `brain`
  * (private) if missing, and upsert snapshots/latest.json + snapshots/<YYYY-MM-DD>.json.
+ *
+ * After the snapshot, it also publishes the archive (never fatal, never changes the exit code):
+ *   - brain/decks/*.json → decks/<id>.json + decks/index.json   (scripts/brain/lib/publish-decks.ts)
+ *   - docs in brain/docs.json → docs/<slug>.md, docs/<slug>/<hash>.md, docs/index.json (lib/publish-docs.ts)
+ * The brain dir is --brain-dir, else $BRAIN_DIR, else the parent of the snapshot's `.snapshots/` folder.
+ * --no-archive skips it. With --no-upload the archive is only validated.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { BRAIN_BUCKET, BRAIN_LATEST_PATH, BrainSnapshotSchema } from '../../src/lib/brain/snapshot';
+import { publishDecks } from './lib/publish-decks';
+import { publishDocs } from './lib/publish-docs';
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(name);
 const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
-const file = args.find((a, i) => !a.startsWith('--') && !['--commit', '--errors-out'].includes(args[i - 1] ?? ''));
+const file = args.find((a, i) => !a.startsWith('--') && !['--commit', '--errors-out', '--brain-dir'].includes(args[i - 1] ?? ''));
 
 if (!file) {
   console.error('usage: publish-snapshot.ts <snapshot.json> [--no-upload] [--commit <sha>] [--errors-out <file>]');
@@ -55,9 +64,36 @@ console.log(
     `creators=${snap.creators.length} hooks=${snap.hooks.length} sources=${snap.sources.length} bytes=${body.length}`,
 );
 
+function archiveBrainDir(): string | null {
+  const explicit = opt('--brain-dir') ?? process.env.BRAIN_DIR;
+  if (explicit) return path.resolve(explicit);
+  const snapDir = path.dirname(path.resolve(file as string));
+  return path.basename(snapDir) === '.snapshots' ? path.dirname(snapDir) : null;
+}
+
+/** Deck archive + docs. Failures are logged, never fatal: the snapshot already succeeded. */
+async function publishArchive(upload: boolean) {
+  if (flag('--no-archive')) return;
+  const brainDir = archiveBrainDir();
+  if (!brainDir || !existsSync(brainDir)) {
+    console.log('archive: no brain dir (pass --brain-dir or set BRAIN_DIR); skipping decks/docs');
+    return;
+  }
+  try {
+    await publishDecks({ dir: path.join(brainDir, 'decks'), upload });
+  } catch (e) {
+    console.error('archive: decks publish failed (snapshot unaffected):', e instanceof Error ? e.message : e);
+  }
+  try {
+    await publishDocs({ brainDir, upload, commit });
+  } catch (e) {
+    console.error('archive: docs publish failed (snapshot unaffected):', e instanceof Error ? e.message : e);
+  }
+}
+
 if (flag('--no-upload')) {
   console.log('--no-upload: skipping Storage upload');
-  process.exit(0);
+  publishArchive(false).finally(() => process.exit(0));
 }
 
 async function upload() {
@@ -85,7 +121,11 @@ async function upload() {
   }
 }
 
-upload().catch((e) => {
-  console.error('upload failed:', e instanceof Error ? e.message : e);
-  process.exit(4);
-});
+if (!flag('--no-upload')) {
+  upload()
+    .catch((e) => {
+      console.error('upload failed:', e instanceof Error ? e.message : e);
+      process.exit(4);
+    })
+    .then(() => publishArchive(true));
+}

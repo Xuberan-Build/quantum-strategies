@@ -40,7 +40,11 @@ manual: tick.sh [flags] ────────────┘
 | `extract-feedback.py` | Pulls only the founder's typed messages (incl. mid-turn messages and his own words in question answers) with timestamps and what he was reacting to; `--since` for the watermark |
 | `extract-transcript.py` | Condenses a session `.jsonl` to user/assistant text plus edit markers, ~60k chars max (start + end kept) |
 | `customer-signal.ts` | Read-only Supabase aggregate → anonymised JSON (no ids/names/emails, scrubbed short excerpts, test rows dropped) |
-| `publish-snapshot.ts` | Validate with `BrainSnapshotSchema`, then upload `snapshots/latest.json` + `snapshots/<date>.json` to the private bucket `brain` |
+| `publish-snapshot.ts` | Validate with `BrainSnapshotSchema`, then upload `snapshots/latest.json` + `snapshots/<date>.json` to the private bucket `brain`. Afterwards it also publishes the deck archive and docs (below); those failures are logged, never fatal (`--no-archive` skips) |
+| `publish-decks.ts` | `brain/decks/*.json` (`ArchivedDeckSchema`; plain `DeckSchema` is valid) → `decks/<id>.json` + `decks/index.json`. Never deletes remote decks; a deck named in another's `supersedes` shows as superseded. Feeds `/admin/brain/decks` |
+| `publish-docs.ts` | Docs listed in `brain/docs.json` → `docs/<slug>.json` (latest), immutable `docs/<slug>/<hash>.json` (every version), `docs/index.json`. JSON envelopes because the bucket only accepts `application/json`. Feeds `/admin/brain/docs` |
+| `pull-feedback.ts` | Unsynced `brain_feedback` rows (notes on slides, decks and doc sections) → append-only `$BRAIN_DIR/feedback/inbox/<date>.md`, then marks them synced. Idempotent via `feedback-id` markers (also checks `inbox/processed/`) |
+| `reply-feedback.ts` | `reply-feedback.ts <id> --status applied\|answered [--reply "..."]`: posts Claude's reply/status back onto a note; it shows beside the note in the admin |
 | `prompts/_rules.md` | Standing rules prepended to every claude call (tools, privacy, copyright, index discipline) |
 | `prompts/{journal,feedback,research,customers,snapshot}.md` | Stage prompts. Run-specific paths are appended under `## Run context` |
 | `prompts/lenses/*.md` + `lenses/*.data.ts` | Pluggable lenses (see `prompts/lenses/README.md`) |
@@ -223,6 +227,23 @@ NODE_PATH=$PWD/node_modules node --env-file=.env --import tsx scripts/brain/inge
 
 `<that-folder>` is the `backups/<timestamp>/` folder that `npm run backup` just printed. After that, set
 `BRAIN_YOUTUBE_CORPUS=1` in the tick's environment (launchd plist / shell) to keep ingesting new sweeps automatically.
+
+## Deck archive, docs and feedback
+
+- **Decks** live as files in the brain at `decks/<YYYY-MM-DD>-<slug>.json` (optional metadata: `source`, `createdAt`,
+  `status` current|superseded|archived, `supersedes`, `externalUrl`, `tags`). `/admin/brain/decks` lists every
+  retained deck; the presenter loads snapshot decks first, then archived ones from Storage.
+- **Docs** to publish are listed in `brain/docs.json` (`{"docs": ["gtm/free-quiz-spec.md", "research/language/*.md"]}`).
+  `/admin/brain/docs` renders them split into sections; notes anchor on heading path + quoted text + version hash,
+  so they are re-found after edits (or listed as unplaced if the text is gone).
+- **Publishing** needs no tick change: `publish-snapshot.ts` runs both after the snapshot upload, with the brain dir
+  from `$BRAIN_DIR` (the tick exports it). To publish without a snapshot:
+  `run_ts scripts/brain/publish-decks.ts --brain-dir "$WT"` and `run_ts scripts/brain/publish-docs.ts --brain-dir "$WT" --commit "$HEAD_SHA"`.
+- **Feedback** (`brain_feedback` table, service role only behind the admin check). In tick, before the commit step:
+  `run_ts scripts/brain/pull-feedback.ts --brain-dir "$WT"` (it also honours `$BRAIN_DIR`). Writes
+  `feedback/inbox/<date>.md`; exit 0 = ok or nothing new, 4 = DB/IO failure (warn and continue).
+  After acting on a note: `run_ts scripts/brain/reply-feedback.ts <id> --status applied --reply "..."`.
+  The loop is documented in the brain at `feedback/README.md`.
 
 ## Run it manually
 

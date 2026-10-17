@@ -12,7 +12,27 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { cache } from 'react';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { BRAIN_BUCKET, BRAIN_LATEST_PATH, BrainSnapshotSchema, type BrainSnapshot } from './snapshot';
+import { buildDeckIndexEntry, isSafeId, mergeDeckIndex, sortDeckEntries } from './archive';
+import { listFeedbackFor, type BrainFeedbackRow } from './feedback';
+import {
+  ArchivedDeckSchema,
+  BRAIN_BUCKET,
+  BRAIN_DECK_DIR,
+  BRAIN_DECK_INDEX_PATH,
+  BRAIN_DOC_INDEX_PATH,
+  BRAIN_LATEST_PATH,
+  BrainSnapshotSchema,
+  DeckIndexSchema,
+  DocFileSchema,
+  DocIndexSchema,
+  docLatestPath,
+  docVersionPath,
+  type ArchivedDeck,
+  type BrainSnapshot,
+  type DeckIndex,
+  type DeckIndexEntry,
+  type DocIndexEntry,
+} from './snapshot';
 
 export type BrainSnapshotSource = 'storage' | 'local' | 'none';
 
@@ -148,3 +168,140 @@ export const listSnapshots = cache(async (): Promise<{ snapshots: BrainSnapshotR
     }
   }
 });
+
+/* ---------------------------------------------------------------- deck archive + docs */
+
+async function downloadText(storagePath: string): Promise<{ text: string } | { error: string }> {
+  try {
+    const { data, error } = await supabaseAdmin.storage.from(BRAIN_BUCKET).download(storagePath);
+    if (error || !data) {
+      const msg = error?.message?.trim();
+      return { error: `Storage: ${!msg || msg.startsWith('{') ? `${storagePath} not found` : msg}` };
+    }
+    return { text: await data.text() };
+  } catch (err) {
+    return { error: `Storage: ${err instanceof Error ? err.message : 'download failed'}` };
+  }
+}
+
+/** Development only: build the index straight from brain/decks/*.json. */
+async function localDeckIndex(): Promise<{ index: DeckIndex; decks: Map<string, ArchivedDeck> } | null> {
+  try {
+    const dir = path.join(process.cwd(), 'brain', BRAIN_DECK_DIR);
+    const names = (await readdir(dir)).filter((n) => n.endsWith('.json') && n !== 'index.json');
+    const decks = new Map<string, ArchivedDeck>();
+    const entries: DeckIndexEntry[] = [];
+    for (const name of names) {
+      try {
+        const parsed = ArchivedDeckSchema.safeParse(JSON.parse(await readFile(path.join(dir, name), 'utf8')));
+        if (!parsed.success || !isSafeId(parsed.data.id)) continue;
+        decks.set(parsed.data.id, parsed.data);
+        entries.push(buildDeckIndexEntry(parsed.data, name));
+      } catch {
+        // skip unreadable files
+      }
+    }
+    const supersedes = Object.fromEntries([...decks.values()].filter((d) => d.supersedes).map((d) => [d.id, d.supersedes as string]));
+    return { index: mergeDeckIndex(null, entries, supersedes), decks };
+  } catch {
+    return null;
+  }
+}
+
+export interface DeckArchiveResult {
+  decks: DeckIndexEntry[];
+  source: BrainSnapshotSource;
+  error?: string;
+}
+
+/** decks/index.json, newest first. */
+export const listArchivedDecks = cache(async (): Promise<DeckArchiveResult> => {
+  const remote = await downloadText(BRAIN_DECK_INDEX_PATH);
+  if ('text' in remote) {
+    try {
+      const parsed = DeckIndexSchema.safeParse(JSON.parse(remote.text));
+      if (parsed.success) return { decks: sortDeckEntries(parsed.data.decks), source: 'storage' };
+      return { decks: [], source: 'none', error: 'decks/index.json failed validation' };
+    } catch {
+      return { decks: [], source: 'none', error: 'decks/index.json is not valid JSON' };
+    }
+  }
+  if (isDevelopment()) {
+    const local = await localDeckIndex();
+    if (local && local.index.decks.length) return { decks: local.index.decks, source: 'local', error: remote.error };
+  }
+  return { decks: [], source: 'none', error: remote.error };
+});
+
+/** One archived deck by id (decks/<id>.json). */
+export const getArchivedDeck = cache(async (id: string): Promise<ArchivedDeck | null> => {
+  if (!isSafeId(id)) return null;
+  const remote = await downloadText(`${BRAIN_DECK_DIR}/${id}.json`);
+  if ('text' in remote) {
+    try {
+      const parsed = ArchivedDeckSchema.safeParse(JSON.parse(remote.text));
+      if (parsed.success) return parsed.data;
+    } catch {
+      // fall through
+    }
+  }
+  if (isDevelopment()) {
+    const local = await localDeckIndex();
+    return local?.decks.get(id) ?? null;
+  }
+  return null;
+});
+
+export interface DocListResult {
+  docs: DocIndexEntry[];
+  error?: string;
+}
+
+/** docs/index.json, sorted by brain path. */
+export const listBrainDocs = cache(async (): Promise<DocListResult> => {
+  const remote = await downloadText(BRAIN_DOC_INDEX_PATH);
+  if ('error' in remote) return { docs: [], error: remote.error };
+  try {
+    const parsed = DocIndexSchema.safeParse(JSON.parse(remote.text));
+    if (!parsed.success) return { docs: [], error: 'docs/index.json failed validation' };
+    return { docs: parsed.data.docs };
+  } catch {
+    return { docs: [], error: 'docs/index.json is not valid JSON' };
+  }
+});
+
+export interface BrainDocResult {
+  entry: DocIndexEntry;
+  markdown: string;
+  /** Hash of the version shown: the current one unless an older retained version was asked for. */
+  hash: string;
+}
+
+export const getBrainDoc = cache(async (slug: string, versionHash?: string): Promise<BrainDocResult | null> => {
+  if (!isSafeId(slug)) return null;
+  const { docs } = await listBrainDocs();
+  const entry = docs.find((d) => d.slug === slug);
+  if (!entry) return null;
+  const old =
+    versionHash && versionHash !== entry.hash && isSafeId(versionHash) && entry.versions.some((v) => v.hash === versionHash) ? versionHash : null;
+  const res = await downloadText(old ? docVersionPath(slug, old) : docLatestPath(slug));
+  if ('error' in res) return null;
+  try {
+    const file = DocFileSchema.safeParse(JSON.parse(res.text));
+    if (!file.success) return null;
+    return { entry, markdown: file.data.markdown, hash: old ?? file.data.hash };
+  } catch {
+    return null;
+  }
+});
+
+/** Feedback rows for a deck (deck + slide notes) or a doc. Never throws; the table may not exist yet. */
+export async function loadFeedback(targetType: 'deck' | 'doc', targetId: string): Promise<{ rows: BrainFeedbackRow[]; error?: string }> {
+  try {
+    const { data, error } = await listFeedbackFor(supabaseAdmin, targetType, targetId);
+    if (error) return { rows: [], error: error.message };
+    return { rows: data ?? [] };
+  } catch (err) {
+    return { rows: [], error: err instanceof Error ? err.message : 'feedback unavailable' };
+  }
+}
