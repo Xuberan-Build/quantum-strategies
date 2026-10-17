@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
       .from('referral_hierarchy')
       .select('id')
       .eq('affiliate_id', userId)
+      .not('opted_in_at', 'is', null)
       .single();
 
     // Record first visit if not already recorded

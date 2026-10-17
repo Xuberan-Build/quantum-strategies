@@ -60,9 +60,35 @@ export async function POST(req: NextRequest) {
     // Check if already enrolled
     const { data: existingHierarchy } = await supabaseAdmin
       .from('referral_hierarchy')
-      .select('id, referral_code')
+      .select('id, referral_code, referral_link, opted_in_at')
       .eq('affiliate_id', userId)
       .single();
+
+    // A legacy row created by the removed auto-enroll trigger has no opted_in_at:
+    // the user's explicit click here is the opt-in, so adopt that row.
+    if (existingHierarchy && !existingHierarchy.opted_in_at) {
+      const nowIso = new Date().toISOString();
+      await supabaseAdmin
+        .from('referral_hierarchy')
+        .update({ opted_in_at: nowIso, enrolled_at: nowIso })
+        .eq('id', existingHierarchy.id);
+      await supabaseAdmin
+        .from('users')
+        .update({ is_affiliate: true, affiliate_enrolled_at: nowIso, affiliate_opted_out: false })
+        .eq('id', userId);
+      await logAffiliate({
+        userId,
+        userEmail,
+        action: 'affiliate_enroll',
+        status: 'success',
+        metadata: { referralCode: existingHierarchy.referral_code, adoptedLegacyRow: true },
+      });
+      return NextResponse.json({
+        success: true,
+        referralCode: existingHierarchy.referral_code,
+        referralLink: existingHierarchy.referral_link,
+      });
+    }
 
     if (existingHierarchy) {
       await logAffiliate({
@@ -143,6 +169,7 @@ export async function POST(req: NextRequest) {
         referral_link: referralLink,
         current_track: 'community_builder',
         enrolled_at: new Date().toISOString(),
+        opted_in_at: new Date().toISOString(),
       });
 
     if (hierarchyError) {

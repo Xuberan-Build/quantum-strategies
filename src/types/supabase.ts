@@ -3356,6 +3356,7 @@ export type Database = {
           current_track: string
           enrolled_at: string | null
           id: string
+          opted_in_at: string | null
           referral_code: string
           referral_link: string
           referred_by_id: string | null
@@ -3373,6 +3374,7 @@ export type Database = {
           current_track?: string
           enrolled_at?: string | null
           id?: string
+          opted_in_at?: string | null
           referral_code: string
           referral_link: string
           referred_by_id?: string | null
@@ -3390,6 +3392,7 @@ export type Database = {
           current_track?: string
           enrolled_at?: string | null
           id?: string
+          opted_in_at?: string | null
           referral_code?: string
           referral_link?: string
           referred_by_id?: string | null

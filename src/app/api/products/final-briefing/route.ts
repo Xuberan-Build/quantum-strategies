@@ -510,25 +510,7 @@ Generate the complete deliverable per the instructions above. Include every sect
             EmailSequenceService.scheduleEmail(user.id, 'blueprint_day7', 'deliverable_completed', blueprintEmailContent, 7 * 24 * 60),
           ]);
 
-          // Only schedule affiliate email if user hasn't enrolled and hasn't opted out
-          if (!user.is_affiliate && !user.affiliate_opted_out) {
-            const affiliateEmailContent: EmailContent = {
-              product_name: resolvedName,
-              product_slug: resolvedSlug,
-              deliverable_preview: EmailTemplateService.getDeliverablePreview(briefing),
-              user_first_name: EmailTemplateService.getFirstName(user.name),
-              user_email: user.email,
-            };
-
-            const scheduledEmail = await EmailSequenceService.scheduleEmail(
-              user.id,
-              'affiliate_invitation',
-              'deliverable_completed',
-              affiliateEmailContent,
-              30 // 30 minutes delay
-            );
-
-          }
+          // Affiliate/referral invitation emails are NOT scheduled: the program is strictly opt-in.
 
           // Store customer insights in CRM sheet
           try {

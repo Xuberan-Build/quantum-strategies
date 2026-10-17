@@ -133,6 +133,7 @@ async function getReferralChain(referralCode?: string): Promise<ReferralChain> {
       .from('referral_hierarchy')
       .select('affiliate_id, current_track, stripe_connect_account_id, referred_by_id')
       .eq('referral_code', referralCode)
+      .not('opted_in_at', 'is', null)
       .single();
 
     if (!directReferrer) {
@@ -425,6 +426,7 @@ export async function linkPurchaserToReferrer(
       .from('referral_hierarchy')
       .select('affiliate_id')
       .eq('referral_code', referralCode)
+      .not('opted_in_at', 'is', null)
       .single();
 
     if (!referrer) {

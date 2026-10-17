@@ -56,6 +56,12 @@ export async function GET(req: Request) {
       try {
         // Blueprint follow-ups always send; affiliate check only applies to the invitation
         const isBlueprintEmail = email.sequence_type.startsWith('blueprint_');
+        // Affiliate program is strictly opt-in: never send unsolicited invitations
+        if ((email.sequence_type as string) === 'affiliate_invitation') {
+          await EmailSequenceService.markAsCancelled(email.id);
+          cancelledCount++;
+          continue;
+        }
         if (!isBlueprintEmail) {
           const isValid = await EmailSequenceService.isEmailStillValid(email.user_id);
           if (!isValid) {

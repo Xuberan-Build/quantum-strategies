@@ -560,7 +560,7 @@ describe('POST /api/products/final-briefing', () => {
     expect(mockUpdateEq).toHaveBeenCalledWith('id', 'session-123');
   });
 
-  it('should schedule affiliate email for non-affiliate users', async () => {
+  it('should NOT schedule affiliate invitation email (program is opt-in)', async () => {
     const mockConversations = [
       {
         step_number: 1,
@@ -637,14 +637,12 @@ describe('POST /api/products/final-briefing', () => {
 
     await POST(request);
 
-    expect(EmailSequenceService.scheduleEmail).toHaveBeenCalledWith(
+    expect(EmailSequenceService.scheduleEmail).not.toHaveBeenCalledWith(
       'user-123',
       'affiliate_invitation',
-      'deliverable_completed',
-      expect.objectContaining({
-        user_email: 'test@example.com',
-      }),
-      30
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
     );
   });
 
