@@ -5,11 +5,11 @@
 # Works in an isolated git worktree of the PRIVATE brain repo (~/.quantum-brain-auto, branch
 # `auto`), never in the user's brain/ checkout and never in the app repo's git.
 #
-# Stages: journal -> research (24h) -> customers (7d) -> lenses (7d) -> bridge -> commit -> snapshot -> ship
+# Stages: journal -> feedback -> research (24h) -> customers (7d) -> lenses (7d) -> bridge -> commit -> snapshot -> ship
 # Headless claude only reads/writes files (no Bash). All fetching, git, uploads happen here.
 #
 # Usage: scripts/brain/tick.sh [--dry-run] [--force-research] [--force-lenses] [--no-upload]
-#                              [--only journal|research|customers|lenses|bridge|snapshot]
+#                              [--only journal|feedback|research|customers|lenses|bridge|snapshot]
 # Env: BRAIN_CORPUS_SYNC=1 lets the bridge stage really sync brain -> corpus (still needs today's backup).
 #      BRAIN_YOUTUBE_CORPUS=1 lets the research stage really ingest YouTube research (market_signal tier; same guard).
 # See scripts/brain/README.md.
@@ -70,7 +70,7 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-case "$ONLY" in ""|journal|research|customers|lenses|bridge|snapshot) ;; *) echo "--only must be journal|research|customers|lenses|bridge|snapshot" >&2; exit 2 ;; esac
+case "$ONLY" in ""|journal|feedback|research|customers|lenses|bridge|snapshot) ;; *) echo "--only must be journal|feedback|research|customers|lenses|bridge|snapshot" >&2; exit 2 ;; esac
 
 # ---------------------------------------------------------------- logging
 mkdir -p "$LOG_DIR" "$QUEUE_DIR"
@@ -302,6 +302,8 @@ if want journal; then
       rm -f "${pending[@]}"
     fi
     mv "$INFLIGHT.tmp" "$INFLIGHT"
+    # the feedback stage reads the same transcripts; hand it a copy (dry-run left sessions.txt in place)
+    if ! dry; then cat "$INFLIGHT" >>"$QUEUE_DIR/feedback.txt"; fi
   fi
   if [ -s "$INFLIGHT" ]; then
     n=0 journaled=0
@@ -327,6 +329,83 @@ if want journal; then
   else
     rm -f "$INFLIGHT"
     log "journal: queue empty"
+  fi
+fi
+
+# ---------------------------------------------------------------- a2) feedback
+# Founder feedback log (feedback/ in the brain). Inputs: the transcripts the journal stage took
+# (.queue/feedback.txt; a not-yet-journaled sessions.txt is peeked at, never consumed) reduced to the
+# founder's own messages after a per-session watermark (state: feedback_since), plus
+# feedback/inbox/*.md (deck presenter comments, appended by pull-feedback.ts when it exists).
+# Failure-isolated: on any failure the queue and watermarks stay put and the tick carries on.
+if want feedback; then
+  STEP="feedback"
+  FB_QUEUE="$QUEUE_DIR/feedback.txt"
+  if [ -f "$SCRIPT_DIR/pull-feedback.ts" ]; then
+    if dry; then log "[dry-run] would run scripts/brain/pull-feedback.ts"
+    else
+      rc=0; run_ts scripts/brain/pull-feedback.ts >"$WORK/pull-feedback-$TS.txt" 2>&1 || rc=$?
+      if [ "$rc" != 0 ]; then warn "feedback: pull-feedback.ts failed (exit $rc), skipping it"; fi
+    fi
+  fi
+  FB_TAKEN="$QUEUE_DIR/feedback-taken-$TS.txt"
+  shopt -s nullglob
+  fb_lists=("$QUEUE_DIR"/feedback-taken-*.txt)   # leftovers from a failed tick
+  shopt -u nullglob
+  if [ -f "$FB_QUEUE" ] && ! dry; then mv "$FB_QUEUE" "$FB_TAKEN"; fb_lists+=("$FB_TAKEN"); fi
+  if [ -f "$FB_QUEUE" ]; then fb_lists+=("$FB_QUEUE"); fi
+  if [ -f "$QUEUE_DIR/sessions.txt" ]; then fb_lists+=("$QUEUE_DIR/sessions.txt"); fi
+  fb_in="$WORK/feedback-input-$TS.md"
+  : >"$fb_in"
+  marks="{}" nmsg=0
+  if [ ${#fb_lists[@]} -gt 0 ]; then
+    while IFS= read -r tr; do
+      [ -f "$tr" ] || { warn "feedback: transcript missing, skipping: $tr"; continue; }
+      st="$(python3 -I "$SCRIPT_DIR/extract-feedback.py" "$tr" --stats)"
+      sid="$(jq -r '.session_id // "unknown"' <<<"$st")"
+      since="$(jq -r --arg s "$sid" '.feedback_since[$s] // empty' "$STATE")"
+      args=("$tr"); if [ -n "$since" ]; then args+=(--since "$since"); fi
+      st="$(python3 -I "$SCRIPT_DIR/extract-feedback.py" "${args[@]}" --stats)"
+      n="$(jq -r .messages <<<"$st")"
+      if [ "$n" -gt 0 ]; then
+        python3 -I "$SCRIPT_DIR/extract-feedback.py" "${args[@]}" >>"$fb_in"
+        printf '\n' >>"$fb_in"
+        marks="$(jq -c --arg s "$sid" --arg t "$(jq -r .last_ts <<<"$st")" '.[$s] = $t' <<<"$marks")"
+        nmsg=$((nmsg + n))
+      fi
+      log "feedback: session $sid: $n new founder message(s)${since:+ since $since}"
+    done < <(cat "${fb_lists[@]}" | awk 'NF && !seen[$0]++')
+  fi
+  shopt -s nullglob
+  inbox=()
+  for f in "$WT"/feedback/inbox/*.md; do [ "$(basename "$f")" = README.md ] || inbox+=("$f"); done
+  shopt -u nullglob
+  if [ "$nmsg" -eq 0 ] && [ ${#inbox[@]} -eq 0 ]; then
+    log "feedback: nothing new"
+    rm -f "$fb_in"; if ! dry; then rm -f "$QUEUE_DIR"/feedback-taken-*.txt; fi
+  else
+    commits="$WORK/app-commits-$TS.txt"
+    git -C "$APP_ROOT" log --since=14.days --date=short --format='%h %ad %s' >"$commits" 2>/dev/null || true
+    ctx="- Founder messages (new since the last run): $([ "$nmsg" -gt 0 ] && echo "$fb_in" || echo "none")
+- Inbox files to process:"
+    if [ ${#inbox[@]} -gt 0 ]; then for f in "${inbox[@]}"; do ctx+=$'\n'"  - ${f#"$WT"/}"; done; else ctx+=" none"; fi
+    ctx+=$'\n'"- App commits (last 14 days): $commits"
+    log "feedback: $nmsg message(s), ${#inbox[@]} inbox file(s)"
+    if run_claude feedback "$PROMPTS/feedback.md" "$ctx"; then
+      if dry; then
+        log "[dry-run] would set feedback_since watermarks: $marks"
+        for f in ${inbox[@]+"${inbox[@]}"}; do log "[dry-run] would move ${f#"$WT"/} to feedback/inbox/processed/"; done
+      else
+        state_set feedback_since "$(jq -c --argjson m "$marks" '(.feedback_since // {}) + $m' "$STATE")"
+        mkdir -p "$WT/feedback/inbox/processed"
+        for f in ${inbox[@]+"${inbox[@]}"}; do mv "$f" "$WT/feedback/inbox/processed/$(basename "$f" .md)-$TS.md"; done
+        rm -f "$QUEUE_DIR"/feedback-taken-*.txt
+      fi
+      case "$LAST_RESULT" in NO_CHANGES*) ;; *) summarise feedback "$LAST_RESULT" ;; esac
+    else
+      warn "feedback: claude run failed; queue and inbox kept for the next tick"
+      open_issue "feedback"
+    fi
   fi
 fi
 

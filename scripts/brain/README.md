@@ -18,6 +18,8 @@ manual: tick.sh [flags] ────────────┘
                                     ▼
                                  tick.sh   (lock, log, worktree ~/.quantum-brain-auto @ auto, merge origin/main)
    a) journal    every tick    extract-transcript.py → claude(prompts/journal.md)      → journey/log/*, decisions/learnings/incidents/open-questions
+   feedback      every tick    [pull-feedback.ts] + extract-feedback.py (founder messages after a per-session watermark) + feedback/inbox/*.md
+                               → claude(prompts/feedback.md) → feedback/log.md, open.md, principles.md; inbox files → inbox/processed/
    b) research   ≥24h          youtube_sweep.py --fill-missing, then 2–3 rotating creators --top 3 (≤10 transcripts)
                                → stage_youtube_corpus.py + ingest dry run (real ingest only with BRAIN_YOUTUBE_CORPUS=1; see "YouTube → corpus")
                                → claude(prompts/research.md) → research/transcripts|creators|conversation, briefings/<date>.md
@@ -35,11 +37,12 @@ manual: tick.sh [flags] ────────────┘
 |---|---|
 | `on-session-end.sh` | SessionEnd hook: recursion guard, queue the transcript, launch `tick.sh` detached |
 | `tick.sh` | Orchestrator (all stages, flags, lock, logs, failure issues) |
+| `extract-feedback.py` | Pulls only the founder's typed messages (incl. mid-turn messages and his own words in question answers) with timestamps and what he was reacting to; `--since` for the watermark |
 | `extract-transcript.py` | Condenses a session `.jsonl` to user/assistant text plus edit markers, ~60k chars max (start + end kept) |
 | `customer-signal.ts` | Read-only Supabase aggregate → anonymised JSON (no ids/names/emails, scrubbed short excerpts, test rows dropped) |
 | `publish-snapshot.ts` | Validate with `BrainSnapshotSchema`, then upload `snapshots/latest.json` + `snapshots/<date>.json` to the private bucket `brain` |
 | `prompts/_rules.md` | Standing rules prepended to every claude call (tools, privacy, copyright, index discipline) |
-| `prompts/{journal,research,customers,snapshot}.md` | Stage prompts. Run-specific paths are appended under `## Run context` |
+| `prompts/{journal,feedback,research,customers,snapshot}.md` | Stage prompts. Run-specific paths are appended under `## Run context` |
 | `prompts/lenses/*.md` + `lenses/*.data.ts` | Pluggable lenses (see `prompts/lenses/README.md`) |
 | `sync-brain-to-corpus.ts` | Brain → corpus: stage brain notes as `internal`-tier chunks (dry run by default) |
 | `../research/stage_youtube_corpus.py` | YouTube cache day → `market_signal` staging JSONL (transcripts + audience comments) |
@@ -71,7 +74,7 @@ manual: tick.sh [flags] ────────────┘
 | `--dry-run` | Everything except claude calls, YouTube requests, state updates, commit, push, PR, issues and upload. It still creates/merges the worktree, condenses transcripts, runs `customer-signal.ts` (read-only) and validates an existing snapshot. It prints what would happen and leaves the queue intact. |
 | `--force-research` | Run research even if under 24h since the last one |
 | `--force-lenses` | Run lenses even if under 7 days since the last run |
-| `--only journal\|research\|customers\|lenses\|bridge\|snapshot` | Run just that stage (ignoring its timer). Commit and ship still run if anything changed. |
+| `--only journal\|feedback\|research\|customers\|lenses\|bridge\|snapshot` | Run just that stage (ignoring its timer). Commit and ship still run if anything changed. |
 | `--no-upload` | Build and validate the snapshot but don't upload it |
 
 Environment overrides: `BRAIN_MODEL` (default `opus`), `BRAIN_MAX_TURNS` (60), `BRAIN_MAX_BUDGET_USD`
@@ -226,6 +229,7 @@ NODE_PATH=$PWD/node_modules node --env-file=.env --import tsx scripts/brain/inge
 ```bash
 scripts/brain/tick.sh --dry-run                       # see what would happen
 scripts/brain/tick.sh --only journal                  # journal whatever is queued
+scripts/brain/tick.sh --dry-run --only feedback       # show which founder messages / inbox files the feedback stage would log
 scripts/brain/tick.sh --force-research --no-upload    # research now, snapshot built but not uploaded
 scripts/brain/tick.sh --only snapshot                 # rebuild + upload the snapshot
 

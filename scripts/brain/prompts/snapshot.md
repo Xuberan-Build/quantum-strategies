@@ -12,6 +12,14 @@ Run context. Quote `text` is at most 400 characters (aim for under 25 words anyw
 fields must be valid URLs or omitted. Integers must be integers. Use `null` only where the
 schema says `.nullable()`.
 
+## Founder feedback (read first)
+Read `feedback/principles.md` and `feedback/open.md` before you write anything. They are the founder's
+standing rules and his not-yet-done asks, in his own words. Let them steer choices the schema leaves open:
+which slides lead a deck, how a slide is framed (his own thought leadership first, creators as context,
+LIVE vs TO BUILD stated plainly, no AI prose), and the wording of `voicePack` rules where they agree with
+the sources below. They never override the schema, the founder decisions or the data. Don't add fields
+for them, and list both files in `sources`.
+
 ## Where each field comes from (read these files; never invent data)
 - `decks`: newest first. `decks[0]` is the current briefing, built from the newest
   `briefings/*.md` (or, if there are no briefings, from `research/social-listening.md` +
