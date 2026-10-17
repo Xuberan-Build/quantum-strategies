@@ -1,0 +1,6 @@
+{
+  "meta": { "codebook_note": "New codes: HOP (technique hopping)." },
+  "items": [
+    { "sub": "SomeSub", "community_type": "some_type", "kind": "post", "url": "https://www.reddit.com/r/SomeSub/comments/abc/x/", "score": 9, "codes": ["HOP", "STUCK"], "stage": "PR", "tried": [], "quote_excerpt": "Tried ten methods." }
+  ]
+}

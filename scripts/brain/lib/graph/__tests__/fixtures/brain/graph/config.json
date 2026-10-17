@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "problem_map": "gtm/map.md",
+  "quiz_spec": "gtm/quiz.md",
+  "claims": "strategy/claims.md",
+  "problem_map": "gtm/map.md",
+  "quiz_spec": "gtm/quiz.md",
+  "claims": "strategy/claims.md",
+  "audience": [
+    { "path": "research/conversation/yt.json", "kind": "youtube" },
+    { "path": "research/conversation/forum.json", "kind": "forum" },
+    { "path": "research/conversation/reddit.json", "kind": "reddit" }
+  ],
+  "problems": [
+    { "row": "1", "slug": "stuck-start", "codes": ["stuck_start", "STUCK"], "pillars": ["P1"], "keywords": ["stuck at the start", "STUCK_PATTERN"] },
+    { "row": "2", "slug": "too-busy", "codes": ["too_busy", "BUSY"], "pillars": ["P2"], "keywords": ["too busy"] },
+    { "row": "G1", "slug": "out-of-scope", "codes": ["out_of_scope"], "pillars": [], "guardrail": true, "keywords": ["out of scope"] }
+  ],
+  "rites": [{ "slug": "first", "name": "Rite I · First", "status": "LIVE" }],
+  "products": [
+    { "slug": "scan-a", "name": "Scan A", "rite": "first", "status": "LIVE", "aliases": ["Scan A"] },
+    { "slug": "later-thing", "name": "Later Thing", "rite": "first", "status": "TO BUILD", "aliases": ["Later Thing"] },
+    { "slug": "the-read", "name": "The Read (free quiz)", "rite": "first", "status": "TO BUILD", "aliases": ["The Read"] }
+  ],
+  "tried": [
+    { "slug": "apps", "row": "Apps, planners", "codes": ["app", "planner"] },
+    { "slug": "books", "row": "Books", "codes": ["book"] }
+  ],
+  "skip_dirs": [".snapshots", "graph"]
+}

@@ -1,0 +1,8 @@
+{
+  "id": "2026-01-01-deck",
+  "title": "Fixture deck",
+  "summary": "People say they are stuck at the start. The First Pillar owns it and Scan A sells it.",
+  "source": "gtm/map.md",
+  "tags": ["test"],
+  "slides": [{ "id": "a", "kind": "headline", "title": "Stuck", "sources": ["strategy/claims.md", "missing.md"] }]
+}

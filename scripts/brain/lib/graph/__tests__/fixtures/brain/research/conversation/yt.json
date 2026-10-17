@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "codebook": ["stuck_start", "too_busy", "out_of_scope", "brand_new_code (new)"],
+    "videos": [{ "video_id": "vid1", "channel": "Some Channel", "title": "Why you stall", "views_at_search": 1000, "query": "stall" }]
+  },
+  "comments": [
+    { "video_id": "vid1", "likes": 120, "codes": ["stuck_start", "too_busy"], "stage": "problem-aware", "tried": ["planner app"], "quote_excerpt": "I never get going." },
+    { "video_id": "vid1", "likes": 3, "codes": ["brand_new_code (new)"], "stage": "solution-aware", "tried": [], "quote_excerpt": "Something new." }
+  ]
+}

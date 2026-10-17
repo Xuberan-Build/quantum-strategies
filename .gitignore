@@ -86,3 +86,6 @@ scripts/brain/logs/
 scripts/brain/.state.json
 scripts/research/creators.json
 scripts/brain/tick.env
+
+# Test fixtures for the brain graph builder (synthetic, no secrets)
+!scripts/brain/lib/graph/__tests__/fixtures/**/*.json

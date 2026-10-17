@@ -1,0 +1,16 @@
+{
+  "pillars": [
+    {
+      "id": "P1", "slug": "first-pillar", "name": "First Pillar", "kind": "inner", "job": "Owns the first idea.",
+      "subpillars": [
+        { "id": "P1.1", "name": "Sub one", "clusters": [
+          { "id": "P1.1a", "name": "Why you get stuck at the start", "misbelief": "I need more motivation.",
+            "cornerstone": { "id": "P1.1a-CS", "title": "The cornerstone", "format": "article", "status": "TO BUILD", "tier": "E1", "source": "Roadmap P1 · claims P1, P2", "score": { "total": 30 } },
+            "spokes": [ { "id": "P1.1a-01", "title": "A spoke video", "format": "long_video", "status": "BUILT", "source": "script 06", "location": "brain/content/x.json", "score": { "total": 50 } } ] }
+        ] }
+      ]
+    },
+    { "id": "P2", "slug": "second-pillar", "name": "Second Pillar", "kind": "authority", "job": "Owns the second idea.", "subpillars": [] }
+  ],
+  "spine": { "id": "X", "slug": "the-spine", "name": "The Spine", "kind": "spine", "subpillars": [] }
+}

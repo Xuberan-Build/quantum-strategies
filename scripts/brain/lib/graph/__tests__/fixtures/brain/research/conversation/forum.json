@@ -1,0 +1,7 @@
+{
+  "meta": { "codebook": { "STUCK": "stuck at start", "BUSY": "too busy" } },
+  "items": [
+    { "source": "hackernews", "sub": "Ask HN (post)", "community": "founders", "url": "https://news.example.com/item?id=1", "score": 50, "codes": ["STUCK"], "stage": "P", "tried": ["books"], "quote_excerpt": "Day one never comes." },
+    { "source": "hackernews", "sub": "Ask HN (comment)", "community": "founders", "url": "https://news.example.com/item?id=1", "score": 50, "codes": ["BUSY"], "stage": "S", "tried": [], "quote_excerpt": "No time at all." }
+  ]
+}

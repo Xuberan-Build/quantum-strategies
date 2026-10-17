@@ -9,7 +9,7 @@
 # Headless claude only reads/writes files (no Bash). All fetching, git, uploads happen here.
 #
 # Usage: scripts/brain/tick.sh [--dry-run] [--force-research] [--force-lenses] [--no-upload]
-#                              [--only journal|feedback|research|customers|lenses|bridge|snapshot]
+#                              [--only journal|feedback|research|customers|lenses|bridge|graph|snapshot]
 # Env: BRAIN_CORPUS_SYNC=1 lets the bridge stage really sync brain -> corpus (still needs today's backup).
 #      BRAIN_YOUTUBE_CORPUS=1 lets the research stage really ingest YouTube research (market_signal tier; same guard).
 # See scripts/brain/README.md.
@@ -70,7 +70,7 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-case "$ONLY" in ""|journal|feedback|research|customers|lenses|bridge|snapshot) ;; *) echo "--only must be journal|feedback|research|customers|lenses|bridge|snapshot" >&2; exit 2 ;; esac
+case "$ONLY" in ""|journal|feedback|research|customers|lenses|bridge|graph|snapshot) ;; *) echo "--only must be journal|feedback|research|customers|lenses|bridge|graph|snapshot" >&2; exit 2 ;; esac
 
 # ---------------------------------------------------------------- logging
 mkdir -p "$LOG_DIR" "$QUEUE_DIR"
@@ -533,6 +533,27 @@ if want bridge; then
   else
     warn "bridge: sync script failed (exit $bridge_rc) — continuing"
     open_issue "bridge"
+  fi
+fi
+
+# ---------------------------------------------------------------- knowledge graph
+# Rebuilds kg_nodes/kg_edges from the worktree brain and the corpus, then writes
+# graph/gaps.md and graph/ingestion-proposals.md into the worktree (committed below).
+# Failure-isolated: a failed build is logged and an issue opened; the tick carries on.
+if want graph; then
+  STEP="graph"
+  graph_log="$WORK/graph-$TS.txt"
+  if dry; then
+    log "[dry-run] would run scripts/brain/build-graph.ts --brain-dir $WT --dry-run"
+    run_ts scripts/brain/build-graph.ts --brain-dir "$WT" --dry-run --no-embed >"$graph_log" 2>&1 || true
+    sed 's/^/    /' "$graph_log" || true
+  else
+    log "graph: rebuilding the knowledge graph"
+    graph_rc=0
+    { run_ts scripts/brain/build-graph.ts --brain-dir "$WT" && run_ts scripts/brain/graph-gaps.ts --brain-dir "$WT"; } >"$graph_log" 2>&1 || graph_rc=$?
+    tail -n 25 "$graph_log" | sed 's/^/    /' || true
+    if [ "$graph_rc" = 0 ]; then SUMMARY+=("[graph] knowledge graph rebuilt; gaps in graph/gaps.md")
+    else warn "graph: build failed (exit $graph_rc), continuing"; open_issue "graph"; fi
   fi
 fi
 
