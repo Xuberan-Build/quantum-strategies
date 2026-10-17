@@ -423,8 +423,9 @@ if want research && { [ "$FORCE_RESEARCH" = 1 ] || [ -n "$ONLY" ] || due researc
   fi
   budget=$TRANSCRIPT_BUDGET
   if [ -n "$last_day" ] && [ "$missing" -gt 0 ]; then
-    if dry; then log "[dry-run] would run: $PY -I $SWEEP --fill-missing $last_day --limit $budget"
-    else "$PY" -I "$SWEEP" --fill-missing "$last_day" --limit "$budget" || warn "fill-missing failed"; fi
+    if dry; then log "[dry-run] would run: $PY -I $SWEEP --fill-missing $last_day --limit $budget --transcripts auto --max-minutes 10 (900s cap)"
+    else perl -e 'alarm shift; exec @ARGV' 900 "$PY" -I "$SWEEP" --fill-missing "$last_day" --limit "$budget" \
+           --transcripts auto --max-minutes 10 || warn "fill-missing failed or timed out"; fi
     days+=("$last_day")
     if [ "$missing" -gt "$budget" ]; then budget=0; else budget=$((budget - missing)); fi
   fi
@@ -438,8 +439,10 @@ if want research && { [ "$FORCE_RESEARCH" = 1 ] || [ -n "$ONLY" ] || due researc
   for ((i = 0; i < ncreators && i < ${#keys[@]}; i++)); do picks+=("${keys[$(((rot + i) % ${#keys[@]}))]}"); done
   if [ ${#picks[@]} -gt 0 ]; then
     only="$(IFS=,; echo "${picks[*]}")"
-    if dry; then log "[dry-run] would run: $PY -I $SWEEP --only $only --top $TOP_PER_CREATOR"
-    else "$PY" -I "$SWEEP" --only "$only" --top "$TOP_PER_CREATOR" || warn "sweep failed"; fi
+    if dry; then log "[dry-run] would run: $PY -I $SWEEP --only $only --top $TOP_PER_CREATOR --transcripts auto --max-transcripts 12 --backfill-outliers 2 --max-minutes 20 (1800s cap)"
+    else perl -e 'alarm shift; exec @ARGV' 1800 "$PY" -I "$SWEEP" --only "$only" --top "$TOP_PER_CREATOR" \
+           --transcripts auto --max-transcripts 12 --backfill-outliers 2 --max-minutes 20 \
+           || warn "sweep failed or timed out"; fi
     days+=("$TODAY")
   else
     log "research: transcript budget used by fill-missing; no new sweep this tick"

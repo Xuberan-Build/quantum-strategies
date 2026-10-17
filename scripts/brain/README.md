@@ -122,6 +122,7 @@ file edits and fewer than 10 user turns. The journal prompt can also decline a s
   (gitignored) and are never copied into the brain.
 - **YouTube:** at most `BRAIN_TRANSCRIPT_BUDGET` (10) transcripts per tick. Fill-missing goes first, with
   `--limit`, and the remaining budget goes to 2–3 rotating creators at `--top 3`. The sweep stops at the first IP block.
+  Local Whisper transcription is built into the sweep but not yet switched on in the tick: see "YouTube transcripts: local Whisper".
 - **Concurrency:** `mkdir .lock`. A second tick exits, and locks older than 3h are cleared as stale.
 - **Queue durability:** queued transcripts move to `.queue/inflight-*.txt` and are deleted only after the
   journal stage succeeds. A crashed tick's inflight file is picked up by the next one.
@@ -227,6 +228,60 @@ NODE_PATH=$PWD/node_modules node --env-file=.env --import tsx scripts/brain/inge
 
 `<that-folder>` is the `backups/<timestamp>/` folder that `npm run backup` just printed. After that, set
 `BRAIN_YOUTUBE_CORPUS=1` in the tick's environment (launchd plist / shell) to keep ingesting new sweeps automatically.
+
+## YouTube transcripts: local Whisper (proposed tick change)
+
+YouTube's transcript endpoint blocks a home IP after ~15 requests an hour, and the block lasts hours
+(2026-10-16 and 2026-10-17). `youtube_sweep.py` now has a local backend: yt-dlp downloads the audio only,
+`mlx_whisper` (whisper-large-v3-turbo) transcribes it on this Mac, and the audio is deleted straight away.
+The cache keeps text plus timestamped segments in the same shape as captions, with
+`transcript_source: "whisper-large-v3-turbo"`. Staging labels those chunks "local Whisper" instead of "auto-captions".
+
+Flags: `--transcripts auto|api|whisper` (default `auto`: API until the first block or a video with no captions,
+then whisper for the rest of the run), `--max-transcripts N` (default 20, per run), `--max-minutes M` (no new
+transcript or creator after M minutes), `--backfill-outliers N` (each selected creator's next N untranscribed
+outliers from its latest cache file, added to that file's picks with `backfill: true`, no comments).
+`--fill-missing` uses the same backends. Videos already transcribed on an earlier cache day are reused, not refetched.
+Whisper paces 20–60s between downloads and stops at the first yt-dlp error (HTTP 429, "Sign in to confirm", or
+anything else) or whisper failure. No cookies, proxies or logins.
+
+**Proposed change to `tick.sh`** (not applied; lines 427 and 442). Replace
+
+```bash
+    else "$PY" -I "$SWEEP" --fill-missing "$last_day" --limit "$budget" || warn "fill-missing failed"; fi
+...
+    else "$PY" -I "$SWEEP" --only "$only" --top "$TOP_PER_CREATOR" || warn "sweep failed"; fi
+```
+
+with
+
+```bash
+    else perl -e 'alarm shift; exec @ARGV' 900 "$PY" -I "$SWEEP" --fill-missing "$last_day" --limit "$budget" \
+           --transcripts auto --max-minutes 10 || warn "fill-missing failed or timed out"; fi
+...
+    else perl -e 'alarm shift; exec @ARGV' 1800 "$PY" -I "$SWEEP" --only "$only" --top "$TOP_PER_CREATOR" \
+           --transcripts auto --max-transcripts 12 --backfill-outliers 2 --max-minutes 20 \
+           || warn "sweep failed or timed out"; fi
+```
+
+(and update the matching `[dry-run] would run:` log lines). Why the wrapper: macOS has no `timeout`/`gtimeout` here,
+so `perl -e 'alarm N; exec ...'` is the stock way to put a hard ceiling on a command. The alarm survives `exec`, and
+SIGALRM kills the Python process.
+
+**Timing and why it can't hang the tick.** Measured on this Mac: audio download 2–4s, whisper ~0.03x realtime
+(44s for 27 minutes), plus 20–60s pacing. 12 videos of ~35 minutes is roughly 15–20 minutes. Three layers stop it:
+1. `--max-minutes`: no new transcript or creator starts after the limit (the current one finishes).
+2. Each `mlx_whisper` call has its own subprocess timeout (180s + 0.5x the audio length, capped by the deadline),
+   and yt-dlp has a 30s socket timeout.
+3. The perl alarm kills the whole sweep at 15 / 30 minutes no matter what. Cache files are written atomically
+   (temp file + rename), so a kill loses at most the transcript in progress. A kill can leave an orphaned
+   `mlx_whisper` (it ends on its own) and a `qs-whisper-*` temp folder in `$TMPDIR`.
+A failed or killed sweep only logs a warning; the tick carries on to staging as before. The tick is detached
+from SessionEnd, so a long research stage never blocks a Claude session, but it holds the tick lock while it runs.
+
+**Headless PATH.** launchd's PATH is minimal. The sweep finds `mlx_whisper` via `$MLX_WHISPER_BIN`, then PATH, then
+`~/.pyenv/versions/*/bin/mlx_whisper`, then the pyenv shim, and adds `/opt/homebrew/bin` (ffmpeg) for the
+subprocess. If none is found, `auto` stays on the API and `whisper` fetches nothing (reported, not fatal).
 
 ## Deck archive, docs and feedback
 

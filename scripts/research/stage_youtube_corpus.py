@@ -7,6 +7,8 @@ staging format that scripts/brain/ingest-staged-corpus.ts ingests. The output fo
 gitignored in the brain repo; nothing here touches the database or any network.
 
   Transcripts: chunked at ~300-400 words on caption-segment boundaries, start/end kept.
+               YouTube captions or local Whisper (transcript_source in the cache); the
+               label and citation say which.
   Comments:    per video, ~25 top comments per chunk (by likes), short/spam/link comments
                dropped, @handles stripped. The cache stores no author names.
 
@@ -260,9 +262,12 @@ def stage_day(day_dir: Path) -> tuple[list[dict], dict]:
             segs = (tr.get("segments") or []) if tr.get("ok") else []
             if not segs:
                 report["videos_without_transcript"] += 1
+            source = tr.get("transcript_source") or "youtube-captions"
+            whisper = source.startswith("whisper")
+            kind, cite_kind = ("local Whisper", "Local Whisper transcript") if whisper else ("auto-captions", "Auto-captions")
             for idx, ch in enumerate(chunk_segments(segs, pick.get("duration"))):
                 start, end = int(ch["start"]), int(-(-ch["end"] // 1))
-                content = f"Creator transcript (auto-captions) · {label} · {mmss(start)}–{mmss(end)}\n\n{ch['text']}"
+                content = f"Creator transcript ({kind}) · {label} · {mmss(start)}–{mmss(end)}\n\n{ch['text']}"
                 rec, meta = base_record(creator, pick, swept_on)
                 meta.update({
                     "source_path": f"youtube/{vid}#{idx}",
@@ -270,8 +275,9 @@ def stage_day(day_dir: Path) -> tuple[list[dict], dict]:
                     "origin": "youtube_transcript",
                     "start_s": start,
                     "end_s": end,
+                    "transcript_source": source,
                     "citation": f'{creator["name"]}, "{title}" (YouTube), {mmss(start)}–{mmss(end)}. '
-                                f"Auto-captions, swept {swept_on}.",
+                                f"{cite_kind}, swept {swept_on}.",
                 })
                 rows.append({**rec, "content": content, "text_name": f'yt_{creator["key"]}',
                              "source_url": f"{watch}&t={start}s", "themes": themes_for(ch["text"]),
