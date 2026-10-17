@@ -252,3 +252,31 @@
   white-space: nowrap;
   border: 0;
 }
+
+.noteActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.danger {
+  border: 1px solid var(--warning);
+  background: transparent;
+  color: var(--warning);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+
+.ghost:disabled,
+.danger:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.noteClosed {
+  opacity: 0.6;
+}

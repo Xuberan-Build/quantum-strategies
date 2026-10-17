@@ -59,6 +59,11 @@ function blockIdFromNode(node: Node | null): string | null {
 export function DocReader({ entry, hash, blocks, feedback, feedbackError }: DocReaderProps) {
   const [notes, setNotes] = useState<BrainFeedbackRow[]>(feedback);
   const [selected, setSelected] = useState<Selection | null>(null);
+  const updateNote = useCallback(
+    (row: BrainFeedbackRow) => setNotes((prev) => prev.map((n) => (n.id === row.id ? row : n))),
+    [],
+  );
+  const removeNote = useCallback((id: string) => setNotes((prev) => prev.filter((n) => n.id !== id)), []);
   const isCurrent = hash === entry.hash;
 
   const placements = useMemo(() => {
@@ -149,7 +154,7 @@ export function DocReader({ entry, hash, blocks, feedback, feedbackError }: DocR
       {placements.orphaned.length > 0 && (
         <section className={styles.orphans} aria-label="Notes that could not be placed">
           <div className={base.eyebrow}>Notes whose text is no longer in this version</div>
-          <FeedbackThread rows={placements.orphaned} driftNote={driftNote} compact />
+          <FeedbackThread rows={placements.orphaned} driftNote={driftNote} compact onUpdated={updateNote} onDeleted={removeNote} />
         </section>
       )}
 
@@ -178,7 +183,9 @@ export function DocReader({ entry, hash, blocks, feedback, feedbackError }: DocR
                     +
                   </button>
                 )}
-                {blockNotes.length > 0 && <FeedbackThread rows={blockNotes} driftNote={driftNote} compact />}
+                {blockNotes.length > 0 && (
+                  <FeedbackThread rows={blockNotes} driftNote={driftNote} compact onUpdated={updateNote} onDeleted={removeNote} />
+                )}
                 {isSelected && (
                   <FeedbackComposer
                     key={`${block.id}-${selected?.quote ?? ''}`}

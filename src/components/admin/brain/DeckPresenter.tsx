@@ -413,6 +413,8 @@ export function DeckPresenter({
               <FeedbackThread
                 rows={feedbackScope === 'slide' ? slideNotes : deckNotes}
                 emptyText={feedbackScope === 'slide' ? 'No notes on this slide yet.' : 'No notes on the whole deck yet.'}
+                onUpdated={(row) => setNotes((prev) => prev.map((n) => (n.id === row.id ? row : n)))}
+                onDeleted={(id) => setNotes((prev) => prev.filter((n) => n.id !== id))}
               />
             </div>
           </motion.aside>

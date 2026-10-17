@@ -129,3 +129,33 @@ describe('DeckPresenter feedback + sources', () => {
     expect(screen.getByText('brain/notes/a.md').closest('a')?.getAttribute('href')).toContain('github.com');
   });
 });
+
+describe('FeedbackThread actions', () => {
+  it('resolves a note and deletes one after an inline confirm', async () => {
+    const { FeedbackThread } = await import('../Feedback');
+    const row = note({ status: 'open', body: 'Tighten this line.' });
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ row: { ...row, status: 'resolved' } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const onUpdated = vi.fn();
+    const onDeleted = vi.fn();
+    render(<FeedbackThread rows={[row]} onUpdated={onUpdated} onDeleted={onDeleted} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+    await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({ status: 'resolved' })));
+    expect(fetchMock).toHaveBeenNthCalledWith(1, `/api/admin/brain/feedback/${row.id}`, expect.objectContaining({ method: 'PATCH' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(onDeleted).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(onDeleted).toHaveBeenCalledWith(row.id));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, `/api/admin/brain/feedback/${row.id}`, { method: 'DELETE' });
+  });
+
+  it('shows no actions when no handlers are passed', async () => {
+    const { FeedbackThread } = await import('../Feedback');
+    render(<FeedbackThread rows={[note({ status: 'open' })]} />);
+    expect(screen.queryByRole('button', { name: 'Resolve' })).toBeNull();
+  });
+});
