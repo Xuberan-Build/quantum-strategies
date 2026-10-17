@@ -2,8 +2,10 @@
  * Webhook Handler: Grant Product Access
  *
  * Creates/finds the user record and inserts product_access rows.
- * Bundle expansion is driven by product_definitions.bundle_products JSONB,
- * so no slugs are hardcoded here.
+ * Bundles expand to their member products. The bundles are sold from code
+ * (src/lib/constants/products.ts) and have no product_definitions row, so their
+ * contents live in BUNDLE_CONTENTS below. A bundle_products JSONB column on
+ * product_definitions, if one is ever added, takes precedence.
  */
 
 import { supabaseAdmin } from '@/lib/supabase/server';
@@ -19,16 +21,41 @@ export interface GrantAccessResult {
  * For bundles: reads bundle_products JSONB from product_definitions.
  * For single products: returns [productSlug].
  */
-async function resolveProductSlugs(productSlug: string): Promise<string[]> {
-  const { data: definition } = await supabaseAdmin
+export const BUNDLE_CONTENTS: Record<string, string[]> = {
+  'perception-rite-bundle': [
+    'perception-rite-scan-1',
+    'perception-rite-scan-2',
+    'perception-rite-scan-3',
+    'perception-rite-scan-4',
+    'perception-rite-scan-5',
+  ],
+  'orientation-bundle': ['personal-alignment', 'business-alignment', 'brand-alignment'],
+  'declaration-rite-bundle': [
+    'declaration-rite-life-vision',
+    'declaration-rite-business-model',
+    'declaration-rite-strategic-path',
+  ],
+};
+
+export async function resolveProductSlugs(productSlug: string): Promise<string[]> {
+  const known = BUNDLE_CONTENTS[productSlug];
+  if (known) {
+    console.log(`🎁 Bundle ${productSlug} → granting ${known.length} products`);
+    return known;
+  }
+
+  // Optional DB-driven bundles. The column may not exist; any error falls
+  // through to treating the slug as a single product.
+  const { data: definition, error } = await supabaseAdmin
     .from('product_definitions')
     .select('bundle_products')
-    .eq('slug', productSlug)
-    .single();
+    .eq('product_slug', productSlug)
+    .maybeSingle();
 
-  if (definition?.bundle_products && Array.isArray(definition.bundle_products) && definition.bundle_products.length > 0) {
-    console.log(`🎁 Bundle ${productSlug} → granting ${definition.bundle_products.length} products`);
-    return definition.bundle_products as string[];
+  const bundle = !error && (definition as { bundle_products?: unknown } | null)?.bundle_products;
+  if (Array.isArray(bundle) && bundle.length > 0) {
+    console.log(`🎁 Bundle ${productSlug} → granting ${bundle.length} products`);
+    return bundle as string[];
   }
 
   return [productSlug];
