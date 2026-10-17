@@ -38,6 +38,7 @@ const CONTENT_TABLES = [
   'content_agent_runs',
   'content_posts',
   'corpus_ingestion_queue',
+  'brain_feedback',
 ];
 
 const PAGE_SIZE = 500;
