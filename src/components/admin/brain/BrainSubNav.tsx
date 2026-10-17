@@ -6,6 +6,8 @@ import styles from './brain.module.css';
 
 export const BRAIN_SECTIONS = [
   { href: '/admin/brain', label: 'Overview', exact: true },
+  { href: '/admin/brain/decks', label: 'Decks' },
+  { href: '/admin/brain/docs', label: 'Docs' },
   { href: '/admin/brain/market', label: 'Market voice' },
   { href: '/admin/brain/creators', label: 'Creators' },
   { href: '/admin/brain/taxonomy', label: 'Taxonomy' },

@@ -1,0 +1,168 @@
+/* Deck archive + docs list. Tokens come from .root in brain.module.css. */
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 3px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem 1.5rem;
+  align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+  transition: border-color 0.15s;
+}
+
+.item:hover {
+  border-color: var(--axis);
+}
+
+.itemDim .title a {
+  color: var(--ink-2);
+}
+
+.itemMain {
+  min-width: 0;
+}
+
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.8rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-3);
+}
+
+.status {
+  border-radius: 999px;
+  padding: 0.08rem 0.5rem;
+  border: 1px solid var(--line);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+}
+
+.status_current {
+  color: var(--jewel);
+  border-color: rgba(180, 140, 255, 0.45);
+  background: var(--jewel-soft);
+}
+
+.status_superseded {
+  color: var(--bronze);
+  border-color: rgba(192, 122, 62, 0.45);
+}
+
+.status_archived {
+  color: var(--deemph);
+}
+
+.title {
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0.45rem 0 0.35rem !important;
+}
+
+.title a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.title a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.summary {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.itemFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
+.source {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-3);
+  margin-right: 0.4rem;
+  overflow-wrap: anywhere;
+}
+
+.tagChip {
+  cursor: pointer;
+}
+
+.tagChip:hover {
+  color: var(--ink);
+  border-color: var(--axis);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: stretch;
+}
+
+.smallButton {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* Docs list */
+.docFolder {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.commentCount {
+  color: var(--jewel);
+}
+
+@media (max-width: 700px) {
+  .item {
+    grid-template-columns: 1fr;
+  }
+  .actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

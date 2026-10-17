@@ -2,9 +2,11 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { BrainFeedbackRow } from '@/lib/brain/feedback';
 import type { BrainDeck, PillarSlug } from '@/lib/brain/snapshot';
 import { brainSourceUrl, formatDate } from '@/lib/brain/viz';
+import { FeedbackComposer, FeedbackThread } from './Feedback';
 import { SLIDE_KIND_LABEL, SlideRenderer } from './SlideRenderer';
 import { keyToAction } from './deckNavigation';
 import { useDeckNavigation } from './useDeckNavigation';
@@ -19,9 +21,24 @@ interface DeckPresenterProps {
   brainCommit?: string;
   initialIndex?: number;
   backHref?: string;
+  /** Where the deck also lives (e.g. a claude.ai artifact). */
+  externalUrl?: string;
+  /** Existing notes for this deck. When omitted, the Feedback control is hidden. */
+  feedback?: { rows: BrainFeedbackRow[]; error?: string };
 }
 
-export function DeckPresenter({ deck, pillarTitles, sourceDates = {}, brainCommit, initialIndex = 0, backHref = '/admin/brain' }: DeckPresenterProps) {
+const isExternal = (p: string) => /^https?:\/\//i.test(p);
+
+export function DeckPresenter({
+  deck,
+  pillarTitles,
+  sourceDates = {},
+  brainCommit,
+  initialIndex = 0,
+  backHref = '/admin/brain',
+  externalUrl,
+  feedback,
+}: DeckPresenterProps) {
   const total = deck.slides.length;
   const nav = useDeckNavigation({ count: total, initialIndex });
   const reduce = useReducedMotion() ?? false;
@@ -29,11 +46,29 @@ export function DeckPresenter({ deck, pillarTitles, sourceDates = {}, brainCommi
   const thumbRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const sourcesButtonRef = useRef<HTMLButtonElement>(null);
   const drawerCloseRef = useRef<HTMLButtonElement>(null);
+  const feedbackButtonRef = useRef<HTMLButtonElement>(null);
   const touchX = useRef<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackScope, setFeedbackScope] = useState<'slide' | 'deck'>('slide');
+  const [notes, setNotes] = useState<BrainFeedbackRow[]>(feedback?.rows ?? []);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const slide = deck.slides[nav.index];
+  const notesBySlide = useMemo(() => {
+    const map = new Map<string, BrainFeedbackRow[]>();
+    for (const n of notes) {
+      const key = n.slide_id ?? '';
+      map.set(key, [...(map.get(key) ?? []), n]);
+    }
+    return map;
+  }, [notes]);
+  const slideNotes = notesBySlide.get(slide.id) ?? [];
+  const deckNotes = notesBySlide.get('') ?? [];
+  const closeFeedback = useCallback(() => {
+    setFeedbackOpen(false);
+    feedbackButtonRef.current?.focus();
+  }, []);
   const pillarTitle = useCallback((slug: PillarSlug) => pillarTitles[slug], [pillarTitles]);
 
   const toggleFullscreen = useCallback(() => {
@@ -80,9 +115,16 @@ export function DeckPresenter({ deck, pillarTitles, sourceDates = {}, brainCommi
           break;
         case 'sources':
           if (drawerOpen) closeDrawer();
-          else setDrawerOpen(true);
+          else {
+            setFeedbackOpen(false);
+            setDrawerOpen(true);
+          }
           break;
         case 'close':
+          if (feedbackOpen) {
+            closeFeedback();
+            break;
+          }
           if (!drawerOpen) return; // let the browser exit full screen
           closeDrawer();
           break;
@@ -91,7 +133,7 @@ export function DeckPresenter({ deck, pillarTitles, sourceDates = {}, brainCommi
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [nav, drawerOpen, toggleFullscreen, closeDrawer]);
+  }, [nav, drawerOpen, feedbackOpen, toggleFullscreen, closeDrawer, closeFeedback]);
 
   useEffect(() => {
     thumbRefs.current[nav.index]?.scrollIntoView?.({ block: 'nearest', inline: 'center', behavior: reduce ? 'auto' : 'smooth' });
@@ -130,11 +172,40 @@ export function DeckPresenter({ deck, pillarTitles, sourceDates = {}, brainCommi
         <span className={styles.counter} aria-hidden="true">
           <strong>{String(nav.index + 1).padStart(2, '0')}</strong> / {String(total).padStart(2, '0')}
         </span>
+        {externalUrl && (
+          <a className={styles.toolButton} href={externalUrl} target="_blank" rel="noreferrer noopener">
+            Open original ↗
+          </a>
+        )}
+        {feedback && (
+          <button
+            ref={feedbackButtonRef}
+            type="button"
+            className={`${styles.toolButton} ${feedbackOpen ? styles.toolButtonActive : ''}`}
+            onClick={() => {
+              if (feedbackOpen) closeFeedback();
+              else {
+                setDrawerOpen(false);
+                setFeedbackOpen(true);
+              }
+            }}
+            aria-expanded={feedbackOpen}
+            aria-controls="brain-feedback-drawer"
+          >
+            Feedback{slideNotes.length ? ` (${slideNotes.length})` : ''}
+          </button>
+        )}
         <button
           ref={sourcesButtonRef}
           type="button"
           className={`${styles.toolButton} ${drawerOpen ? styles.toolButtonActive : ''}`}
-          onClick={() => (drawerOpen ? closeDrawer() : setDrawerOpen(true))}
+          onClick={() => {
+            if (drawerOpen) closeDrawer();
+            else {
+              setFeedbackOpen(false);
+              setDrawerOpen(true);
+            }
+          }}
           aria-expanded={drawerOpen}
           aria-controls="brain-sources-drawer"
         >
@@ -219,6 +290,11 @@ export function DeckPresenter({ deck, pillarTitles, sourceDates = {}, brainCommi
             <span className={styles.thumbTitle} aria-hidden="true">
               {s.title}
             </span>
+            {(notesBySlide.get(s.id)?.length ?? 0) > 0 && (
+              <span className={styles.thumbNotes} aria-hidden="true" title="Notes on this slide">
+                {notesBySlide.get(s.id)?.length}
+              </span>
+            )}
           </button>
         ))}
       </nav>
@@ -255,18 +331,93 @@ export function DeckPresenter({ deck, pillarTitles, sourceDates = {}, brainCommi
                 {sources.length === 0 ? (
                   <p style={{ color: 'var(--ink-3)', fontSize: '0.88rem' }}>No sources were recorded for this slide.</p>
                 ) : (
-                  sources.map((p) => (
-                    <a key={p} className={styles.sourceItem} href={brainSourceUrl(p, brainCommit)} target="_blank" rel="noreferrer noopener">
-                      <div className={styles.sourcePath}>brain/{p.replace(/^brain\//, '')}</div>
-                      <div className={styles.sourceMeta}>
-                        {sourceDates[p] ? `Updated ${formatDate(sourceDates[p])}` : 'Open in the private brain repo'}
-                        {brainCommit ? ` · @${brainCommit.slice(0, 7)}` : ''}
-                      </div>
-                    </a>
-                  ))
+                  sources.map((p) =>
+                    isExternal(p) ? (
+                      <a key={p} className={styles.sourceItem} href={p} target="_blank" rel="noreferrer noopener">
+                        <div className={styles.sourcePath}>{p.replace(/^https?:\/\//i, '')}</div>
+                        <div className={styles.sourceMeta}>External link ↗</div>
+                      </a>
+                    ) : (
+                      <a key={p} className={styles.sourceItem} href={brainSourceUrl(p, brainCommit)} target="_blank" rel="noreferrer noopener">
+                        <div className={styles.sourcePath}>brain/{p.replace(/^brain\//, '')}</div>
+                        <div className={styles.sourceMeta}>
+                          {sourceDates[p] ? `Updated ${formatDate(sourceDates[p])}` : 'Open in the private brain repo'}
+                          {brainCommit ? ` · @${brainCommit.slice(0, 7)}` : ''}
+                        </div>
+                      </a>
+                    ),
+                  )
                 )}
               </div>
             </motion.aside>
+
+      {feedback && (
+        <>
+          {feedbackOpen && <button type="button" className={styles.scrim} aria-label="Close feedback" tabIndex={-1} onClick={closeFeedback} />}
+          <motion.aside
+            id="brain-feedback-drawer"
+            className={styles.drawer}
+            role="dialog"
+            aria-modal="false"
+            aria-label={feedbackScope === 'slide' ? `Feedback on slide ${nav.index + 1}` : 'Feedback on the deck'}
+            aria-hidden={!feedbackOpen}
+            inert={!feedbackOpen}
+            initial={false}
+            animate={feedbackOpen ? { x: 0, opacity: 1 } : reduce ? { x: 0, opacity: 0 } : { x: '125%', opacity: 1 }}
+            transition={{ duration: reduce ? 0.12 : 0.32, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className={styles.drawerHead}>
+              <div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: '0.66rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+                  {feedbackScope === 'slide' ? `Slide ${nav.index + 1} · ${slide.title}` : `Whole deck · ${deck.period}`}
+                </div>
+                <div className={styles.drawerTitle}>Feedback</div>
+              </div>
+              <button type="button" className={styles.toolButton} onClick={closeFeedback}>
+                Close <span className={styles.kbd}>Esc</span>
+              </button>
+            </div>
+            <div className={styles.drawerBody}>
+              <div className={base.segmented} role="tablist" aria-label="Feedback on">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={feedbackScope === 'slide'}
+                  className={`${base.segment} ${feedbackScope === 'slide' ? base.segmentActive : ''}`}
+                  onClick={() => setFeedbackScope('slide')}
+                >
+                  This slide{slideNotes.length ? ` · ${slideNotes.length}` : ''}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={feedbackScope === 'deck'}
+                  className={`${base.segment} ${feedbackScope === 'deck' ? base.segmentActive : ''}`}
+                  onClick={() => setFeedbackScope('deck')}
+                >
+                  Whole deck{deckNotes.length ? ` · ${deckNotes.length}` : ''}
+                </button>
+              </div>
+              {feedback.error && (
+                <p style={{ color: 'var(--warning)', fontSize: '0.8rem', margin: 0 }}>Feedback could not be loaded ({feedback.error}).</p>
+              )}
+              <FeedbackComposer
+                key={feedbackScope === 'slide' ? `slide-${slide.id}` : 'deck'}
+                target={
+                  feedbackScope === 'slide'
+                    ? { target_type: 'slide', target_id: deck.id, slide_id: slide.id }
+                    : { target_type: 'deck', target_id: deck.id }
+                }
+                onSaved={(row) => setNotes((prev) => [...prev, row])}
+              />
+              <FeedbackThread
+                rows={feedbackScope === 'slide' ? slideNotes : deckNotes}
+                emptyText={feedbackScope === 'slide' ? 'No notes on this slide yet.' : 'No notes on the whole deck yet.'}
+              />
+            </div>
+          </motion.aside>
+        </>
+      )}
     </div>
   );
 }

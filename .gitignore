@@ -32,6 +32,8 @@ service-account*.json
 
 # Documentation (private plans and architecture)
 docs/
+# ...but not the admin brain docs reader route (/admin/brain/docs)
+!src/app/admin/brain/docs/
 *_ARCHITECTURE.md
 *_STRUCTURE.md
 *_PLAN.md

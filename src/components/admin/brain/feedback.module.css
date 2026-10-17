@@ -1,0 +1,254 @@
+/* Feedback composer + thread, shared by the deck presenter and the doc reader.
+   Uses the tokens defined on .root in brain.module.css. */
+
+.composer {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.composerContext {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kindRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.kind {
+  --k: var(--ink-3);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.kind:hover {
+  color: var(--ink);
+}
+
+.kindActive {
+  border-color: var(--k);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--k) 18%, transparent);
+}
+
+.kind_agree {
+  --k: #7fc8a9;
+}
+.kind_change {
+  --k: #e0a15e;
+}
+.kind_question {
+  --k: #8fb7ff;
+}
+.kind_idea {
+  --k: #b48cff;
+}
+
+.textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 4.5rem;
+  background: var(--plane);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--jewel);
+}
+
+.composerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.hint {
+  margin-right: auto;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--ink-3);
+}
+
+.save {
+  border: 0;
+  border-radius: 999px;
+  background: var(--jewel);
+  color: #140f1f;
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+
+.save:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ghost {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-2);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+
+.error {
+  margin: 0;
+  color: var(--warning);
+  font-size: 0.8rem;
+}
+
+.empty {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 0.84rem;
+}
+
+.thread {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.note {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 0.7rem 0.8rem;
+}
+
+.threadCompact .note {
+  padding: 0.55rem 0.65rem;
+}
+
+.noteHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.kindChip,
+.statusChip {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--line);
+}
+
+.kindChip {
+  --k: var(--ink-3);
+  color: var(--k);
+  border-color: color-mix(in srgb, var(--k) 45%, transparent);
+}
+
+.statusChip {
+  color: var(--ink-3);
+}
+
+.status_open {
+  color: var(--ink-2);
+}
+.status_answered {
+  color: #8fb7ff;
+  border-color: rgba(143, 183, 255, 0.4);
+}
+.status_applied,
+.status_resolved {
+  color: #7fc8a9;
+  border-color: rgba(127, 200, 169, 0.4);
+}
+.status_dismissed {
+  color: var(--deemph);
+}
+
+.time {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  color: var(--ink-3);
+}
+
+.quoted {
+  margin: 0.5rem 0 0;
+  padding-left: 0.6rem;
+  border-left: 2px solid var(--bronze);
+  color: var(--ink-2);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.body {
+  margin: 0.45rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
+
+.drift {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  color: var(--warning);
+}
+
+.reply {
+  margin-top: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: var(--jewel-soft);
+  border: 1px solid rgba(180, 140, 255, 0.25);
+}
+
+.replyHead {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jewel);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

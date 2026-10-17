@@ -1,0 +1,164 @@
+'use client';
+
+import { useId, useState } from 'react';
+import type { BrainFeedbackRow, FeedbackAnchor, FeedbackKind, FeedbackStatus } from '@/lib/brain/feedback';
+import { formatDateTime } from '@/lib/brain/viz';
+import styles from './feedback.module.css';
+
+export const KIND_LABEL: Record<FeedbackKind, string> = {
+  agree: 'Agree',
+  change: 'Change',
+  question: 'Question',
+  idea: 'Idea',
+};
+
+const KINDS: FeedbackKind[] = ['agree', 'change', 'question', 'idea'];
+
+const STATUS_LABEL: Record<FeedbackStatus, string> = {
+  open: 'Open',
+  answered: 'Answered',
+  applied: 'Applied',
+  resolved: 'Resolved',
+  dismissed: 'Dismissed',
+};
+
+export type FeedbackTargetRef =
+  | { target_type: 'deck'; target_id: string }
+  | { target_type: 'slide'; target_id: string; slide_id: string }
+  | { target_type: 'doc'; target_id: string; anchor: FeedbackAnchor };
+
+interface ComposerProps {
+  target: FeedbackTargetRef;
+  onSaved: (row: BrainFeedbackRow) => void;
+  /** Label for what the note is about, e.g. "Slide 3" or a quoted selection. */
+  context?: string;
+  autoFocus?: boolean;
+  onCancel?: () => void;
+}
+
+export function FeedbackComposer({ target, onSaved, context, autoFocus, onCancel }: ComposerProps) {
+  const [kind, setKind] = useState<FeedbackKind>('change');
+  const [body, setBody] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const id = useId();
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!body.trim() || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/brain/feedback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...target, kind, body }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { row?: BrainFeedbackRow; error?: string };
+      if (!res.ok || !json.row) throw new Error(json.error || `Save failed (${res.status})`);
+      onSaved(json.row);
+      setBody('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form className={styles.composer} onSubmit={submit} aria-label="Leave feedback">
+      {context && <div className={styles.composerContext}>{context}</div>}
+      <div className={styles.kindRow} role="radiogroup" aria-label="Feedback type">
+        {KINDS.map((k) => (
+          <button
+            key={k}
+            type="button"
+            role="radio"
+            aria-checked={kind === k}
+            className={`${styles.kind} ${styles[`kind_${k}`]} ${kind === k ? styles.kindActive : ''}`}
+            onClick={() => setKind(k)}
+          >
+            {KIND_LABEL[k]}
+          </button>
+        ))}
+      </div>
+      <label htmlFor={`${id}-body`} className={styles.srOnly}>
+        Note
+      </label>
+      <textarea
+        id={`${id}-body`}
+        className={styles.textarea}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="What should change, what lands, what is unclear…"
+        rows={3}
+        maxLength={4000}
+        autoFocus={autoFocus}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void submit(e);
+          if (e.key === 'Escape' && onCancel) {
+            e.stopPropagation();
+            onCancel();
+          }
+        }}
+      />
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
+      <div className={styles.composerActions}>
+        <span className={styles.hint}>⌘↵ to save</span>
+        {onCancel && (
+          <button type="button" className={styles.ghost} onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+        <button type="submit" className={styles.save} disabled={saving || !body.trim()}>
+          {saving ? 'Saving…' : 'Save note'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+interface ThreadProps {
+  rows: BrainFeedbackRow[];
+  emptyText?: string;
+  /** Shown on doc comments whose anchor was re-found by quote or heading, not exactly. */
+  driftNote?: (row: BrainFeedbackRow) => string | null;
+  compact?: boolean;
+}
+
+export function FeedbackThread({ rows, emptyText, driftNote, compact }: ThreadProps) {
+  if (!rows.length) return emptyText ? <p className={styles.empty}>{emptyText}</p> : null;
+  return (
+    <ul className={`${styles.thread} ${compact ? styles.threadCompact : ''}`}>
+      {rows.map((row) => {
+        const drift = driftNote?.(row);
+        return (
+          <li key={row.id} className={styles.note}>
+            <div className={styles.noteHead}>
+              <span className={`${styles.kindChip} ${styles[`kind_${row.kind}`]}`}>{KIND_LABEL[row.kind]}</span>
+              <span className={`${styles.statusChip} ${styles[`status_${row.status}`]}`}>{STATUS_LABEL[row.status]}</span>
+              <time className={styles.time} dateTime={row.created_at}>
+                {formatDateTime(row.created_at)}
+              </time>
+            </div>
+            {row.anchor?.quote && <blockquote className={styles.quoted}>{row.anchor.quote}</blockquote>}
+            <p className={styles.body}>{row.body}</p>
+            {drift && <p className={styles.drift}>{drift}</p>}
+            {row.reply && (
+              <div className={styles.reply}>
+                <div className={styles.replyHead}>
+                  Claude{row.replied_at ? ` · ${formatDateTime(row.replied_at)}` : ''}
+                </div>
+                <p className={styles.body}>{row.reply}</p>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
