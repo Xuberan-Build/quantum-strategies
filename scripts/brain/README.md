@@ -302,6 +302,44 @@ subprocess. If none is found, `auto` stays on the API and `whisper` fetches noth
   After acting on a note: `run_ts scripts/brain/reply-feedback.ts <id> --status applied --reply "..."`.
   The loop is documented in the brain at `feedback/README.md`.
 
+## Knowledge graph (kg_nodes / kg_edges)
+
+The brain as a graph, linked to the corpus. Tables: `kg_nodes` (id `<type>:<slug>`, lowercase, hyphens only;
+notes use the admin doc slug, e.g. `note:gtm--problem-solution-map`) and `kg_edges` (`src -type-> dst`, unique per
+triple). Service role only, like the corpus (migration `20261017170000_knowledge_graph.sql`). Consumers:
+the admin graph UI, and `src/lib/brain/graph-context.ts` (`getNodeContext`, `getProblemContext`) for content
+generators and the quiz.
+
+| File | Role |
+|---|---|
+| `build-graph.ts` | Extract, embed, bridge to the corpus, upsert, prune. Flags `--brain-dir`, `--config`, `--dry-run`, `--no-embed`, `--no-corpus`, `--only <extractor>`, `--force-prune`, `--json` |
+| `graph-gaps.ts` | Prints `kg_gaps()`; writes `<brain>/graph/gaps.md` and `<brain>/graph/ingestion-proposals.md` (never inserts into `corpus_ingestion_queue`) |
+| `lib/graph/extract-*.ts` | One module per source: `notes`, `architecture`, `problem-map` (map + quiz v2 + products), `claims`, `audience`, `records` (decisions, principles, decks, docs). Pure file reads, unit-tested on `lib/graph/__tests__/fixtures/brain` |
+| `lib/graph/corpus.ts` | `corpus_source` nodes (one per source text, never per chunk) and `evidences` edges |
+| `<brain>/graph/config.json` | The private mappings: research codes → problems, problem → pillars, product names, link keywords, tried buckets. Strategy lives in the brain, never here |
+
+**How it works.** Extractors run in a fixed order and merge by id (the problem map's label beats the audience
+default). Claims, mechanisms, problems and notes are embedded with `text-embedding-3-small`; `props.embed_hash`
+(sha256 of model + text) skips unchanged text, so a normal rebuild costs nothing (a full first build is about
+150k tokens, under $0.01). For each claim and mechanism the bridge scores the evidence/model/lineage tiers and links
+the parent `corpus_source` when its best chunk reaches **0.45** (`EVIDENCE_SIMILARITY_FLOOR`): `props.similarity`,
+`props.chunk_ids` (top 3 `knowledge_chunks.id`), `props.kind = evidence`. Problems get the same against
+`market_signal` (`props.kind = demand`). Small tiers (under 3,000 chunks: evidence, market_signal) are scored exactly
+in the script, because `match_knowledge` filters tiers after an HNSW candidate search and a narrow tier often comes
+back empty; lineage goes through the RPC. QS's own material never counts.
+
+**Idempotent, scoped pruning.** Every row carries `built_at`; nodes record `props.extractors`, edges
+`props.extractor`. After upserting, rows of the extractors that ran with an older `built_at` are deleted. Corpus
+tables are only read. A build under half the size of the stored graph skips pruning unless `--force-prune`.
+
+**Tick hook (one line, not wired yet).** Add after the bridge stage in `tick.sh`:
+
+```bash
+run_ts scripts/brain/build-graph.ts --brain-dir "$BRAIN_DIR" && run_ts scripts/brain/graph-gaps.ts --brain-dir "$BRAIN_DIR" || warn "knowledge graph build failed"
+```
+
+It writes `graph/gaps.md` and `graph/ingestion-proposals.md` into the brain worktree, so the tick's commit picks them up.
+
 ## Run it manually
 
 ```bash
