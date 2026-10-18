@@ -115,19 +115,24 @@
 .stage {
   position: relative;
   display: flex;
-  align-items: center;
+  /* safe: when a slide is taller than the stage, start at the top and scroll
+     instead of spilling above the header */
+  align-items: safe center;
   justify-content: center;
   padding: 1.25rem 4.25rem;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .canvas {
   position: relative;
   width: 100%;
-  max-width: calc((100vh - 290px) * 16 / 9);
-  aspect-ratio: 16 / 9;
+  /* Slides keep 16:9 as a minimum height (see .slide) but grow with their
+     content, so dense slides never overlap themselves on short screens. */
+  max-width: min(1500px, calc((100vh - 240px) * 16 / 9));
   container-type: inline-size;
   min-width: 0;
+  margin-block: auto;
 }
 
 .presenter:fullscreen .canvas {
@@ -170,14 +175,14 @@
 }
 
 .slideMotion {
-  position: absolute;
-  inset: 0;
+  /* In flow; AnimatePresence popLayout lifts the outgoing slide out. */
+  position: relative;
 }
 
 /* ---------- Slide ---------- */
 .slide {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  min-height: 56.25cqi; /* 16:9 of the canvas width */
   display: flex;
   flex-direction: column;
   gap: 2.2cqi;
@@ -248,7 +253,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: safe center;
 }
 
 .takeaway {
