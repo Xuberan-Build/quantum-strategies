@@ -45,6 +45,10 @@ export function topicGraphNode(n: TopicNode, map: TopicalMap): GraphNode {
       audience_words: n.audienceWords ?? [],
       queue_rank: n.queueRank ?? null,
       notes: n.notes,
+      ...(n.searchVolume !== undefined
+        ? { search_volume: n.searchVolume, search_trend: n.searchTrend ?? null, commercial: n.commercial ?? null, search_terms: n.searchTerms ?? [], channel_fit: n.channelFit ?? null, head_term: n.headTerm ?? null }
+        : {}),
+      ...(n.audience ? { audience: n.audience } : {}),
       ...(n.level === 'pillar' ? { map_meta: { version: map.version, centralEntity: map.centralEntity, sourceContext: map.sourceContext, generatedAt: map.generatedAt, levels: map.levels, meta: map.meta } } : {}),
     },
   };
@@ -88,7 +92,7 @@ export function graphRows(result: BuildTopicalResult, landscapeNames: Map<string
           label: l.query.text,
           source_path: SOURCE_PATH,
           weight: Math.max(1, l.query.signal),
-          props: { text: l.query.text, sources: l.query.sources, signal: l.query.signal, per_source: l.query.perSource, monthly: l.query.monthly ?? null, seeds: l.query.seeds.slice(0, 5) },
+          props: { text: l.query.text, sources: l.query.sources, signal: l.query.signal, per_source: l.query.perSource, monthly: l.query.monthly ?? null, seeds: l.query.seeds.slice(0, 5), ...(l.query.volume !== undefined ? { kp_volume: l.query.volume } : {}) },
         });
       }
       edge({ src: qid, dst: node, type: 'asks_about', weight: Math.max(0.1, l.query.signal), props: { similarity: l.sim, reason: l.reason } });

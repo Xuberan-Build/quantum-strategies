@@ -23,6 +23,23 @@
  *              priority = 100 · base · (1 - 0.3·K) · stance (use 1, reframe 0.9, avoid 0.5, guardrail 0.3)
  *              with D, P, C, F, K the scores above divided by 100. High demand, strong proof, low coverage and a
  *              product to route to win; crowded topics lose up to 30%.
+ *
+ * With Keyword Planner data (--keyword-planner), demand splits into two measured parts:
+ * searchDemand S  100 · log10(1 + V) / log10(1 + max V at the same level), V = the node's Keyword Planner monthly
+ *                 searches (US), near-identical phrasings counted once (lib/topical-map/keyword-planner.ts).
+ * audienceDemand A the demand score above (coded comments, likes, autocomplete presence, vidIQ anchors).
+ * demand         0.6 · max(S, A) + 0.4 · min(S, A): the stronger channel leads, so a topic people only say in
+ *                comments ("I undercharge") is not buried by its tiny search volume, and a topic people only type
+ *                into Google ("imposter syndrome") rises. Without Keyword Planner data, or when none of the node's
+ *                phrasings has measurable volume (a missing reading, not zero demand), demand = A. Such a topic is
+ *                titled on the nearest search head term, hooked on the audience's words, and led on YouTube and the quiz.
+ * channelFit     the same shape as priority, one demand input per channel:
+ *                search  = 100 · S^0.5 · (0.35+0.65P)^0.15 · (1-0.85C)^0.2 · (0.25+0.75F)^0.15 · stance
+ *                          (YouTube competition does not apply; there is no organic SERP data yet)
+ *                youtube = 100 · Y^0.45 · (0.35+0.65P)^0.2 · (1-0.85C)^0.2 · (0.25+0.75F)^0.15 · (1-0.3K) · stance,
+ *                          Y = 0.7·A + 0.3·S (comments and YouTube autocomplete lead, search adds reach)
+ *                quiz    = 100 · A^0.5 · (0.1+0.9F)^0.4 · (0.5+0.5P)^0.1 · stance (a felt problem in their words
+ *                          that routes to a Rite; coverage does not matter for a quiz question)
  */
 import type { TopicScores, TopicStance } from '../../../../src/lib/brain/topical-map-types';
 
@@ -144,4 +161,41 @@ export function weightedMean(values: { v: number; w: number }[]): number {
   const W = values.reduce((s, x) => s + x.w, 0);
   if (W <= 0) return round(values.reduce((s, x) => s + x.v, 0) / values.length);
   return round(values.reduce((s, x) => s + x.v * x.w, 0) / W);
+}
+
+/* ------------------------------------------------------------------ Keyword Planner split */
+
+export function searchDemandScore(volume: number, maxVolume: number): number {
+  if (maxVolume <= 0 || volume <= 0) return 0;
+  return round((100 * Math.log10(1 + volume)) / Math.log10(1 + maxVolume));
+}
+
+export const DEMAND_BLEND = { stronger: 0.6, weaker: 0.4 } as const;
+
+/**
+ * 0.6 · the stronger of search and audience demand + 0.4 · the weaker. No measurable search volume (no KP match, or
+ * zero) is a missing reading, not zero demand: demand falls back to audience demand alone.
+ */
+export function blendDemand(search: number, audience: number, volume: number | null = null): number {
+  if (volume !== null && volume <= 0) return round(audience);
+  return round(DEMAND_BLEND.stronger * Math.max(search, audience) + DEMAND_BLEND.weaker * Math.min(search, audience));
+}
+
+export function channelFitScores(
+  s: { searchDemand: number; audienceDemand: number; proof: number; coverage: number; competition: number; productFit: number },
+  stance: TopicStance = 'use',
+): { search: number; youtube: number; quiz: number } {
+  const S = clamp01(s.searchDemand / 100);
+  const A = clamp01(s.audienceDemand / 100);
+  const P = clamp01(s.proof / 100);
+  const C = clamp01(s.coverage / 100);
+  const F = clamp01(s.productFit / 100);
+  const K = clamp01(s.competition / 100);
+  const st = STANCE_FACTOR[stance];
+  const Y = 0.7 * A + 0.3 * S;
+  return {
+    search: round(100 * S ** 0.5 * (0.35 + 0.65 * P) ** 0.15 * (1 - 0.85 * C) ** 0.2 * (0.25 + 0.75 * F) ** 0.15 * st),
+    youtube: round(100 * Y ** 0.45 * (0.35 + 0.65 * P) ** 0.2 * (1 - 0.85 * C) ** 0.2 * (0.25 + 0.75 * F) ** 0.15 * (1 - 0.3 * K) * st),
+    quiz: round(100 * A ** 0.5 * (0.1 + 0.9 * F) ** 0.4 * (0.5 + 0.5 * P) ** 0.1 * st),
+  };
 }

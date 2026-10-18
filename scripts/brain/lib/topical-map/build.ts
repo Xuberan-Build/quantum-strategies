@@ -16,11 +16,14 @@ import { restGetAll, type RestEnv } from '../graph/rest';
 import type { Graph } from '../graph/types';
 import { assignQueries, attachSubtopics, EMBED_THRESHOLDS, groupQueries, LEXICAL_THRESHOLDS, nearest, type Placement, type Thresholds } from './cluster';
 import { dot, EmbedCache, unit } from './embed';
+import { kpIndex, kpKey, searchDemandFor, spikeVolume, type KpFile, type SearchDemand } from './keyword-planner';
 import { AcCache, expansions, Harvester, type AcRequest, type AcSource, type Fetcher } from './harvest';
-import { dominantIntent, lexicalSim, mergeQueries, normalizeQuery, type HarvestedQuery, type RawQuery } from './queries';
+import { dominantIntent, isUsableQuery, lexicalSim, mergeQueries, normalizeQuery, queryIntent, queryKey, type HarvestedQuery, type RawQuery } from './queries';
 import {
   assetWeight,
   audienceMass,
+  blendDemand,
+  channelFitScores,
   competitionScore,
   competitorWeight,
   coverageScore,
@@ -31,6 +34,7 @@ import {
   priorityScore,
   productFitScore,
   proofScore,
+  searchDemandScore,
   strengthValue,
   weightedMean,
 } from './score';
@@ -47,11 +51,13 @@ export const SOURCE_CONTEXT_BASE =
   'Quantum Strategies is Austin Santos\'s method for changing the self-image with a mechanism instead of magical thinking. The map is organised around his 8 pillars and the Spine (content/architecture.json). Demand decides priority. Creators are context, never the frame. Every topic routes to the free Perception quiz, a Rite or a scan where it can.';
 
 /** The source context with this run's real figures (the UI shows it as is). */
-export function sourceContext(f: { audienceItems: number; problems: number; acRequests: number; acCached: number; acQueries: number; vidiq: number; channels: number; claims: number; blocked: boolean }): string {
-  return `${SOURCE_CONTEXT_BASE} Demand this run: ${f.audienceItems} coded audience items (YouTube comments, forum and Reddit posts) across ${f.problems} problems, ${f.acQueries} distinct autocomplete suggestions from ${f.acRequests + f.acCached} Google and YouTube autocomplete lookups (${f.acRequests} fetched this run, ${f.acCached} from cache${f.blocked ? ', harvest stopped early by a block' : ''}), and ${f.vidiq} vidIQ volume anchors. Proof: ${f.claims} claims from the thesis-evidence map. Competition: ${f.channels} tracked YouTube channels.`;
+export function sourceContext(f: { audienceItems: number; problems: number; acRequests: number; acCached: number; acQueries: number; vidiq: number; channels: number; claims: number; blocked: boolean; kp?: { rows: number; withVolume: number; matched: number; location: string | null; dateRange: string | null } | null }): string {
+  return `${SOURCE_CONTEXT_BASE} Demand this run: ${f.audienceItems} coded audience items (YouTube comments, forum and Reddit posts) across ${f.problems} problems, ${f.acQueries} distinct autocomplete suggestions from ${f.acRequests + f.acCached} Google and YouTube autocomplete lookups (${f.acRequests} fetched this run, ${f.acCached} from cache${f.blocked ? ', harvest stopped early by a block' : ''}), and ${f.vidiq} vidIQ volume anchors.${f.kp ? ` Search volume: Google Keyword Planner, ${f.kp.location ?? 'location unknown'}, ${f.kp.dateRange ?? 'date range unknown'}, ${f.kp.rows} keywords (${f.kp.withVolume} with volume), ${f.kp.matched} of the map's phrasings matched.` : ''} Proof: ${f.claims} claims from the thesis-evidence map. Competition: ${f.channels} tracked YouTube channels.`;
 }
 
 export const MAX_QUERIES_PER_NODE = 40;
+/** a head-term candidate must sit this close to the node's own texts (cosine with embeddings, overlap without) */
+export const HEAD_TERM_RELEVANCE = { embed: 0.8, lexical: 0.5 };
 export const MAX_NEW_SUBTOPICS_PER_TOPIC = 6;
 
 interface Landscape {
@@ -72,6 +78,42 @@ export interface BuildTopicalOptions {
   minDelayMs?: number;
   maxDelayMs?: number;
   log?: (m: string) => void;
+  /** Keyword Planner exports (lib/topical-map/keyword-planner.ts); splits demand into search and audience parts */
+  keywordPlanner?: KpFile[];
+  /** add Keyword Planner rows no map phrasing matches (Discover exports) as queries of their own, from this volume up */
+  kpAddNewMin?: number;
+  /** autocomplete phrasings replayed from an earlier map (replayQueriesFrom), used when the autocomplete cache is gone */
+  replayQueries?: ReplayQuery[];
+}
+
+export interface ReplayQuery {
+  text: string;
+  sources: TopicQuery['sources'];
+  signal: number;
+  /** the topic-level node it sat under in the earlier map (a seed-bonus hint for placement) */
+  topic: string | null;
+}
+
+/**
+ * The autocomplete phrasings stored in an earlier topical-map.json, one per text (highest signal kept), with the
+ * topic they sat under. Topics keep their top 40 phrasings by signal and subtopics their own, so the replay keeps
+ * every phrasing that fed a demand score (top 15 per node) but not the long tail past the cap.
+ */
+export function replayQueriesFrom(map: TopicalMap): ReplayQuery[] {
+  const byId = new Map(map.nodes.map((n) => [n.id, n]));
+  const topicOf = (n: TopicNode) => (n.level === 'subtopic' && n.parent ? n.parent : n.id);
+  const out = new Map<string, ReplayQuery>();
+  // subtopics first so a phrasing keeps its most specific home
+  for (const n of [...map.nodes].sort((a, b) => (a.level === 'subtopic' ? 0 : 1) - (b.level === 'subtopic' ? 0 : 1))) {
+    if (n.level !== 'topic' && n.level !== 'subtopic') continue;
+    for (const q of n.queries) {
+      if (!q.sources.some((x) => x === 'google_ac' || x === 'youtube_ac')) continue;
+      const prev = out.get(q.text);
+      if (prev && prev.signal >= q.signal) continue;
+      out.set(q.text, { text: q.text, sources: q.sources, signal: q.signal, topic: byId.has(topicOf(n)) ? topicOf(n) : null });
+    }
+  }
+  return [...out.values()];
 }
 
 export interface BuildTopicalReport {
@@ -83,6 +125,7 @@ export interface BuildTopicalReport {
   embeddings: { enabled: boolean; embedded: number; cached: number; tokens: number; costUsd: number };
   proof: { mode: string; claimsWithEvidence: number; poolChunks: number };
   contentPosts: { total: number; linked: number };
+  keywordPlanner: { files: string[]; rows: number; withVolume: number; matchedQueries: number; queriesWithVolume: number; unmatchedRows: number; unmatchedSample: string[] } | null;
   warnings: string[];
 }
 
@@ -354,6 +397,48 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
   for (const v of vidiq) raw.push({ text: v.phrase, source: 'vidiq', monthly: v.monthly });
   const seedTopic = (seed: string) => [...(seedOwners.get(normalizeQuery(seed)) ?? [])];
   const queries = mergeQueries(raw, seedTopic);
+  if (opts.replayQueries?.length) {
+    // replayed autocomplete phrasings: merged into a live query with the same key, else added as their own query
+    const byKey = new Map(queries.map((q) => [q.key, q]));
+    let added = 0;
+    for (const r of opts.replayQueries) {
+      if (!isUsableQuery(r.text)) continue;
+      const ac = r.sources.filter((x): x is 'google_ac' | 'youtube_ac' => x === 'google_ac' || x === 'youtube_ac');
+      if (!ac.length) continue;
+      const key = queryKey(r.text);
+      const live = byKey.get(key);
+      const acTotal = Math.max(0.55 * ac.length, r.signal - (live ? live.signal - ac.reduce((s2, x) => s2 + (live.perSource[x] ?? 0), 0) : 0));
+      const each = Math.round((acTotal / ac.length) * 100) / 100;
+      const q: HarvestedQuery = live ?? { key, text: normalizeQuery(r.text), sources: [], signal: 0, seeds: [], seedTopics: [], perSource: {} };
+      for (const x of ac) q.perSource[x] = Math.max(q.perSource[x] ?? 0, each);
+      q.sources = (Object.keys(q.perSource) as HarvestedQuery['sources']).sort();
+      q.signal = Math.round(Object.values(q.perSource).reduce((s2, v) => s2 + (v ?? 0), 0) * 100) / 100;
+      if (r.topic && !q.seedTopics.includes(r.topic)) q.seedTopics.push(r.topic);
+      if (!live) {
+        queries.push(q);
+        byKey.set(key, q);
+        added++;
+      }
+    }
+    queries.sort((a, b) => b.signal - a.signal || a.text.localeCompare(b.text));
+    log(`replay: ${opts.replayQueries.length} phrasings from an earlier map, ${added} added as new queries`);
+  }
+  const kp = opts.keywordPlanner?.length ? kpIndex(opts.keywordPlanner) : null;
+  if (kp && opts.kpAddNewMin !== undefined) {
+    const have = new Set(queries.map((q) => kpKey(q.text)));
+    const fresh = [...kp.values()].filter((r) => !have.has(kpKey(r.keyword)) && (r.avgMonthlySearches ?? 0) >= opts.kpAddNewMin!);
+    const added = mergeQueries(fresh.map((r) => ({ text: r.keyword, source: 'keyword_planner' as const, monthly: r.avgMonthlySearches ?? 0 })));
+    const keys = new Set(queries.map((q) => q.key));
+    for (const q of added) if (!keys.has(q.key)) queries.push(q);
+    queries.sort((a, b) => b.signal - a.signal || a.text.localeCompare(b.text));
+    log(`keyword planner: ${added.length} keyword ideas the map had not harvested added as queries (>= ${opts.kpAddNewMin} searches a month)`);
+  }
+  if (kp) {
+    for (const q of queries) {
+      const r = kp.get(kpKey(q.text));
+      q.volume = r ? (r.avgMonthlySearches ?? 0) : null;
+    }
+  }
   const bySource: Record<string, number> = {};
   for (const q of queries) for (const s of q.sources) bySource[s] = (bySource[s] ?? 0) + 1;
   log(`queries: ${queries.length} unique (${Object.entries(bySource).map(([k, v]) => `${k} ${v}`).join(', ')})`);
@@ -481,7 +566,7 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
   }
   const descendants = (id: string): TopicNode[] => children(id).flatMap((c) => [c, ...descendants(c.id)]);
   const navNames = (landscape?.channels ?? []).map((c) => c.name);
-  const toTQ = (q: HarvestedQuery): TopicQuery => ({ text: q.text, sources: q.sources, signal: q.signal });
+  const toTQ = (q: HarvestedQuery): TopicQuery => ({ text: q.text, sources: q.sources, signal: q.signal, ...(kp ? { volume: q.volume ?? null } : {}) });
   const allQueriesOf = (id: string) => {
     const set = new Map<string, HarvestedQuery>();
     for (const q of ownQueries.get(id) ?? []) set.set(q.key, q);
@@ -684,7 +769,8 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
     if (n.level !== 'topic' && n.level !== 'subtopic') continue;
     const qs = n.level === 'topic' ? allQueriesOf(n.id) : ownQueries.get(n.id) ?? [];
     const mass = audienceMass((problemsOfTopic.get(n.id) ?? []).map((x) => ({ share: x.share, quotes: x.p.quoteCount, likes: x.p.likes, forumScore: x.p.forumScore })));
-    rawDemand.set(n.id, demandRaw(qs.map((q) => q.signal), n.level === 'topic' ? mass : 0));
+    // audience demand: Keyword Planner ideas count in search demand, never here
+    rawDemand.set(n.id, demandRaw(qs.map((q) => q.signal - (q.perSource.keyword_planner ?? 0)), n.level === 'topic' ? mass : 0));
   }
   for (const level of ['topic', 'subtopic'] as const) {
     const at = nodes.filter((n) => n.level === level);
@@ -699,11 +785,92 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
       };
     }
   }
+  // Keyword Planner: split demand into search (measured volume) and audience (the score above), then blend
+  const searchOf = new Map<string, SearchDemand>();
+  const queriesOfNode = (n: TopicNode) => (n.level === 'subtopic' ? (ownQueries.get(n.id) ?? []) : allQueriesOf(n.id));
+  const applySearchSplit = (level: TopicNode['level']) => {
+    if (!kp) return;
+    const at = nodes.filter((n) => n.level === level);
+    for (const n of at) searchOf.set(n.id, searchDemandFor(queriesOfNode(n).map((q) => q.text), kp));
+    const maxV = Math.max(0, ...at.map((n) => searchOf.get(n.id)!.volume));
+    for (const n of at) {
+      const sd = searchOf.get(n.id)!;
+      const A = n.scores.demand;
+      const S = searchDemandScore(sd.volume, maxV);
+      n.scores.audienceDemand = A;
+      n.scores.searchDemand = S;
+      n.scores.demand = blendDemand(S, A, sd.volume);
+      n.searchVolume = sd.volume;
+      n.searchTrend = { yoy: sd.yoy, threeMonth: sd.threeMonth, monthly: sd.monthly };
+      n.commercial = { bidLow: sd.bidLow, bidHigh: sd.bidHigh, competitionIndex: sd.competitionIndex, value: sd.value };
+      n.searchTerms = sd.top.map((t) => ({ keyword: t.keyword, volume: t.volume, yoy: t.yoy }));
+      n.reasons = {
+        ...n.reasons,
+        searchDemand: sd.volume
+          ? `${sd.volume.toLocaleString('en-US')} US searches a month (Keyword Planner) over ${sd.counted} distinct phrasings (${sd.withVolume} of ${sd.matched} looked-up phrasings have volume; close variants counted once), led by ${sd.top.slice(0, 3).map((t) => `"${t.keyword}" ${t.volume.toLocaleString('en-US')}`).join(', ')}; level max ${maxV.toLocaleString('en-US')}${sd.spikes.length ? `; spike-capped: ${sd.spikes.slice(0, 3).map((x) => `"${x.keyword}" counted at ${x.counted.toLocaleString('en-US')} not ${x.reported.toLocaleString('en-US')}`).join(', ')}` : ''}`
+          : `no measurable Google searches: ${sd.matched} phrasing${sd.matched === 1 ? '' : 's'} looked up in Keyword Planner, none with volume`,
+        audienceDemand: n.reasons?.demand ?? '',
+        demand: sd.volume > 0 ? `0.6 × the stronger of search ${S} and audience ${A} + 0.4 × the weaker = ${n.scores.demand}` : `no measurable search volume is a missing reading, so demand = audience demand ${A}`,
+      };
+    }
+  };
+  // audience signals (what audienceDemand rests on), topics and subtopics
+  for (const n of nodes) {
+    if (n.level !== 'topic' && n.level !== 'subtopic') continue;
+    const ps = problemsOfTopic.get(n.id) ?? [];
+    const qs = queriesOfNode(n);
+    const vq = qs.map((q) => q.monthly ?? 0).filter((x) => x > 0);
+    n.audience = {
+      quotes: Math.round(ps.reduce((s2, x) => s2 + x.share * x.p.quoteCount, 0)),
+      likes: Math.round(ps.reduce((s2, x) => s2 + x.share * (x.p.likes + x.p.forumScore), 0)),
+      autocomplete: qs.filter((q) => q.sources.includes('google_ac') || q.sources.includes('youtube_ac')).length,
+      audiencePhrases: qs.filter((q) => q.sources.includes('audience')).length,
+      vidiqMonthly: vq.length ? Math.max(...vq) : null,
+    };
+  }
+  applySearchSplit('topic');
+  applySearchSplit('subtopic');
+  // head term: the highest-volume search phrasing next to the audience's own words
+  for (const n of nodes) {
+    if (n.level !== 'topic' && n.level !== 'subtopic') continue;
+    const qs = queriesOfNode(n);
+    const aud = [...qs].filter((q) => q.sources.includes('audience')).sort((a, b) => b.signal - a.signal)[0]?.text ?? null;
+    const override = seeds.headTerms[n.id] ?? seeds.headTerms[n.label];
+    if (override) {
+      const vol = kp?.get(kpKey(override))?.avgMonthlySearches ?? 0;
+      n.headTerm = { text: override, volume: vol, audience: aud ?? n.label.toLowerCase(), via: 'seeds' };
+      n.reasons = { ...n.reasons, headTerm: `set by hand in the seeds file (headTerms)${vol ? `, ${vol.toLocaleString('en-US')} searches a month` : ''}` };
+      continue;
+    }
+    if (!kp) continue;
+    // relevant = close to the node itself (embedding 0.8, lexical 0.5), so a tangent placed in a subtopic never titles the topic
+    const rel = (q: HarvestedQuery) => maxCos(q.text, n.id) ?? lexicalSim(q.text, `${n.label} ${lexText(n.id)}`);
+    const floor = embedOn ? HEAD_TERM_RELEVANCE.embed : HEAD_TERM_RELEVANCE.lexical;
+    const vol = (q: HarvestedQuery) => {
+      const r = kp.get(kpKey(q.text));
+      return r ? spikeVolume(r).volume : 0;
+    };
+    const cands = qs.filter((q) => vol(q) > 0 && queryIntent(q.text, navNames) !== 'navigational' && rel(q) >= floor);
+    const best = cands.sort((a, b) => vol(b) - vol(a) || a.text.length - b.text.length)[0];
+    if (!best) {
+      n.headTerm = null;
+      n.reasons = { ...n.reasons, headTerm: 'no phrasing close to this topic has measurable Google searches yet; title it in the audience\'s words and add search seeds (research/keywords/next-seeds.md)' };
+      continue;
+    }
+    n.headTerm = { text: best.text, volume: vol(best), audience: aud ?? n.label.toLowerCase(), via: 'keyword_planner' };
+    n.reasons = { ...n.reasons, headTerm: `"${best.text}" is the highest-volume phrasing close to this topic (${vol(best).toLocaleString('en-US')} a month); use it for the page or video title and the audience words for the hook` };
+  }
   for (const n of nodes) {
     if (n.level !== 'topic' && n.level !== 'subtopic') continue;
     const stance = n.stance ?? ctx.get(n.id)?.stance ?? 'use';
     n.scores.priority = priorityScore(n.scores, stance);
     n.reasons = { ...n.reasons, priority: `D ${n.scores.demand} · P ${n.scores.proof} · C ${n.scores.coverage} · F ${n.scores.productFit} · K ${n.scores.competition}${stance !== 'use' ? ` · stance ${stance}` : ''}` };
+    if (kp) {
+      n.channelFit = channelFitScores({ searchDemand: n.scores.searchDemand ?? 0, audienceDemand: n.scores.audienceDemand ?? n.scores.demand, proof: n.scores.proof, coverage: n.scores.coverage, competition: n.scores.competition, productFit: n.scores.productFit }, stance);
+      const cf = n.channelFit;
+      const best = (Object.entries(cf) as [keyof typeof cf, number][]).sort((a, b) => b[1] - a[1])[0];
+      n.reasons = { ...n.reasons, channelFit: `search ${cf.search} · YouTube ${cf.youtube} · quiz ${cf.quiz}; best as ${best[0] === 'search' ? 'a search page' : best[0] === 'youtube' ? 'a YouTube video' : 'a quiz question'}` };
+    }
   }
   // roll up: sections from topics, pillars from sections
   for (const level of ['section', 'pillar'] as const) {
@@ -725,8 +892,12 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
     const max = Math.max(0, ...at.map((n) => rawDemand.get(n.id) ?? 0));
     for (const n of at) {
       n.scores.demand = demandScore(rawDemand.get(n.id) ?? 0, max);
+      n.reasons = { demand: `sum of ${children(n.id).length} children's raw demand` };
+    }
+    applySearchSplit(level);
+    for (const n of at) {
       n.scores.priority = priorityScore(n.scores);
-      n.reasons = { demand: `sum of ${children(n.id).length} children's raw demand`, priority: 'same formula on the rolled-up scores (coverage, proof and competition are demand-weighted means of the children; fit is the best child)' };
+      n.reasons = { ...n.reasons, priority: 'same formula on the rolled-up scores (coverage, proof and competition are demand-weighted means of the children; fit is the best child)' };
     }
   }
 
@@ -752,6 +923,21 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
     counts[n.level] = (counts[n.level] ?? 0) + 1;
     origins[`${n.level}:${n.origin ?? 'architecture'}`] = (origins[`${n.level}:${n.origin ?? 'architecture'}`] ?? 0) + 1;
   }
+  const kpReport: BuildTopicalReport['keywordPlanner'] = (() => {
+    if (!kp || !opts.keywordPlanner) return null;
+    const qKeys = new Set(queries.map((q) => kpKey(q.text)));
+    const rows = [...kp.values()];
+    const unmatched = rows.filter((r) => !qKeys.has(kpKey(r.keyword)));
+    return {
+      files: opts.keywordPlanner.map((f) => f.source.file),
+      rows: rows.length,
+      withVolume: rows.filter((r) => (r.avgMonthlySearches ?? 0) > 0).length,
+      matchedQueries: queries.filter((q) => q.volume !== null && q.volume !== undefined).length,
+      queriesWithVolume: queries.filter((q) => (q.volume ?? 0) > 0).length,
+      unmatchedRows: unmatched.length,
+      unmatchedSample: unmatched.slice(0, 15).map((r) => r.keyword),
+    };
+  })();
   const report: BuildTopicalReport = {
     generatedAt,
     counts,
@@ -761,6 +947,7 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
     embeddings: { enabled: embedOn, embedded: cache?.embedded ?? 0, cached: cache?.hits ?? 0, tokens: cache?.tokens ?? 0, costUsd: cache?.costUsd ?? 0 },
     proof: { mode: proofMode, claimsWithEvidence: [...claimBest.values()].filter((c) => c.sim >= 0.45).length, poolChunks: pool?.rows.length ?? 0 },
     contentPosts: { total: contentPosts.length, linked: linkedPosts },
+    keywordPlanner: kpReport,
     warnings,
   };
   const map: TopicalMap = {
@@ -776,6 +963,7 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
       channels: channels.length,
       claims: usableClaims.length,
       blocked: !!harvester.stats.blocked,
+      kp: kpReport ? { rows: kpReport.rows, withVolume: kpReport.withVolume, matched: kpReport.matchedQueries, location: opts.keywordPlanner?.[0]?.source.location ?? null, dateRange: opts.keywordPlanner?.[0]?.source.dateRange ?? null } : null,
     }),
     generatedAt,
     levels: [...TOPIC_LEVELS],
@@ -788,7 +976,8 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
       proof: report.proof,
       unplacedSample: rest.slice(0, 25).map((q) => q.text),
       queueMaxCoverage: QUEUE_MAX_COVERAGE,
-      sources: ['content/architecture.json', 'gtm/problem-solution-map.md', 'gtm/free-quiz-spec-v2.md', 'strategy/thesis-evidence-map.md', 'research/conversation/*.json', 'research/creators/landscape.json', 'research/language/audience-vocabulary.md', 'content/topical-map-seeds.json'],
+      ...(kpReport ? { keywordPlanner: { ...kpReport, sources: opts.keywordPlanner!.map((f) => f.source), demandBlend: '0.6 × max(searchDemand, audienceDemand) + 0.4 × min(...)' } } : {}),
+      sources: ['content/architecture.json', 'gtm/problem-solution-map.md', 'gtm/free-quiz-spec-v2.md', 'strategy/thesis-evidence-map.md', 'research/conversation/*.json', 'research/creators/landscape.json', 'research/language/audience-vocabulary.md', 'content/topical-map-seeds.json', ...(kpReport ? ['research/keywords/*.json (Google Keyword Planner)'] : [])],
     },
   };
   return { map, report, ctx, graphInputs: { problemLinks, claimLinks, productLinks, competitorLinks, queryLinks } };

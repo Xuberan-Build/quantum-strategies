@@ -18,6 +18,10 @@ export const SeedsSchema = z.object({
   vidiq: z.record(z.string(), Placement).default({}),
   /** regex fragments (word-bounded, case-insensitive) for off-topic senses of a seed word, e.g. "lyrics" */
   exclude: z.array(z.string()).default([]),
+  /** why each exclude pattern was added (pattern -> reason); documentation only */
+  excludeNotes: z.record(z.string(), z.string()).default({}),
+  /** manual head-term overrides: topic label or id -> the search phrasing to title it with */
+  headTerms: z.record(z.string(), z.string()).default({}),
 });
 export type Seeds = z.infer<typeof SeedsSchema>;
 

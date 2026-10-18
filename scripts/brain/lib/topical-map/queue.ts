@@ -20,7 +20,24 @@ export interface QueueItem {
   format: string;
   whyNow: string;
   evidenceGrade: 'strong' | 'medium' | 'thin';
+  /** Keyword Planner runs: the search phrasing for the title and the audience phrasing for the hook */
+  titleTerm: { text: string; volume: number } | null;
+  hook: string | null;
+  searchVolume: number | null;
+  channelFit: { search: number; youtube: number; quiz: number } | null;
+  bestChannel: 'search' | 'youtube' | 'quiz' | null;
 }
+
+export const CHANNEL_LABEL = { search: 'Search page', youtube: 'YouTube video', quiz: 'Quiz question' } as const;
+
+/** The channel a node suits best (ties go to YouTube, then search: video scripts are first-class). */
+export function bestChannel(cf: { search: number; youtube: number; quiz: number } | undefined | null): 'search' | 'youtube' | 'quiz' | null {
+  if (!cf) return null;
+  const order: ('youtube' | 'search' | 'quiz')[] = ['youtube', 'search', 'quiz'];
+  return order.reduce((best, c) => (cf[c] > cf[best] ? c : best), order[0]);
+}
+
+const fmt = (n: number) => n.toLocaleString('en-US');
 
 export interface ProductInfo {
   label: string;
@@ -48,6 +65,7 @@ export function formatFor(node: TopicNode, map: TopicalMap): string {
   }
   if (builtVideo) return `Long video. "${builtVideo.label}" is BUILT; shoot it, then write the article version as the cornerstone`;
   if (node.intent === 'commercial' || node.intent === 'navigational') return 'Page (answers the search, ends at the free quiz), then a Short pointing to it';
+  if (node.channelFit && node.channelFit.search - node.channelFit.youtube >= 8) return `Search page first (titled on "${node.headTerm?.text ?? node.label}", ends at the free quiz), then the long video version and 2 Shorts`;
   if (node.intent === 'comparison') return 'Long video script that compares the two answers on mechanism, plus the article version';
   return 'Long video script (8 to 14 min, video-script spec) as the lead, then the article version and 2 Shorts cut from the video';
 }
@@ -108,6 +126,15 @@ export function buildQueue(map: TopicalMap, products: Map<string, ProductInfo>, 
       else if (node.scores.competition <= 20) why.push('Few tracked channels cover it, so it is open ground.');
       if (node.stance && node.stance !== 'use') why.push(`The search term is one QS ${node.stance === 'avoid' ? 'avoids' : 'reframes'} (audience-vocabulary.md): use it as the door, never as the promise.`);
       if (topicRank.get(topic.id) && node.level === 'subtopic') why.push(`Part of queue topic #${topicRank.get(topic.id)}.`);
+      if (node.searchVolume !== undefined) {
+        const cf = node.channelFit;
+        why.push(
+          node.searchVolume > 0
+            ? `About ${fmt(node.searchVolume)} US Google searches a month (Keyword Planner)${node.searchTrend?.yoy != null ? `, ${node.searchTrend.yoy >= 0 ? 'up' : 'down'} ${Math.abs(Math.round(node.searchTrend.yoy))}% on last year` : ''}.`
+            : 'Almost nobody types this into Google: the demand is in comments, so lead with video and the quiz.',
+        );
+        if (cf) why.push(`Channel fit: search ${cf.search}, YouTube ${cf.youtube}, quiz ${cf.quiz}.`);
+      }
       return {
         rank: i + 1,
         node,
@@ -120,6 +147,11 @@ export function buildQueue(map: TopicalMap, products: Map<string, ProductInfo>, 
         format: formatFor(node, map),
         whyNow: why.join(' '),
         evidenceGrade: grade(node),
+        titleTerm: node.headTerm ? { text: node.headTerm.text, volume: node.headTerm.volume } : null,
+        hook: node.headTerm?.audience ?? (node.queries.find((q) => q.sources.includes('audience'))?.text ?? null),
+        searchVolume: node.searchVolume ?? null,
+        channelFit: node.channelFit ?? null,
+        bestChannel: bestChannel(node.channelFit),
       };
     });
 }
@@ -139,15 +171,32 @@ export function renderQueueMd(items: QueueItem[], map: TopicalMap): string {
     L.push(`**Headline.** Make "${t.node.label}" first: ${t.format.charAt(0).toLowerCase()}${t.format.slice(1)}. ${t.whyNow}`);
     L.push('');
   }
-  L.push('| # | Piece | Pillar | Priority | Demand | Proof | Coverage | Format |');
-  L.push('|---|---|---|---|---|---|---|---|');
-  for (const it of items) L.push(`| ${it.rank} | ${it.node.label.replace(/\|/g, '/')}${it.node.level === 'subtopic' ? ` (in ${it.topic.label.replace(/\|/g, '/')})` : ''} | ${it.pillar?.label ?? it.node.pillarCode} | ${it.node.scores.priority} | ${it.node.scores.demand} | ${it.node.scores.proof} | ${it.node.scores.coverage} | ${it.format.split(/[.,(]/)[0].trim()} |`);
+  const kp = items.some((it) => it.searchVolume !== null);
+  if (kp) {
+    L.push('**Search words and their words.** Demand now has two measured parts. Search is what people type into Google (Keyword Planner, US, monthly). Audience is what they say in comments and posts. Title each piece on the search term so it can be found, and open it with their words so it lands. A topic with almost no search volume is still worth making when the comments are loud: make it as a video or a quiz question, not a search page.');
+    L.push('');
+    L.push('| # | Piece | Pillar | Priority | Search/mo | Search | Audience | Proof | Coverage | Best channel | Format |');
+    L.push('|---|---|---|---|---|---|---|---|---|---|---|');
+    for (const it of items) L.push(`| ${it.rank} | ${it.node.label.replace(/\|/g, '/')}${it.node.level === 'subtopic' ? ` (in ${it.topic.label.replace(/\|/g, '/')})` : ''} | ${it.pillar?.label ?? it.node.pillarCode} | ${it.node.scores.priority} | ${it.searchVolume !== null ? fmt(it.searchVolume) : 'n/a'} | ${it.node.scores.searchDemand ?? 'n/a'} | ${it.node.scores.audienceDemand ?? it.node.scores.demand} | ${it.node.scores.proof} | ${it.node.scores.coverage} | ${it.bestChannel ? CHANNEL_LABEL[it.bestChannel] : 'n/a'} | ${it.format.split(/[.,(]/)[0].trim()} |`);
+  } else {
+    L.push('| # | Piece | Pillar | Priority | Demand | Proof | Coverage | Format |');
+    L.push('|---|---|---|---|---|---|---|---|');
+    for (const it of items) L.push(`| ${it.rank} | ${it.node.label.replace(/\|/g, '/')}${it.node.level === 'subtopic' ? ` (in ${it.topic.label.replace(/\|/g, '/')})` : ''} | ${it.pillar?.label ?? it.node.pillarCode} | ${it.node.scores.priority} | ${it.node.scores.demand} | ${it.node.scores.proof} | ${it.node.scores.coverage} | ${it.format.split(/[.,(]/)[0].trim()} |`);
+  }
   L.push('');
   for (const it of items) {
     L.push(`## ${it.rank}. ${it.node.label}`);
     L.push('');
     L.push(`**What.** ${it.node.level === 'subtopic' ? `A question under "${it.topic.label}"` : 'A topic'} in ${it.pillar?.label ?? it.node.pillarCode}${it.node.origin === 'demand' ? '. Found in search demand; Austin\'s architecture has no cluster for it yet' : it.node.origin === 'problem' ? '. A problem from the problem map that no cluster covers' : ''}. Status: ${it.node.status}. Scores: demand ${it.node.scores.demand}, proof ${it.node.scores.proof}, coverage ${it.node.scores.coverage}, competition ${it.node.scores.competition}, product fit ${it.node.scores.productFit}, priority ${it.node.scores.priority}.`);
     L.push('');
+    if (kp) {
+      L.push(`**Title on (search words).** ${it.titleTerm ? `"${it.titleTerm.text}", about ${fmt(it.titleTerm.volume)} US searches a month. Put it in the page title, the video title and the first line of the description.` : 'No phrasing close to this topic has measurable Google searches. Title it in their words and treat it as a video or quiz piece.'}`);
+      L.push('');
+      if (it.hook) {
+        L.push(`**Hook on (their words).** "${it.hook}". Open the video and the page with it.`);
+        L.push('');
+      }
+    }
     L.push(`**Questions it answers.** ${it.questions.length ? it.questions.map((q) => `"${q}"`).join(', ') : 'No harvested phrasing yet; demand comes from coded audience items.'}`);
     L.push('');
     if (it.words.length) {
@@ -165,7 +214,7 @@ export function renderQueueMd(items: QueueItem[], map: TopicalMap): string {
     L.push('');
     L.push(`**Why now.** ${it.whyNow}`);
     L.push('');
-    L.push(`Evidence: ${it.evidenceGrade}. ${it.node.queries.length} searched phrasings from ${[...new Set(it.node.queries.flatMap((q) => q.sources))].join(', ') || 'no autocomplete source'}; ${it.evidence.filter((e) => /clears/.test(e.detail)).length} evidence link(s) above the floor. Scores are relative to this map, never market sizes.`);
+    L.push(`Evidence: ${it.evidenceGrade}. ${it.searchVolume !== null ? 'Search volume is Google Keyword Planner (US, Oct 2025 to Sep 2026), rounded into Google\'s buckets. ' : ''}${it.node.queries.length} searched phrasings from ${[...new Set(it.node.queries.flatMap((q) => q.sources))].join(', ') || 'no autocomplete source'}; ${it.evidence.filter((e) => /clears/.test(e.detail)).length} evidence link(s) above the floor. Scores are relative to this map, never market sizes.`);
     L.push('');
   }
   return `${L.join('\n')}\n`;

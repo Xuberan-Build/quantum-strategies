@@ -20,6 +20,14 @@
  *   --no-graph            write the files but not the graph
  *   --force-prune         prune stale topical-map graph rows even if the new map is much smaller
  *   --json                print the report as JSON
+ *   --keyword-planner <f> Google Keyword Planner export (raw UTF-16 .csv/.tsv or the normalised research/keywords/*.json);
+ *                         repeatable. Splits demand into searchDemand (measured volume) and audienceDemand, adds
+ *                         channelFit (search / youtube / quiz) and a head term per topic
+ *   --kp-add-new [min]    also add Keyword Planner rows no map phrasing matches (a "Discover new keywords" export) as
+ *                         queries of their own, from min monthly searches up (default 50); they cluster like any query
+ *   --no-queue            do not rewrite content/topical-map-queue.md
+ *   --replay-queries <f>  replay the autocomplete phrasings stored in an earlier topical-map.json (offline; for when
+ *                         the autocomplete cache under scripts/research/.cache/topical-map is gone)
  *
  * Usage (app repo root; NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY for the full run):
  *   NODE_PATH=$PWD/node_modules node --env-file=.env --import tsx scripts/brain/build-topical-map.ts --brain-dir brain
@@ -27,9 +35,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { restEnv } from './lib/graph/rest';
-import { buildTopicalMap } from './lib/topical-map/build';
+import { buildTopicalMap, replayQueriesFrom } from './lib/topical-map/build';
 import { graphRows, landscapeIndex, writeGraph } from './lib/topical-map/graph';
+import { loadKeywordPlanner } from './lib/topical-map/keyword-planner';
+import { buildQueue, renderQueueMd, type ProductInfo } from './lib/topical-map/queue';
 import { renderTopicalMapMd } from './lib/topical-map/render';
+import { loadGraphConfig } from './lib/graph/config';
+import { nodeId } from './lib/graph/ids';
 
 const args = process.argv.slice(2);
 const has = (f: string) => args.includes(f);
@@ -37,6 +49,7 @@ const val = (f: string) => {
   const i = args.indexOf(f);
   return i >= 0 ? args[i + 1] : undefined;
 };
+const vals = (f: string) => args.flatMap((a, i) => (a === f && args[i + 1] ? [args[i + 1]] : []));
 
 async function main() {
   const brainDir = path.resolve(val('--brain-dir') ?? process.env.BRAIN_DIR ?? 'brain');
@@ -47,6 +60,11 @@ async function main() {
   if (!Number.isFinite(maxRequests) || maxRequests < 0) throw new Error('--max-requests must be a number >= 0');
   const cacheRoot = path.resolve('scripts/research/.cache/topical-map');
   const log = (m: string) => console.error(m);
+  const keywordPlanner = vals('--keyword-planner').map((f) => {
+    const kp = loadKeywordPlanner(path.resolve(f));
+    log(`keyword planner: ${kp.rows.length} keywords from ${f} (${kp.source.location ?? 'location ?'}, ${kp.source.dateRange ?? 'dates ?'})`);
+    return kp;
+  });
 
   const result = await buildTopicalMap({
     brainDir,
@@ -57,6 +75,9 @@ async function main() {
     expandTop: val('--expand-top') ? Number(val('--expand-top')) : undefined,
     cacheRoot,
     log,
+    keywordPlanner,
+    kpAddNewMin: has('--kp-add-new') ? (Number.isFinite(Number(val('--kp-add-new'))) ? Number(val('--kp-add-new')) : 50) : undefined,
+    replayQueries: val('--replay-queries') ? replayQueriesFrom(JSON.parse(readFileSync(path.resolve(val('--replay-queries')!), 'utf8'))) : undefined,
   });
   const { map, report } = result;
 
@@ -67,6 +88,12 @@ async function main() {
     writeFileSync(path.join(out, 'topical-map.json'), `${JSON.stringify(map, null, 1)}\n`);
     writeFileSync(path.join(out, 'topical-map.md'), renderTopicalMapMd(map));
     log(`wrote ${path.join(out, 'topical-map.json')} and topical-map.md`);
+    if (!has('--no-queue')) {
+      const { config } = loadGraphConfig(brainDir);
+      const products = new Map<string, ProductInfo>(config.products.map((p) => [nodeId('product', p.slug), { label: p.name, status: p.status ?? 'status unverified' }]));
+      writeFileSync(path.join(out, 'topical-map-queue.md'), renderQueueMd(buildQueue(map, products, 20), map));
+      log(`wrote ${path.join(out, 'topical-map-queue.md')}`);
+    }
     if (!has('--no-graph')) {
       if (!env) log('graph: skipped (no NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)');
       else {
@@ -98,9 +125,11 @@ async function main() {
   console.log('\ntop 15 topics by priority:');
   for (const [i, t] of topics.slice(0, 15).entries()) {
     console.log(
-      `${String(i + 1).padStart(2)}. [${t.scores.priority}] ${t.label}${t.origin !== 'architecture' ? ` (${t.origin})` : ''} · ${t.pillarCode} · ${t.status} · D${t.scores.demand} P${t.scores.proof} C${t.scores.coverage} K${t.scores.competition} F${t.scores.productFit}\n      ${t.queries.slice(0, 4).map((x) => `"${x.text}"`).join(', ')}`,
+      `${String(i + 1).padStart(2)}. [${t.scores.priority}] ${t.label}${t.origin !== 'architecture' ? ` (${t.origin})` : ''} · ${t.pillarCode} · ${t.status} · D${t.scores.demand} P${t.scores.proof} C${t.scores.coverage} K${t.scores.competition} F${t.scores.productFit}${t.searchVolume !== undefined ? ` · search ${t.searchVolume}/mo S${t.scores.searchDemand} A${t.scores.audienceDemand} · fit s${t.channelFit?.search} y${t.channelFit?.youtube} q${t.channelFit?.quiz}${t.headTerm ? ` · head "${t.headTerm.text}" ${t.headTerm.volume}` : ''}` : ''}\n      ${t.queries.slice(0, 4).map((x) => `"${x.text}"`).join(', ')}`,
     );
   }
+  const k = report.keywordPlanner;
+  if (k) console.log(`\nkeyword planner: ${k.rows} keywords (${k.withVolume} with volume) · ${k.matchedQueries} map phrasings matched, ${k.queriesWithVolume} with volume · ${k.unmatchedRows} KP rows matched no phrasing${k.unmatchedSample.length ? ` e.g. ${k.unmatchedSample.slice(0, 5).join('; ')}` : ''}`);
   if (written) console.log(`\ngraph: ${written.nodes} nodes, ${written.edges} edges upserted · ${written.skippedExistingCreators} existing creators reused · ${written.dangling} edges dropped (endpoint missing)${written.danglingSample.length ? ` e.g. ${written.danglingSample.join('; ')}` : ''} · pruned ${written.pruned.nodes} nodes, ${written.pruned.edges} edges`);
   if (report.warnings.length) console.log(`\nwarnings:\n${report.warnings.map((w) => `  - ${w}`).join('\n')}`);
 }

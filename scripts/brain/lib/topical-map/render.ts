@@ -7,6 +7,8 @@ import type { TopicNode, TopicalMap } from '../../../../src/lib/brain/topical-ma
 const sc = (n: TopicNode) => `D ${n.scores.demand} · P ${n.scores.proof} · C ${n.scores.coverage} · K ${n.scores.competition} · F ${n.scores.productFit} · **${n.scores.priority}**`;
 const qs = (n: TopicNode, k = 4) => n.queries.slice(0, k).map((q) => `"${q.text}"`).join(', ');
 const esc = (s: string) => s.replace(/\|/g, '/').replace(/\n/g, ' ');
+const fmt = (n: number | null | undefined) => (n === null || n === undefined ? 'n/a' : n.toLocaleString('en-US'));
+const pct = (n: number | null | undefined) => (n === null || n === undefined ? 'n/a' : `${n >= 0 ? '+' : ''}${Math.round(n)}%`);
 
 export function renderTopicalMapMd(map: TopicalMap): string {
   const nodes = map.nodes;
@@ -41,6 +43,12 @@ export function renderTopicalMapMd(map: TopicalMap): string {
   L.push('| C coverage | What already exists | LIVE or needs-work cornerstones and spokes, BUILT pieces, published articles matched by title, internal decks and docs (small weight) |');
   L.push('| K competition | How crowded it is on YouTube | Landscape channels that cover it, weighted by audience overlap and how far their matching video beat their own median |');
   L.push('| F product fit | Whether it routes to a Rite or a scan | LIVE scan via the quiz route 100, LIVE product 90, Rite I via the quiz 80, Orientation or Declaration (TO BUILD) 60, B2B project 50 |');
+  const hasKp = by('topic').some((n) => n.searchVolume !== undefined);
+  if (hasKp) {
+    L.push('| S search demand | How many people type it into Google | Google Keyword Planner average monthly searches (US) summed over the phrasings placed here, close variants counted once, suspected spikes counted at their pre-spike level; `100 · log10(1+V) / log10(1+max V)` at the same level |');
+    L.push('| A audience demand | How much people say it in comments and posts | The demand formula above without Keyword Planner: coded audience items and likes, autocomplete presence, vidIQ anchors |');
+    L.push('| D (with Keyword Planner) | The blend | `0.6 · max(S, A) + 0.4 · min(S, A)`: the stronger channel leads, so a comment-only problem stays visible and a search-only term rises. No measurable volume is a missing reading: D = A |');
+  }
   L.push('| **priority** | What to make next | `100 · D^0.45 · (0.35+0.65P)^0.2 · (1-0.85C)^0.2 · (0.25+0.75F)^0.15 · (1-0.3K) · stance`, stance 1 use, 0.9 reframe, 0.5 avoid, 0.3 guardrail |');
   L.push('');
   L.push('Status: **LIVE** a stranger can reach something on it (including pages that need a refresh) · **BUILT** made, not launched · **TO BUILD** planned in the architecture · **NONE** nothing planned yet.');
@@ -48,15 +56,47 @@ export function renderTopicalMapMd(map: TopicalMap): string {
 
   L.push('## Top 25 topics by priority');
   L.push('');
-  L.push('| # | Topic | Pillar | Status | D | P | C | K | F | Priority | Top queries |');
-  L.push('|---|---|---|---|---|---|---|---|---|---|---|');
-  by('topic')
-    .sort((a, b) => b.scores.priority - a.scores.priority)
-    .slice(0, 25)
-    .forEach((n, i) => {
+  const top = by('topic').sort((a, b) => b.scores.priority - a.scores.priority).slice(0, 25);
+  if (hasKp) {
+    L.push('| # | Topic | Pillar | Status | Search/mo | S | A | D | P | C | K | F | Priority | Title on (search) | Hook (their words) |');
+    L.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+    top.forEach((n, i) => {
+      L.push(`| ${i + 1} | ${esc(n.label)}${n.origin === 'demand' ? ' *(demand)*' : n.origin === 'problem' ? ' *(problem)*' : ''} | ${n.pillarCode} | ${n.status} | ${fmt(n.searchVolume)} | ${n.scores.searchDemand ?? ''} | ${n.scores.audienceDemand ?? ''} | ${n.scores.demand} | ${n.scores.proof} | ${n.scores.coverage} | ${n.scores.competition} | ${n.scores.productFit} | **${n.scores.priority}** | ${n.headTerm ? `"${esc(n.headTerm.text)}" ${fmt(n.headTerm.volume)}` : 'none measurable'} | ${n.headTerm?.audience ? `"${esc(n.headTerm.audience)}"` : ''} |`);
+    });
+  } else {
+    L.push('| # | Topic | Pillar | Status | D | P | C | K | F | Priority | Top queries |');
+    L.push('|---|---|---|---|---|---|---|---|---|---|---|');
+    top.forEach((n, i) => {
       L.push(`| ${i + 1} | ${esc(n.label)}${n.origin === 'demand' ? ' *(demand)*' : n.origin === 'problem' ? ' *(problem)*' : ''} | ${n.pillarCode} | ${n.status} | ${n.scores.demand} | ${n.scores.proof} | ${n.scores.coverage} | ${n.scores.competition} | ${n.scores.productFit} | **${n.scores.priority}** | ${esc(qs(n, 3))} |`);
     });
+  }
   L.push('');
+
+  if (hasKp) {
+    const kpMeta = (map.meta as { keywordPlanner?: { rows?: number; withVolume?: number; queriesWithVolume?: number; sources?: { location?: string | null; dateRange?: string | null }[] } } | undefined)?.keywordPlanner;
+    L.push('## Search demand and audience demand');
+    L.push('');
+    L.push(`Keyword Planner: ${fmt(kpMeta?.rows)} keywords looked up (${fmt(kpMeta?.withVolume)} with volume), ${kpMeta?.sources?.[0]?.location ?? 'location n/a'}, ${kpMeta?.sources?.[0]?.dateRange ?? 'dates n/a'}. Search volume is rounded into Google's buckets (10, 20, 30, 40, 50, 70, 90, 110, 140, 170, 210, 260, 320, 390, 480, 590, 720, 880, 1K, 1.3K, 1.6K, 1.9K, 2.4K, 2.9K, 3.6K, 4.4K, 5.4K, 6.6K, 8.1K, 9.9K, 12.1K, 14.8K, 18.1K, 22.2K, 27.1K, 33.1K, 40.5K, 49.5K, 60.5K, 74K, 90.5K, 110K, 135K, 165K, 201K and up).`);
+    L.push('');
+    const topics = by('topic').filter((n) => n.stance !== 'guardrail');
+    const gap = [...topics].filter((n) => (n.scores.audienceDemand ?? 0) - (n.scores.searchDemand ?? 0) >= 20).sort((a, b) => (b.scores.audienceDemand ?? 0) - (a.scores.audienceDemand ?? 0)).slice(0, 10);
+    L.push('**Said, not searched** (audience demand at least 20 above search demand: make these as video and quiz questions, title them on the head term where one exists):');
+    L.push('');
+    for (const n of gap) L.push(`- **${n.label}** · search ${fmt(n.searchVolume)}/mo (S ${n.scores.searchDemand}) · audience A ${n.scores.audienceDemand}${n.headTerm ? ` · title on "${n.headTerm.text}" (${fmt(n.headTerm.volume)})` : ' · no search head term yet'}`);
+    L.push('');
+    const searched = [...topics].filter((n) => (n.scores.searchDemand ?? 0) - (n.scores.audienceDemand ?? 0) >= 10).sort((a, b) => (b.searchVolume ?? 0) - (a.searchVolume ?? 0)).slice(0, 10);
+    L.push('**Searched more than said** (search demand at least 10 above audience demand: SEO pages pay off here):');
+    L.push('');
+    for (const n of searched) L.push(`- **${n.label}** · ${fmt(n.searchVolume)}/mo (S ${n.scores.searchDemand}, A ${n.scores.audienceDemand}) · YoY ${pct(n.searchTrend?.yoy)} · led by ${(n.searchTerms ?? []).slice(0, 3).map((t) => `"${t.keyword}" ${fmt(t.volume)}`).join(', ')}`);
+    L.push('');
+    L.push('### The queue per channel');
+    L.push('');
+    for (const [k, label] of [['search', 'Search pages'], ['youtube', 'YouTube videos'], ['quiz', 'Quiz questions']] as const) {
+      const ranked = [...topics].filter((n) => n.scores.coverage < (meta.queueMaxCoverage ?? 40) && n.channelFit).sort((a, b) => (b.channelFit![k] - a.channelFit![k]) || b.scores.priority - a.scores.priority).slice(0, 10);
+      L.push(`**${label}** (channel fit 0 to 100): ${ranked.map((n, i) => `${i + 1}. ${n.label} ${n.channelFit![k]}`).join(' · ')}`);
+      L.push('');
+    }
+  }
 
   L.push('## Demand the architecture lacks');
   L.push('');
@@ -82,6 +122,7 @@ export function renderTopicalMapMd(map: TopicalMap): string {
       L.push('');
       for (const t of kids(s.id)) {
         L.push(`- **${t.label}**${t.origin && t.origin !== 'architecture' ? ` *(${t.origin})*` : ''} · ${t.status} · ${sc(t)}${t.queueRank ? ` · queue #${t.queueRank}` : ''}`);
+        if (t.searchVolume !== undefined) L.push(`  - Search: ${fmt(t.searchVolume)}/mo (S ${t.scores.searchDemand}, A ${t.scores.audienceDemand}, YoY ${pct(t.searchTrend?.yoy)})${t.headTerm ? ` · title on "${t.headTerm.text}" (${fmt(t.headTerm.volume)})` : ''}${t.channelFit ? ` · fit search ${t.channelFit.search}, YouTube ${t.channelFit.youtube}, quiz ${t.channelFit.quiz}` : ''}`);
         if (t.queries.length) L.push(`  - Searched as: ${qs(t, 6)}`);
         if (t.mapsTo.problems?.length) L.push(`  - Problems: ${t.mapsTo.problems.map((x) => x.replace('problem:', '')).join(', ')}`);
         if (t.mapsTo.products?.length) L.push(`  - Routes to: ${t.mapsTo.products.map((x) => x.replace('product:', '')).join(', ')}`);

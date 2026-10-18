@@ -15,6 +15,10 @@ import {
   assetState,
   notQueuedReason,
   scoreWhy,
+  searchWhy,
+  headTermWhy,
+  channelWhy,
+  bestChannel,
   whyNow,
   type TopicNode,
 } from '../topical-map-view';
@@ -191,4 +195,30 @@ describe('fixture', () => {
     expect(first.breadcrumb.map((b) => b.level)).toEqual(['pillar', 'section']);
     for (const qq of first.queries) for (const s of qq.sources) expect(['google_ac', 'youtube_ac', 'audience', 'vidiq']).toContain(s);
 });
+});
+
+describe('search and audience lines', () => {
+  it('says nothing about search on maps without Keyword Planner data', () => {
+    const n = node('topic:a', null, 50);
+    expect(searchWhy(n)).toMatch(/No Keyword Planner data/);
+    expect(headTermWhy(n)).toBeNull();
+    expect(channelWhy(n)).toBeNull();
+    expect(bestChannel(n)).toBeNull();
+  });
+  it('explains a comment-only topic in plain words', () => {
+    const n = node('topic:b', null, 86, {
+      scores: { demand: 86, searchDemand: 0, audienceDemand: 86, proof: 59, coverage: 26, competition: 0, productFit: 100, priority: 78 },
+      searchVolume: 0,
+      channelFit: { search: 0, youtube: 80, quiz: 91 },
+      headTerm: { text: 'money mindset', volume: 720, audience: 'i undercharge', via: 'keyword_planner' },
+    });
+    expect(searchWhy(n)).toMatch(/Almost nobody types this into Google/);
+    expect(headTermWhy(n)).toBe('Title it on "money mindset" (720 searches a month) and open with their words, "i undercharge".');
+    expect(bestChannel(n)).toBe('quiz');
+    expect(channelWhy(n)).toBe('Best as a quiz question (91): people say it far more than they search it.');
+  });
+  it('reports volume and trend', () => {
+    const n = node('topic:c', null, 80, { searchVolume: 99330, searchTrend: { yoy: 24.6, threeMonth: 5 }, searchTerms: [{ keyword: 'confirmation bias', volume: 74000, yoy: 0 }] });
+    expect(searchWhy(n)).toBe('About 99,330 US Google searches a month, up 25% on last year, led by "confirmation bias" 74,000.');
+  });
 });

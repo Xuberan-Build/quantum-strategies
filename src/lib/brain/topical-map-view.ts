@@ -36,9 +36,21 @@ export const METRIC_INFO: Record<ScoreKey, { label: string; definition: string; 
   },
   demand: {
     label: 'Demand',
-    definition: 'How often people search and talk about this; from search autocomplete and audience comments.',
+    definition: 'How often people search and talk about this. With Keyword Planner data it blends search and audience demand: 0.6 times the stronger plus 0.4 times the weaker.',
     high: 'asked a lot',
     low: 'rarely asked',
+  },
+  searchDemand: {
+    label: 'Search demand',
+    definition: 'How many people type it into Google a month (Keyword Planner, US), log-scaled against the biggest topic on the map.',
+    high: 'searched a lot',
+    low: 'barely searched',
+  },
+  audienceDemand: {
+    label: 'Audience demand',
+    definition: 'How often people say it in comments and posts, plus autocomplete and vidIQ signals.',
+    high: 'said a lot',
+    low: 'rarely said',
   },
   proof: {
     label: 'Proof',
@@ -114,6 +126,7 @@ export const QUERY_SOURCE_LABEL: Record<TopicNode['queries'][number]['sources'][
   youtube_ac: 'YouTube autocomplete',
   audience: 'audience comments',
   vidiq: 'vidIQ keywords',
+  keyword_planner: 'Google Keyword Planner',
 };
 
 /** Vocabulary stance worth flagging on a topic (use is the default and goes unsaid). */
@@ -428,6 +441,10 @@ export function scoreWhy(key: ScoreKey, t: TopicScorecard): string {
       const top = t.competitors.reduce<number | null>((m, c) => (c.outlier == null ? m : Math.max(m ?? 0, c.outlier)), null);
       return `${plural(t.competitors.length, 'tracked creator')} cover it${top != null ? `; their best video ran ${top.toFixed(1)} times their usual views` : ''}. Context only.`;
     }
+    case 'searchDemand':
+      return searchWhy(t.topic);
+    case 'audienceDemand':
+      return audienceWhy(t.topic);
     case 'productFit':
       return t.products.length ? `Leads to ${t.products.map((p) => p.label).join(', ')}.` : 'Does not lead to a Rite, the quiz or the beta yet.';
     case 'priority': {
@@ -486,3 +503,63 @@ export function mapTotals(nodes: TopicNode[]): MapTotals {
 }
 
 export const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
+
+/* ---------------------------------------------------------------- search vs audience (Keyword Planner) */
+
+export const CHANNELS = ['search', 'youtube', 'quiz'] as const;
+export type Channel = (typeof CHANNELS)[number];
+export const CHANNEL_INFO: Record<Channel, { label: string; definition: string }> = {
+  search: { label: 'Search page', definition: 'A page people find on Google: needs search volume, proof and little coverage.' },
+  youtube: { label: 'YouTube video', definition: 'A long video: led by what people say in comments, helped by search, held back by crowded channels.' },
+  quiz: { label: 'Quiz question', definition: 'A felt problem in their words that routes to a Rite; coverage does not matter here.' },
+};
+
+const fmtN = (n: number) => Math.round(n).toLocaleString('en-US');
+
+/** The channel a node suits best, or null on maps built without Keyword Planner. */
+export function bestChannel(n: TopicNode): Channel | null {
+  const cf = n.channelFit;
+  if (!cf) return null;
+  return (['youtube', 'search', 'quiz'] as Channel[]).reduce((b, c) => (cf[c] > cf[b] ? c : b), 'youtube' as Channel);
+}
+
+/** Plain line on Google search volume and its trend. */
+export function searchWhy(n: TopicNode): string {
+  if (n.searchVolume === undefined) return 'No Keyword Planner data on this map yet.';
+  if (n.searchVolume <= 0) return 'Almost nobody types this into Google. The demand is in what people say, so it suits a video or a quiz question more than a search page.';
+  const yoy = n.searchTrend?.yoy;
+  const trend = yoy == null ? '' : Math.abs(yoy) < 5 ? ', flat on last year' : `, ${yoy > 0 ? 'up' : 'down'} ${Math.abs(Math.round(yoy))}% on last year`;
+  const lead = (n.searchTerms ?? []).slice(0, 2).map((t) => `"${t.keyword}" ${fmtN(t.volume)}`).join(' and ');
+  return `About ${fmtN(n.searchVolume)} US Google searches a month${trend}${lead ? `, led by ${lead}` : ''}.`;
+}
+
+/** Plain line on what audience demand rests on. */
+export function audienceWhy(n: TopicNode): string {
+  const a = n.audience;
+  if (!a) return 'Audience demand comes from coded comments, autocomplete and vidIQ.';
+  const parts = [
+    a.quotes > 0 && `${fmtN(a.quotes)} coded comments and posts`,
+    a.likes > 0 && `${fmtN(a.likes)} likes on them`,
+    a.autocomplete > 0 && `${fmtN(a.autocomplete)} autocomplete phrasings`,
+    a.vidiqMonthly && `a vidIQ anchor of ${fmtN(a.vidiqMonthly)} YouTube searches a month`,
+  ].filter(Boolean);
+  return parts.length ? `${parts.join(', ')}.` : 'No audience comments point here yet.';
+}
+
+/** The search-words / their-words pair for titles and hooks. */
+export function headTermWhy(n: TopicNode): string | null {
+  if (n.headTerm === undefined) return null;
+  if (!n.headTerm) return 'No phrasing close to this topic has measurable Google searches. Title it in their words.';
+  return `Title it on "${n.headTerm.text}" (${fmtN(n.headTerm.volume)} searches a month)${n.headTerm.audience ? ` and open with their words, "${n.headTerm.audience}"` : ''}.`;
+}
+
+/** Plain line on which channel the topic suits and why. */
+export function channelWhy(n: TopicNode): string | null {
+  const cf = n.channelFit;
+  const best = bestChannel(n);
+  if (!cf || !best) return null;
+  const s = n.scores.searchDemand ?? 0;
+  const a = n.scores.audienceDemand ?? n.scores.demand;
+  const reason = a - s >= 20 ? 'people say it far more than they search it' : s - a >= 10 ? 'people search it more than they talk about it' : 'search and comments both carry it';
+  return `Best as a ${CHANNEL_INFO[best].label.toLowerCase()} (${cf[best]}): ${reason}.`;
+}

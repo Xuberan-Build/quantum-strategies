@@ -88,6 +88,24 @@ describe('rowToTopic', () => {
     const t = rowToTopic({ id: 'topic:x', type: 'topic', label: 'X', summary: null, props: { pillar_code: 'P9' }, source_path: null, url: null, weight: 1, tier: null });
     expect(t).toMatchObject({ level: 'topic', pillarCode: 'SPINE', status: 'NONE', queries: [], scores: { priority: 0 } });
   });
+
+  it('passes the Keyword Planner split through and leaves it out on older maps', () => {
+    const old = rowToTopic({ id: 'topic:x', type: 'topic', label: 'X', summary: null, props: { scores: { demand: 40 } }, source_path: null, url: null, weight: 1, tier: null });
+    expect(old.searchVolume).toBeUndefined();
+    expect(old.scores.searchDemand).toBeUndefined();
+    const t = rowToTopic({
+      id: 'topic:y',
+      type: 'topic',
+      label: 'Y',
+      summary: null,
+      props: { scores: { demand: 74, searchDemand: 57, audienceDemand: 86 }, search_volume: 1480, search_trend: { yoy: -12, threeMonth: 0 }, channel_fit: { search: 69, youtube: 80, quiz: 91 }, head_term: { text: 'money mindset', volume: 720, audience: 'i undercharge', via: 'keyword_planner' }, search_terms: [{ keyword: 'money mindset', volume: 720, yoy: -12 }] },
+      source_path: null,
+      url: null,
+      weight: 1,
+      tier: null,
+    });
+    expect(t).toMatchObject({ searchVolume: 1480, scores: { searchDemand: 57, audienceDemand: 86 }, channelFit: { quiz: 91 }, headTerm: { text: 'money mindset' } });
+  });
 });
 
 describe('getTopicalMap', () => {

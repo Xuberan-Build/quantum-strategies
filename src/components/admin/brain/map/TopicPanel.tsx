@@ -13,6 +13,8 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import type { BrainFeedbackRow } from '@/lib/brain/feedback';
 import {
+  CHANNELS,
+  CHANNEL_INFO,
   INTENT_LABEL,
   LEVEL_LABEL,
   METRIC_INFO,
@@ -21,9 +23,14 @@ import {
   STANCE_LABEL,
   STATUS_INFO,
   assetState,
+  audienceWhy,
+  bestChannel,
+  channelWhy,
   graphHref,
+  headTermWhy,
   rampColor,
   scoreWhy,
+  searchWhy,
   topicApiPath,
   whyNow,
   type TopicNode,
@@ -173,6 +180,64 @@ export function TopicPanel({ id, lite, onClose }: Props) {
         </section>
       )}
 
+      {n && n.searchVolume !== undefined && (
+        <section className={styles.section} aria-label="Search and audience demand">
+          <h3 className={styles.sectionTitle}>Searched and said</h3>
+          <p className={styles.hint}>
+            Search is what people type into Google (Keyword Planner, US, monthly, Oct 2025 to Sep 2026). Audience is what they say in comments and posts.
+          </p>
+          <ul className={styles.scoreList}>
+            {(['searchDemand', 'audienceDemand'] as const).map((k) => {
+              const v = Math.round(n.scores[k] ?? 0);
+              return (
+                <li key={k} className={styles.score}>
+                  <div className={styles.scoreHead}>
+                    <span>{METRIC_INFO[k].label}</span>
+                    <span className={styles.scoreValue}>{k === 'searchDemand' ? `${(n.searchVolume ?? 0).toLocaleString('en-US')}/mo · ${v}` : v}</span>
+                  </div>
+                  <div className={styles.bar} role="img" aria-label={`${METRIC_INFO[k].label} ${v} of 100`}>
+                    <span style={{ width: `${Math.max(1.5, v)}%`, background: rampColor(v) }} />
+                  </div>
+                  <p className={styles.scoreWhy}>{k === 'searchDemand' ? searchWhy(n) : audienceWhy(n)}</p>
+                </li>
+              );
+            })}
+          </ul>
+          {headTermWhy(n) && (
+            <p className={styles.whyLine}>
+              <span className={styles.whyTag}>Title and hook</span>
+              {headTermWhy(n)}
+            </p>
+          )}
+          {n.channelFit && (
+            <>
+              <h3 className={styles.sectionTitle}>Channel fit, 0 to 100</h3>
+              <ul className={styles.scoreList}>
+                {CHANNELS.map((c) => {
+                  const v = Math.round(n.channelFit![c]);
+                  return (
+                    <li key={c} className={styles.score}>
+                      <div className={styles.scoreHead}>
+                        <span>
+                          {CHANNEL_INFO[c].label}
+                          {bestChannel(n) === c ? ' · best fit' : ''}
+                        </span>
+                        <span className={styles.scoreValue}>{v}</span>
+                      </div>
+                      <div className={styles.bar} role="img" aria-label={`${CHANNEL_INFO[c].label} fit ${v} of 100`}>
+                        <span style={{ width: `${Math.max(1.5, v)}%`, background: rampColor(v) }} />
+                      </div>
+                      <p className={styles.scoreWhy}>{CHANNEL_INFO[c].definition}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+              {channelWhy(n) && <p className={styles.hint}>{channelWhy(n)}</p>}
+            </>
+          )}
+        </section>
+      )}
+
       {detail && detail.queries.length > 0 && (
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Their words · {detail.queries.length}</h3>
@@ -184,7 +249,10 @@ export function TopicPanel({ id, lite, onClose }: Props) {
               .map((q, i) => (
                 <li key={`${q.text}-${i}`} className={styles.query}>
                   <span className={styles.queryText}>&ldquo;{q.text}&rdquo;</span>
-                  <span className={styles.queryMeta}>{q.sources.map((src) => QUERY_SOURCE_LABEL[src] ?? src).join(', ')}</span>
+                  <span className={styles.queryMeta}>
+                    {q.sources.map((src) => QUERY_SOURCE_LABEL[src] ?? src).join(', ')}
+                    {typeof q.volume === 'number' ? ` · ${q.volume.toLocaleString('en-US')} Google searches a month` : ''}
+                  </span>
                 </li>
               ))}
           </ul>

@@ -7,6 +7,8 @@
  *                           seeds lead to is searched more.
  *   audience                a coded audience phrase: log2(1 + quotes) + log10(1 + likes) / 2
  *   vidiq                   vidIQ monthly YouTube searches (audience-vocabulary.md): max(0.5, log10(monthly) - 2)
+ *   keyword_planner         a Keyword Planner "Discover new keywords" idea the map had not harvested (--kp-add-new),
+ *                           same scale on its Google monthly searches; left out of audience demand
  *   query signal            sum over sources, so a phrase seen in several places outranks one seen once.
  */
 import type { QuerySource, TopicIntent, TopicQuery } from '../../../../src/lib/brain/topical-map-types';
@@ -113,6 +115,8 @@ export function mergeQueries(raw: RawQuery[], seedTopic: (seed: string) => strin
       monthly = Math.max(...vq.map((x) => x.monthly!));
       perSource.vidiq = round2(vidiqSignal(monthly));
     }
+    const kpq = g.sightings.filter((x) => x.source === 'keyword_planner' && x.monthly);
+    if (kpq.length) perSource.keyword_planner = round2(vidiqSignal(Math.max(...kpq.map((x) => x.monthly!))));
     for (const x of g.sightings) if (x.seed) seeds.add(x.seed);
     const seedTopics = [...new Set([...seeds].flatMap((s) => seedTopic(s)))];
     out.push({

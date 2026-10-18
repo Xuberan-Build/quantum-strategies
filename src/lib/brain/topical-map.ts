@@ -176,7 +176,16 @@ export function rowToTopic(r: Row): TopicNode {
     summary: r.summary ?? '',
     mapsTo: (p.maps_to ?? {}) as TopicNode['mapsTo'],
     queries: Array.isArray(p.top_queries) ? (p.top_queries as TopicQuery[]) : [],
-    scores: { demand: num(s.demand), proof: num(s.proof), coverage: num(s.coverage), competition: num(s.competition), productFit: num(s.productFit), priority: num(s.priority) },
+    scores: {
+      demand: num(s.demand),
+      proof: num(s.proof),
+      coverage: num(s.coverage),
+      competition: num(s.competition),
+      productFit: num(s.productFit),
+      priority: num(s.priority),
+      ...(typeof s.searchDemand === 'number' ? { searchDemand: s.searchDemand } : {}),
+      ...(typeof s.audienceDemand === 'number' ? { audienceDemand: s.audienceDemand } : {}),
+    },
     status: (['LIVE', 'BUILT', 'TO BUILD', 'NONE'].includes(String(p.status)) ? p.status : 'NONE') as TopicStatus,
     assets: Array.isArray(p.assets) ? (p.assets as TopicAsset[]) : [],
     competitors: Array.isArray(p.competitors) ? (p.competitors as string[]) : [],
@@ -187,6 +196,18 @@ export function rowToTopic(r: Row): TopicNode {
     evidence: Array.isArray(p.evidence) ? (p.evidence as TopicEvidence[]) : [],
     audienceWords: Array.isArray(p.audience_words) ? (p.audience_words as string[]) : [],
     queueRank: typeof p.queue_rank === 'number' ? p.queue_rank : null,
+    // Keyword Planner split (absent on maps built without --keyword-planner)
+    ...(typeof p.search_volume === 'number'
+      ? {
+          searchVolume: p.search_volume,
+          searchTrend: (p.search_trend ?? undefined) as TopicNode['searchTrend'],
+          commercial: (p.commercial ?? undefined) as TopicNode['commercial'],
+          searchTerms: Array.isArray(p.search_terms) ? (p.search_terms as NonNullable<TopicNode['searchTerms']>) : [],
+          channelFit: (p.channel_fit ?? undefined) as TopicNode['channelFit'],
+          headTerm: (p.head_term ?? null) as TopicNode['headTerm'],
+        }
+      : {}),
+    ...(p.audience && typeof p.audience === 'object' ? { audience: p.audience as TopicNode['audience'] } : {}),
   };
 }
 

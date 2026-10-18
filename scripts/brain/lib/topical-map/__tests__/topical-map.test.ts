@@ -7,9 +7,11 @@ import type { TopicalMap, TopicNode } from '../../../../../src/lib/brain/topical
 import { assignQueries, attachSubtopics, groupQueries, LEXICAL_THRESHOLDS } from '../cluster';
 import { AcCache, expansions, Harvester, parseSuggest } from '../harvest';
 import { isUsableQuery, lexicalSim, mergeQueries, normalizeQuery, queryIntent, queryKey, type HarvestedQuery } from '../queries';
+import { decodeKpBuffer, fromNormalisedJson, kpIndex, kpKey, monthOf, normalisedKpJson, parseKpNumber, parseKpPercent, parseKpTsv, searchDemandFor, spikeVolume, type KpRow } from '../keyword-planner';
 import { buildQueue, shortQuote } from '../queue';
+import { replayQueriesFrom } from '../build';
 import { renderTopicalMapMd } from '../render';
-import { audienceMass, competitionScore, competitorWeight, coverageScore, demandRaw, demandScore, priorityScore, productFitScore, proofScore } from '../score';
+import { audienceMass, blendDemand, channelFitScores, searchDemandScore, competitionScore, competitorWeight, coverageScore, demandRaw, demandScore, priorityScore, productFitScore, proofScore } from '../score';
 import { parseVidiqTable, parseVolume } from '../seeds';
 import { derivedSeed, mapProblems, pieceStatus, problemTopic, seedTree, type ProblemInfo } from '../tree';
 import { ARCH } from './fixtures/architecture';
@@ -302,5 +304,146 @@ describe('queue and render', () => {
     expect(md).toContain('## Top 25 topics by priority');
     expect(md).toContain('### P1 · p');
     expect(md).not.toContain('—');
+  });
+});
+
+describe('keyword planner', () => {
+  const header = ['Keyword', 'Currency', 'Segmentation', 'Avg. monthly searches', 'Three month change', 'YoY change', 'Competition', 'Competition (indexed value)', 'Top of page bid (low range)', 'Top of page bid (high range)', 'Ad impression share', 'Organic average position', 'Organic impression share', 'In Account', 'Searches: Oct 2025', 'Searches: Nov 2025'].join('\t');
+  const tsv = [
+    'Saved Keywords Stats 2026-10-18 at 01_20_14',
+    '"October 1, 2025 - September 30, 2026"',
+    header,
+    '\t\tAll\t3715750.0\t\t\t\t\t\t\t\t\t\t\t\t',
+    '\t\tUnited States\t3715750.0\t\t\t\t\t\t\t\t\t\t\t\t',
+    'personality test\tUSD\t\t201000.0\t0%\t-18%\tMedium\t41\t0.32\t1.70\t\t\t\t\t165000\t201000',
+    'i undercharge\tUSD\t\t0.0\t\t\t\t\t\t\t\t\t\t\t0\t0',
+    'manifesting didn t work\tUSD\t\t10.0\t∞\t-50%\tLow\t3\t\t\t\t\t\t\t10\t',
+    'psycho cybernetics\tUSD\t\t14800.0\t0%\t50%\tHigh\t87\t0.26\t3.25\t\t\t\t\t14800\t14800',
+    'psycho cybernetics book\tUSD\t\t14800.0\t0%\t50%\tHigh\t87\t0.26\t3.25\t\t\t\t\t14800\t14800',
+  ].join('\n');
+
+  it('parses numbers, percents and blanks', () => {
+    expect(parseKpNumber('201000.0')).toBe(201000);
+    expect(parseKpNumber('1.70')).toBe(1.7);
+    expect(parseKpNumber('1,234')).toBe(1234);
+    expect(parseKpNumber('')).toBeNull();
+    expect(parseKpNumber(undefined)).toBeNull();
+    expect(parseKpPercent('-18%')).toBe(-18);
+    expect(parseKpPercent('0%')).toBe(0);
+    expect(parseKpPercent('∞')).toBeNull();
+    expect(parseKpPercent('')).toBeNull();
+    expect(monthOf('Searches: Oct 2025')).toBe('2025-10');
+  });
+
+  it('decodes a UTF-16 LE export with BOM and skips the title lines and totals rows', () => {
+    const buf = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(tsv, 'utf16le')]);
+    const text = decodeKpBuffer(buf);
+    const f = parseKpTsv(text, 'x.csv');
+    expect(f.source.title).toBe('Saved Keywords Stats 2026-10-18 at 01_20_14');
+    expect(f.source.dateRange).toBe('October 1, 2025 - September 30, 2026');
+    expect(f.source.location).toBe('United States');
+    expect(f.source.currency).toBe('USD');
+    expect(f.rows).toHaveLength(5);
+    const pt = f.rows[0];
+    expect(pt).toMatchObject({ keyword: 'personality test', avgMonthlySearches: 201000, threeMonthChange: 0, yoyChange: -18, competition: 'Medium', competitionIndex: 41, bidLow: 0.32, bidHigh: 1.7 });
+    expect(pt.monthly).toEqual([{ month: '2025-10', searches: 165000 }, { month: '2025-11', searches: 201000 }]);
+    expect(f.rows[2]).toMatchObject({ threeMonthChange: null, yoyChange: -50, bidLow: null });
+    expect(f.rows[2].monthly[1].searches).toBeNull();
+    // UTF-8 with BOM and no BOM decode the same
+    expect(parseKpTsv(decodeKpBuffer(Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(tsv)]))).rows).toEqual(f.rows);
+    expect(parseKpTsv(decodeKpBuffer(Buffer.from(tsv, 'utf16le'))).rows).toEqual(f.rows);
+  });
+
+  it('round-trips the normalised JSON', () => {
+    const f = parseKpTsv(tsv);
+    expect(fromNormalisedJson(JSON.parse(normalisedKpJson(f))).rows).toEqual(f.rows);
+  });
+
+  it('matches map phrasings the way the upload was built and counts close variants once', () => {
+    const idx = kpIndex([parseKpTsv(tsv)]);
+    expect(kpKey("Manifesting didn't work")).toBe('manifesting didn t work');
+    expect(idx.has(kpKey("manifesting didn't work"))).toBe(true);
+    const sd = searchDemandFor(['personality test', 'psycho cybernetics', 'psycho cybernetics book', 'i undercharge', 'not uploaded'], idx);
+    expect(sd.matched).toBe(4);
+    expect(sd.withVolume).toBe(3);
+    expect(sd.counted).toBe(2);
+    expect(sd.volume).toBe(201000 + 14800);
+    expect(sd.top[0].keyword).toBe('personality test');
+    expect(sd.value).toBe(Math.round(201000 * 1.7 + 14800 * 3.25));
+    expect(searchDemandFor(['i undercharge'], idx).volume).toBe(0);
+  });
+
+  it('counts a suspected spike at its pre-spike level and damps tiny-base trends', () => {
+    const row = (keyword: string, avg: number, yoy: number, monthly: number[]): KpRow => ({ keyword, avgMonthlySearches: avg, threeMonthChange: 0, yoyChange: yoy, competition: null, competitionIndex: null, bidLow: null, bidHigh: null, monthly: monthly.map((m, i) => ({ month: `2026-${i}`, searches: m })) });
+    const spike = row('goal setting', 135000, 1927, [14800, 12100, 12100, 22200, 12100, 18100, 74000, 550000, 201000, 135000, 135000, 450000]);
+    expect(spikeVolume(spike)).toEqual({ volume: 13450, spike: true });
+    expect(spikeVolume(row('procrastination', 135000, -18, [165000, 135000]))).toEqual({ volume: 135000, spike: false });
+    const idx = new Map([
+      [kpKey('goal setting'), spike],
+      [kpKey('tiny'), row('tiny', 10, 900, [10])],
+      [kpKey('big'), row('big', 1000, 500, [1000])],
+    ]);
+    const sd = searchDemandFor(['goal setting', 'tiny', 'big'], idx);
+    expect(sd.volume).toBe(13450 + 10 + 1000);
+    expect(sd.spikes).toEqual([{ keyword: 'goal setting', reported: 135000, counted: 13450 }]);
+    // tiny row ignored, the others capped at +300%
+    expect(sd.yoy).toBe(300);
+  });
+
+  it('blends search and audience demand, falling back to audience when search has no reading', () => {
+    expect(searchDemandScore(0, 1000)).toBe(0);
+    expect(searchDemandScore(1000, 1000)).toBe(100);
+    expect(searchDemandScore(720, 400000)).toBe(51);
+    expect(blendDemand(57, 86)).toBe(74);
+    expect(blendDemand(86, 57)).toBe(74);
+    expect(blendDemand(0, 86, 0)).toBe(86);
+    expect(blendDemand(40, 86, 300)).toBe(68);
+  });
+
+  it('scores channel fit: comment-only topics fit YouTube and the quiz, not search', () => {
+    const base = { proof: 59, coverage: 26, competition: 0, productFit: 100 };
+    const said = channelFitScores({ ...base, searchDemand: 0, audienceDemand: 86 });
+    expect(said.search).toBe(0);
+    expect(said.quiz).toBeGreaterThan(80);
+    expect(said.youtube).toBeGreaterThan(60);
+    const searched = channelFitScores({ ...base, searchDemand: 95, audienceDemand: 30 });
+    expect(searched.search).toBeGreaterThan(searched.youtube);
+    expect(searched.search).toBeGreaterThan(searched.quiz);
+    // crowded YouTube lowers only the YouTube fit
+    const crowded = channelFitScores({ ...base, competition: 100, searchDemand: 60, audienceDemand: 60 });
+    const open = channelFitScores({ ...base, searchDemand: 60, audienceDemand: 60 });
+    expect(crowded.youtube).toBeLessThan(open.youtube);
+    expect(crowded.search).toBe(open.search);
+    expect(crowded.quiz).toBe(open.quiz);
+  });
+});
+
+describe('replayQueriesFrom', () => {
+  it('keeps autocomplete phrasings once, with their topic-level home', () => {
+    const n = (id: string, level: TopicNode['level'], parent: string | null, queries: TopicNode['queries']): TopicNode => ({ id, level, label: id, parent, pillarCode: 'P1', intent: 'informational', summary: '', mapsTo: {}, queries, scores: { demand: 0, proof: 0, coverage: 0, competition: 0, productFit: 0, priority: 0 }, status: 'NONE', assets: [], competitors: [], notes: '' });
+    const map: TopicalMap = {
+      version: 1,
+      centralEntity: { label: '', definition: '' },
+      sourceContext: '',
+      generatedAt: '',
+      levels: ['pillar', 'section', 'topic', 'subtopic'],
+      nodes: [
+        n('topic:t', 'topic', null, [
+          { text: 'self image', sources: ['google_ac', 'youtube_ac'], signal: 2 },
+          { text: 'i undercharge', sources: ['audience'], signal: 5 },
+        ]),
+        n('topic:t-q-self', 'subtopic', 'topic:t', [{ text: 'self image', sources: ['google_ac'], signal: 1 }]),
+      ],
+    };
+    const r = replayQueriesFrom(map);
+    expect(r).toEqual([{ text: 'self image', sources: ['google_ac', 'youtube_ac'], signal: 2, topic: 'topic:t' }]);
+  });
+});
+
+describe('keyword planner ideas as queries', () => {
+  it('scores a Discover idea on its monthly searches like a vidIQ anchor', () => {
+    const [q] = mergeQueries([{ text: 'law of assumption', source: 'keyword_planner', monthly: 9900 }]);
+    expect(q.sources).toEqual(['keyword_planner']);
+    expect(q.perSource.keyword_planner).toBe(2);
   });
 });
