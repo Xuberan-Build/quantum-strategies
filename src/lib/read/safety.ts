@@ -9,7 +9,7 @@
  * ┌──────────────────────────────────────────────────────────────────────────────┐
  * │ Founder decision 2026-10-18: the lists and the support copy follow published │
  * │ safe-messaging guidance instead of a paid therapist review.                  │
- * │ Reviewed by: Austin (pending). Full term list, copy and rationale:           │
+ * │ Reviewed by: Austin, 2026-10-18 (approved). Terms, copy and rationale:       │
  * │ brain/content/safety-screen.md. Bump SAFETY_LIST_VERSION on every change.    │
  * │ Tier-1 false positives are acceptable. Misses are not (spec v3 §6).          │
  * └──────────────────────────────────────────────────────────────────────────────┘
@@ -37,7 +37,7 @@
  */
 import type { ReadAnswers, SafetyResult, SafetyTier } from './types';
 
-export const SAFETY_LIST_VERSION = 'read-safety-2026-10-18.2 (published guidance; Austin review pending)';
+export const SAFETY_LIST_VERSION = 'read-safety-2026-10-18.2 (published guidance; Austin review approved 2026-10-18)';
 
 const TIER_RANK: Record<SafetyTier, number> = { none: 0, hardship: 1, clinical: 2, crisis: 3 };
 
@@ -108,7 +108,7 @@ export function normaliseForScreen(text: string): string {
     .join(' ');
 }
 
-// ── Lists (Reviewed by: Austin, pending) ─────────────────────────────────────
+// ── Lists (Reviewed by: Austin, 2026-10-18, approved) ─────────────────────────────────────
 
 /**
  * Each entry is either a phrase (matched on whole words in the normalised text) or a
