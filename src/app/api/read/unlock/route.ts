@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { buildResult } from '@/lib/read/results';
-import { scheduleReadFollowups, sendReadResultEmail } from '@/lib/read/notify';
+import { onReadUnlocked } from '@/lib/read/emails';
 import {
   createLead,
   eventContext,
@@ -70,17 +70,18 @@ export async function POST(req: NextRequest) {
       await updateSessionData(sessionId, { result, unlockedAt: new Date().toISOString() });
     }
 
-    // Email failures never block the result on screen.
-    try {
-      await sendReadResultEmail({ lead, result, resultUrl: resultUrl(sessionId) });
-    } catch (e) {
-      logRouteError('unlock:email', e);
-    }
-    try {
-      await scheduleReadFollowups({ leadId: lead.id, sessionId, pattern: result.pattern });
-    } catch (e) {
-      logRouteError('unlock:followups', e);
-    }
+    // Result email + follow-up scheduling run after the response; they never throw
+    // and never block the result on screen.
+    const unlocked = result;
+    after(() =>
+      onReadUnlocked({
+        lead,
+        result: unlocked,
+        resultUrl: resultUrl(sessionId),
+        mirror: sd.mirror,
+        answers: (row.step_data ?? {}) as ReadAnswers,
+      }).catch((e) => logRouteError('unlock:email', e)),
+    );
 
     return NextResponse.json(result);
   } catch (e) {
