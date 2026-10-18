@@ -70,7 +70,7 @@ export default async function PillarsPage() {
         <div className={styles.container}>
           <div className={styles.pillarList}>
             {(pillars ?? []).map((pillar, i) => (
-              <Link key={pillar.id} href={`/pillars/${pillar.slug}`} className={styles.pillarCard}>
+              <Link key={pillar.id} href={`/pillars/${pillar.slug}/`} className={styles.pillarCard}>
                 <div className={styles.pillarCardInner}>
                   <div className={styles.pillarCardLeft}>
                     <div className={styles.pillarNumber}>0{i + 1}</div>

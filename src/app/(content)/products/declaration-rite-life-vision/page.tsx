@@ -73,8 +73,8 @@ export default function LifeVisionDeclarationPage() {
               Completing them first is highly recommended but not required.
             </p>
             <div className={styles.prereqLinks}>
-              <Link href="/products/perception">View Rite I: Perception</Link>
-              <Link href="/products/orientation">View Rite II: Orientation</Link>
+              <Link href="/products/perception/">View Rite I: Perception</Link>
+              <Link href="/products/orientation/">View Rite II: Orientation</Link>
             </div>
           </div>
         </div>

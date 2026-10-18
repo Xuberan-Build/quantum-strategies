@@ -1,128 +1,82 @@
 import type { MetadataRoute } from "next";
 import fs from "fs";
 import path from "path";
+import matter from "gray-matter";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { buildSitemap, type DatedSlug } from "@/lib/seo/sitemap";
 
 // Static, refreshed hourly and on demand: the studio publish route calls
 // revalidatePath("/sitemap.xml") so new DB posts appear without a redeploy.
 export const revalidate = 3600;
 
-const base = "https://quantumstrategies.online";
 const contentRoot = path.join(process.cwd(), "src/content");
+const ARTICLE_CATEGORIES = ["customer-acquisition", "operations", "product-development", "waveforms"];
 
-function getMdxEntries(dir: string, urlPrefix: string): MetadataRoute.Sitemap {
-  if (!fs.existsSync(dir)) {
-    return [];
-  }
-
+/**
+ * MDX files in a folder, dated by frontmatter (`updated` / `lastModified`, else
+ * `date`). File mtimes are not used: on Vercel every file has the clone time.
+ */
+function readMdxDir(dir: string): DatedSlug[] {
+  if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
-    .filter((file) => file.endsWith(".mdx") && !file.startsWith("_"))
-    .map((file) => {
-      const filePath = path.join(dir, file);
-      const stat = fs.statSync(filePath);
-      const slug = file.replace(".mdx", "");
-      return {
-        url: `${base}${urlPrefix}/${slug}/`,
-        lastModified: stat.mtime,
-        changeFrequency: "monthly",
-        priority: 0.6,
-      };
+    .filter((file) => file.endsWith(".mdx"))
+    .flatMap((file): DatedSlug[] => {
+      const { data } = matter(fs.readFileSync(path.join(dir, file), "utf-8"));
+      if (data.draft === true || data.published === false) return [];
+      return [
+        {
+          slug: file.replace(/\.mdx$/, ""),
+          lastModified: (data.updated ?? data.lastModified ?? data.date ?? null) as string | null,
+        },
+      ];
     });
 }
 
-function getArticleEntries(): MetadataRoute.Sitemap {
-  const categories = ["customer-acquisition", "operations", "product-development", "waveforms"];
-  const entries: MetadataRoute.Sitemap = [];
-
-  categories.forEach((category) => {
-    const dir = path.join(contentRoot, "articles", category);
-    if (!fs.existsSync(dir)) {
-      return;
-    }
-
-    const files = fs
-      .readdirSync(dir)
-      .filter((file) => file.endsWith(".mdx") && !file.startsWith("_"));
-
-    files.forEach((file) => {
-      const filePath = path.join(dir, file);
-      const stat = fs.statSync(filePath);
-      const slug = file.replace(".mdx", "");
-      entries.push({
-        url: `${base}/articles/${slug}/`,
-        lastModified: stat.mtime,
-        changeFrequency: "monthly",
-        priority: 0.7,
-      });
-    });
-  });
-
-  return entries;
-}
-
-function getProductEntries(): MetadataRoute.Sitemap {
+function getStaticProductSlugs(): string[] {
   const productsDir = path.join(process.cwd(), "src/app/(content)/products");
-  if (!fs.existsSync(productsDir)) {
-    return [];
-  }
-
-  const excludedSlugs = new Set(["beta"]);
-
+  if (!fs.existsSync(productsDir)) return [];
   return fs
     .readdirSync(productsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_") && !excludedSlugs.has(entry.name))
-    .map((entry) => {
-      const pagePath = path.join(productsDir, entry.name, "page.tsx");
-      const lastModified = fs.existsSync(pagePath) ? fs.statSync(pagePath).mtime : new Date("2026-04-01");
-      return {
-        url: `${base}/products/${entry.name}/`,
-        lastModified,
-        changeFrequency: "monthly" as const,
-        priority: 0.5,
-      };
-    });
+    .filter((e) => e.isDirectory() && fs.existsSync(path.join(productsDir, e.name, "page.tsx")))
+    .map((e) => e.name);
 }
 
-/** Published DB articles (content_posts, type blog) served at /articles/[slug]. */
-async function getDbArticleEntries(): Promise<MetadataRoute.Sitemap> {
+async function safeQuery<T>(label: string, run: () => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("content_posts")
-      .select("slug, updated_at, published_at")
-      .eq("is_published", true)
-      .eq("type", "blog");
+    const { data, error } = await run();
     if (error) throw new Error(error.message);
-    return (data ?? []).map((post: { slug: string; updated_at: string | null; published_at: string | null }) => ({
-      url: `${base}/articles/${post.slug}/`,
-      lastModified: new Date(post.updated_at ?? post.published_at ?? Date.now()),
-      changeFrequency: "monthly" as const,
-      priority: 0.7,
-    }));
+    return data ?? [];
   } catch (err) {
-    console.error("[sitemap] could not load DB articles", err);
+    console.error(`[sitemap] could not load ${label}`, err);
     return [];
   }
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticRoutes: MetadataRoute.Sitemap = [
-    { url: `${base}/`, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
-    { url: `${base}/meet/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/the-rite-system/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
-    { url: `${base}/articles/`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-    { url: `${base}/whitepapers/`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    // Omitted: category stubs, /values, /resources, /portfolio, /courses, /privacy, /terms
-    // These are thin pages that dilute crawl budget on a new domain
-  ];
+  const [dbPosts, pillars] = await Promise.all([
+    safeQuery<{ slug: string; updated_at: string | null; published_at: string | null }>("DB articles", () =>
+      supabaseAdmin
+        .from("content_posts")
+        .select("slug, updated_at, published_at")
+        .eq("is_published", true)
+        .eq("type", "blog"),
+    ),
+    safeQuery<{ slug: string; updated_at: string | null; created_at: string | null }>("pillars", () =>
+      supabaseAdmin.from("content_pillars").select("slug, updated_at, created_at"),
+    ),
+  ]);
 
-  // DB posts win over MDX files with the same slug (most DB posts were seeded from MDX).
-  const dbArticles = await getDbArticleEntries();
-  const dbUrls = new Set(dbArticles.map((entry) => entry.url));
-  const articles = [...dbArticles, ...getArticleEntries().filter((entry) => !dbUrls.has(entry.url))];
-  const whitepapers = getMdxEntries(path.join(contentRoot, "whitepapers"), "/whitepapers");
-  const products = getProductEntries();
-
-  // Note: Glossary entries excluded from sitemap - they have noindex directives
-  return [...staticRoutes, ...articles, ...whitepapers, ...products];
+  return buildSitemap({
+    dbArticles: dbPosts.map((p) => ({ slug: p.slug, lastModified: p.updated_at ?? p.published_at })),
+    mdxArticles: ARTICLE_CATEGORIES.flatMap((c) => readMdxDir(path.join(contentRoot, "articles", c))),
+    whitepapers: readMdxDir(path.join(contentRoot, "whitepapers")),
+    pillars: pillars.map((p) => ({ slug: p.slug, lastModified: p.updated_at ?? p.created_at })),
+    staticProductSlugs: getStaticProductSlugs(),
+    // DB landing pages (product_landing_pages) are not listed yet: /products/[slug]
+    // filters on a `product_slug` column the table does not have (it is `slug`),
+    // so it can never render one. Wire them in here once that route is fixed:
+    // select("slug, updated_at").eq("status", "published").
+    dbProductPages: [],
+  });
 }

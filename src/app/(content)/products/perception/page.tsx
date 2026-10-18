@@ -46,7 +46,7 @@ export default function RiteIPerceptionPage() {
           </div>
 
           <div className={styles.heroCtaGroup}>
-            <a href="/products/perception-rite-scan-1" className={styles.heroCta}>
+            <a href="/products/perception-rite-scan-1/" className={styles.heroCta}>
               <span>Start Scan 1: Signal Awareness</span>
             </a>
             <a href="#bundle" className={styles.heroCtaSecondary}>
@@ -113,7 +113,7 @@ export default function RiteIPerceptionPage() {
                 <li>Interference pattern detection</li>
                 <li>7-day recalibration protocol</li>
               </ul>
-              <a href="/products/perception-rite-scan-1" className={styles.productCta}>
+              <a href="/products/perception-rite-scan-1/" className={styles.productCta}>
                 Start Scan 1
               </a>
             </div>
@@ -131,7 +131,7 @@ export default function RiteIPerceptionPage() {
                 <li>Value hierarchy clarity</li>
                 <li>30-day realignment plan</li>
               </ul>
-              <a href="/products/perception-rite-scan-2" className={styles.productCta}>
+              <a href="/products/perception-rite-scan-2/" className={styles.productCta}>
                 Start Scan 2
               </a>
             </div>
@@ -149,7 +149,7 @@ export default function RiteIPerceptionPage() {
                 <li>Core state reversal</li>
                 <li>30-90 day restoration plan</li>
               </ul>
-              <a href="/products/perception-rite-scan-3" className={styles.productCta}>
+              <a href="/products/perception-rite-scan-3/" className={styles.productCta}>
                 Start Scan 3
               </a>
             </div>
@@ -167,7 +167,7 @@ export default function RiteIPerceptionPage() {
                 <li>Language recalibration</li>
                 <li>21-day money protocol</li>
               </ul>
-              <a href="/products/perception-rite-scan-4" className={styles.productCta}>
+              <a href="/products/perception-rite-scan-4/" className={styles.productCta}>
                 Start Scan 4
               </a>
             </div>
@@ -185,7 +185,7 @@ export default function RiteIPerceptionPage() {
                 <li>Delegation priority matrix</li>
                 <li>90-day implementation plan</li>
               </ul>
-              <a href="/products/perception-rite-scan-5" className={styles.productCta}>
+              <a href="/products/perception-rite-scan-5/" className={styles.productCta}>
                 Start Scan 5
               </a>
             </div>
@@ -276,14 +276,14 @@ export default function RiteIPerceptionPage() {
               <div className={styles.riteCardStatusCurrent}>You're here</div>
             </div>
 
-            <Link href="/products/orientation" className={styles.riteCard}>
+            <Link href="/products/orientation/" className={styles.riteCard}>
               <div className={styles.riteCardBadge}>RITE II</div>
               <h3 className={styles.riteCardTitle}>Orientation</h3>
               <p className={styles.riteCardDescription}>Locate yourself within the system</p>
               <div className={styles.riteCardStatus}>Available Now</div>
             </Link>
 
-            <Link href="/products/declaration" className={styles.riteCard}>
+            <Link href="/products/declaration/" className={styles.riteCard}>
               <div className={styles.riteCardBadge}>RITE III</div>
               <h3 className={styles.riteCardTitle}>Declaration</h3>
               <p className={styles.riteCardDescription}>Choose your direction</p>
@@ -291,7 +291,7 @@ export default function RiteIPerceptionPage() {
             </Link>
           </div>
           <div className={styles.ritesFooter}>
-            <Link href="/the-rite-system" className={styles.ritesLink}>
+            <Link href="/the-rite-system/" className={styles.ritesLink}>
               Learn more about The Rite System →
             </Link>
           </div>

@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { MDXRemote } from "next-mdx-remote/rsc";
+import { proseComponents } from "@/components/content/proseComponents";
 import styles from "./whitepaper.module.css";
 
 type PageProps = {
@@ -79,7 +80,7 @@ export default async function WhitepaperPage({ params }: PageProps) {
       </header>
 
       <div className={`article-prose ${styles.prose}`}>
-        <MDXRemote source={content} />
+        <MDXRemote source={content} components={proseComponents} />
       </div>
     </article>
   );

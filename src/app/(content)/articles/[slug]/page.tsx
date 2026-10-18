@@ -5,6 +5,8 @@ import matter from "gray-matter";
 import { MDXRemote, compileMDX } from "next-mdx-remote/rsc";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { proseComponents } from "@/components/content/proseComponents";
+import { isPublicSlug } from "@/lib/seo/sitemap";
 import styles from "./article.module.css";
 
 type PageProps = {
@@ -28,7 +30,7 @@ function getAllMdxArticles() {
       );
   });
 
-  return articles;
+  return articles.filter((a) => isPublicSlug(a.slug));
 }
 
 // ── DB body rendering ───────────────────────────────────────────────────────
@@ -36,7 +38,7 @@ function getAllMdxArticles() {
 // show it as plain paragraphs instead of failing the whole page.
 async function renderDbBody(source: string) {
   try {
-    const { content } = await compileMDX({ source });
+    const { content } = await compileMDX({ source, components: proseComponents });
     return content;
   } catch (err) {
     console.error("[articles] MDX compile failed; rendering as plain text", err);
@@ -65,6 +67,8 @@ const BASE_URL = "https://quantumstrategies.online";
 
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
+  // "_"-prefixed slugs are templates/drafts (e.g. the seeded `_pillar` row), never pages.
+  if (!isPublicSlug(slug)) return { title: "Not Found", robots: { index: false, follow: true } };
   const canonical = `${BASE_URL}/articles/${slug}/`;
 
   // Try DB first
@@ -134,6 +138,7 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function ArticlePage({ params }: PageProps) {
   const { slug } = await params;
+  if (!isPublicSlug(slug)) notFound();
 
   // ── DB post ──────────────────────────────────────────────────────────────
   const { data: post } = await supabaseAdmin
@@ -175,9 +180,9 @@ export default async function ArticlePage({ params }: PageProps) {
           <div className={styles.heroBg} />
           <div className={styles.gridOverlay} />
           <div className={styles.heroInner}>
-            <Link href="/articles" className={styles.back}>← Articles</Link>
+            <Link href="/articles/" className={styles.back}>← Articles</Link>
             {pillar && (
-              <Link href={`/pillars/${pillar.slug}`} className={styles.category}>
+              <Link href={`/pillars/${pillar.slug}/`} className={styles.category}>
                 {pillar.title}
               </Link>
             )}
@@ -236,7 +241,7 @@ export default async function ArticlePage({ params }: PageProps) {
         <div className={styles.heroBg} />
         <div className={styles.gridOverlay} />
         <div className={styles.heroInner}>
-          <Link href="/articles" className={styles.back}>← Articles</Link>
+          <Link href="/articles/" className={styles.back}>← Articles</Link>
           {data.category && <div className={styles.category}>{data.category}</div>}
           <h1 className={styles.title}>{data.title as string}</h1>
           {data.description && <p className={styles.description}>{data.description as string}</p>}
@@ -251,7 +256,7 @@ export default async function ArticlePage({ params }: PageProps) {
       </section>
       <div className={styles.divider} />
       <article className={`article-prose ${styles.prose}`}>
-        <MDXRemote source={content} />
+        <MDXRemote source={content} components={proseComponents} />
       </article>
     </div>
   );

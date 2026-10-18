@@ -9,7 +9,7 @@ export default function Values() {
       <section>
         <div className="hero-banner">
           <div className="hero-text">
-            <h1>Welcome to Quantum Strategies</h1>
+            <div className="hero-title">Welcome to Quantum Strategies</div>
             <p>Discover the values that guide us and how we bring our vision to life.</p>
           </div>
           <div className="hero-image">

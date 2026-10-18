@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { isPublicSlug } from "@/lib/seo/sitemap";
 import styles from "../pillar.module.css";
 
 type PageProps = {
@@ -72,7 +73,7 @@ export default async function PillarPage({ params }: PageProps) {
   ]);
 
   const topics   = topicsRes.data   ?? [];
-  const articles = articlesRes.data ?? [];
+  const articles = (articlesRes.data ?? []).filter((a) => isPublicSlug(a.slug));
   const products = productsRes.data ?? [];
   const traditions = (pillar.tradition_affinity ?? []) as string[];
 
@@ -85,7 +86,7 @@ export default async function PillarPage({ params }: PageProps) {
         <div className={styles.glowOrb} />
         <div className={styles.heroInner}>
           <div className={styles.container}>
-            <Link href="/pillars" className={styles.breadcrumb}>
+            <Link href="/pillars/" className={styles.breadcrumb}>
               ← All Pillars
             </Link>
             <div className={styles.eyebrow}>
@@ -151,7 +152,7 @@ export default async function PillarPage({ params }: PageProps) {
             <h2 className={styles.sectionTitle}>Articles</h2>
             <div className={styles.grid}>
               {articles.map((article) => (
-                <Link key={article.slug} href={`/articles/${article.slug}`} className={styles.articleCard}>
+                <Link key={article.slug} href={`/articles/${article.slug}/`} className={styles.articleCard}>
                   {article.published_at && (
                     <time className={styles.articleDate}>
                       {new Date(article.published_at).toLocaleDateString("en-US", {
@@ -181,7 +182,7 @@ export default async function PillarPage({ params }: PageProps) {
             <h2 className={styles.sectionTitle}>Products</h2>
             <div className={styles.productGrid}>
               {products.map((product) => (
-                <Link key={product.id} href={`/products/${product.product_slug}`} className={styles.productCard}>
+                <Link key={product.id} href={`/products/${product.product_slug}/`} className={styles.productCard}>
                   {product.plg_stage && (
                     <div className={styles.plgBadge}>
                       {PLG_LABEL[product.plg_stage] ?? product.plg_stage}

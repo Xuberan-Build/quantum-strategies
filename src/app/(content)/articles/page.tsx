@@ -3,6 +3,7 @@ import path from "path";
 import matter from "gray-matter";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { isPublicSlug } from "@/lib/seo/sitemap";
 
 interface Article {
   slug: string;
@@ -23,7 +24,7 @@ async function getDbArticles(): Promise<Article[]> {
     .order("published_at", { ascending: false })
     .limit(50);
 
-  return (data ?? []).map((p) => {
+  return (data ?? []).filter((p) => isPublicSlug(p.slug)).map((p) => {
     const pillar = (Array.isArray(p.content_pillars) ? p.content_pillars[0] : p.content_pillars) as { title: string; slug: string } | null;
     return {
       slug: p.slug,
@@ -46,7 +47,7 @@ function getMdxArticles(): Article[] {
     const categoryDir = path.join(articlesDir, category);
     if (!fs.existsSync(categoryDir)) return;
     fs.readdirSync(categoryDir)
-      .filter((f) => f.endsWith(".mdx"))
+      .filter((f) => f.endsWith(".mdx") && isPublicSlug(f.replace(".mdx", "")))
       .forEach((file) => {
         const content = fs.readFileSync(path.join(categoryDir, file), "utf-8");
         const { data } = matter(content);
@@ -99,7 +100,7 @@ export default async function ArticlesPage() {
             {dbArticles.map((article) => (
               <Link
                 key={article.slug}
-                href={`/articles/${article.slug}`}
+                href={`/articles/${article.slug}/`}
                 style={{
                   display: "block", padding: "1.5rem",
                   backgroundColor: "rgba(255,255,255,0.05)",
@@ -141,7 +142,7 @@ export default async function ArticlesPage() {
             {mdxArticles.map((article) => (
               <Link
                 key={article.slug}
-                href={`/articles/${article.slug}`}
+                href={`/articles/${article.slug}/`}
                 style={{
                   display: "block", padding: "1.5rem",
                   backgroundColor: "rgba(255,255,255,0.03)",

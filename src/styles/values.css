@@ -25,10 +25,18 @@
   text-align: center;
 }
 
-.hero-text h1 {
+/* .hero-title is a styled div (the page's single h1 is in .text-column). */
+.hero-text h1,
+.hero-text .hero-title {
   font-size: 3rem;
   margin-bottom: 0.5em;
   font-family: 'Bodoni Moda', serif;
+}
+
+.hero-text .hero-title {
+  font-weight: bold;
+  line-height: 1.2;
+  margin-top: 0;
 }
 
 .hero-text p {
@@ -188,7 +196,8 @@
     padding: 40px 5%;
   }
 
-  .hero-text h1 {
+  .hero-text h1,
+  .hero-text .hero-title {
     font-size: 2.5rem;
   }
 

@@ -16,7 +16,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq('status', 'published')
     .maybeSingle();
 
-  if (!page) return {};
+  // No published landing page: the route shows a "coming soon" stub (or 404s).
+  // Keep it out of the index instead of inheriting the homepage canonical.
+  if (!page) return { robots: { index: false, follow: true } };
 
   const title = page.seo_title || page.hero_headline || slug;
   return {

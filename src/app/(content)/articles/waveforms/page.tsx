@@ -37,6 +37,7 @@ export const metadata = {
   title: "The Waveforms Series | Quantum Strategies",
   description:
     "A 12-part series exploring how values become patterns, patterns become systems, and systems become reality.",
+  alternates: { canonical: "https://quantumstrategies.online/articles/waveforms/" },
 };
 
 export default function WaveformsHub() {
@@ -69,7 +70,7 @@ export default function WaveformsHub() {
           {episodes.map((episode) => (
             <Link
               key={episode.slug}
-              href={`/articles/${episode.slug}`}
+              href={`/articles/${episode.slug}/`}
               className={styles.card}
             >
               <span className={styles.cardEyebrow}>Episode {episode.episode}</span>

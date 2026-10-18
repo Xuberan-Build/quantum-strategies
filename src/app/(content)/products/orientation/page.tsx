@@ -165,7 +165,7 @@ export default function RiteIIOrientationPage() {
               </ul>
               <div className={styles.productFooter}>
                 <span className={styles.productPrice}>$7</span>
-                <Link href="/products/personal-alignment" className={styles.productButton}>
+                <Link href="/products/personal-alignment/" className={styles.productButton}>
                   Learn More
                 </Link>
               </div>
@@ -187,7 +187,7 @@ export default function RiteIIOrientationPage() {
               </ul>
               <div className={styles.productFooter}>
                 <span className={styles.productPrice}>$7</span>
-                <Link href="/products/business-alignment" className={styles.productButton}>
+                <Link href="/products/business-alignment/" className={styles.productButton}>
                   Learn More
                 </Link>
               </div>
@@ -209,7 +209,7 @@ export default function RiteIIOrientationPage() {
               </ul>
               <div className={styles.productFooter}>
                 <span className={styles.productPrice}>$7</span>
-                <Link href="/products/brand-alignment" className={styles.productButton}>
+                <Link href="/products/brand-alignment/" className={styles.productButton}>
                   Learn More
                 </Link>
               </div>
@@ -316,7 +316,7 @@ export default function RiteIIOrientationPage() {
         <div className={styles.container}>
           <h2 className={styles.sectionTitle}>Explore the Other Rites</h2>
           <div className={styles.ritesGrid}>
-            <Link href="/products/perception" className={styles.riteCard}>
+            <Link href="/products/perception/" className={styles.riteCard}>
               <div className={styles.riteCardBadge}>RITE I</div>
               <h3 className={styles.riteCardTitle}>Perception</h3>
               <p className={styles.riteCardDescription}>Learn to see the patterns</p>
@@ -330,7 +330,7 @@ export default function RiteIIOrientationPage() {
               <div className={styles.riteCardStatusCurrent}>You're here</div>
             </div>
 
-            <Link href="/products/declaration" className={styles.riteCard}>
+            <Link href="/products/declaration/" className={styles.riteCard}>
               <div className={styles.riteCardBadge}>RITE III</div>
               <h3 className={styles.riteCardTitle}>Declaration</h3>
               <p className={styles.riteCardDescription}>Choose your direction</p>
@@ -338,7 +338,7 @@ export default function RiteIIOrientationPage() {
             </Link>
           </div>
           <div className={styles.ritesFooter}>
-            <Link href="/the-rite-system" className={styles.ritesLink}>
+            <Link href="/the-rite-system/" className={styles.ritesLink}>
               Learn more about The Rite System →
             </Link>
           </div>

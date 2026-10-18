@@ -31,7 +31,7 @@ export default function GPTChatEmbed({ iframeUrl, productSlug }: GPTChatEmbedPro
         <div className={styles.warning}>
           <h2>Payment Verification Required</h2>
           <p>Please complete your purchase to access this GPT.</p>
-          <a href={`/products/${productSlug}#purchase`}>Return to Product Page</a>
+          <a href={`/products/${productSlug}/#purchase`}>Return to Product Page</a>
         </div>
       </div>
     );

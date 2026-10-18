@@ -73,10 +73,10 @@ export default function StrategicPathDeclarationPage() {
               Completing them first is highly recommended but not required.
             </p>
             <div className={styles.prereqLinks}>
-              <Link href="/products/perception">View Rite I: Perception</Link>
-              <Link href="/products/orientation">View Rite II: Orientation</Link>
-              <Link href="/products/declaration-rite-life-vision">View Life Vision Declaration</Link>
-              <Link href="/products/declaration-rite-business-model">View Business Model Declaration</Link>
+              <Link href="/products/perception/">View Rite I: Perception</Link>
+              <Link href="/products/orientation/">View Rite II: Orientation</Link>
+              <Link href="/products/declaration-rite-life-vision/">View Life Vision Declaration</Link>
+              <Link href="/products/declaration-rite-business-model/">View Business Model Declaration</Link>
             </div>
           </div>
         </div>

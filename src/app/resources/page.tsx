@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { portfolioCases } from "@/lib/constants/portfolio";
+import { isPublicSlug } from "@/lib/seo/sitemap";
 import styles from "./resources.module.css";
 
 export const metadata = {
@@ -22,7 +23,9 @@ function getFeaturedArticles() {
   categories.forEach((category) => {
     const categoryDir = path.join(articlesDir, category);
     if (fs.existsSync(categoryDir)) {
-      const files = fs.readdirSync(categoryDir).filter((file) => file.endsWith(".mdx"));
+      const files = fs
+        .readdirSync(categoryDir)
+        .filter((file) => file.endsWith(".mdx") && isPublicSlug(file.replace(".mdx", "")));
 
       // Get first 2 articles from each category
       files.slice(0, 2).forEach((file) => {
@@ -119,7 +122,7 @@ export default function ResourcesHub() {
             <h2>Featured Articles</h2>
             <p>Quick reads with actionable frameworks.</p>
           </div>
-          <Link href="/articles" className={styles.sectionLink}>
+          <Link href="/articles/" className={styles.sectionLink}>
             View all articles -&gt;
           </Link>
         </div>
@@ -128,7 +131,7 @@ export default function ResourcesHub() {
           {featuredArticles.map((article) => (
             <Link
               key={article.slug}
-              href={`/articles/${article.slug}`}
+              href={`/articles/${article.slug}/`}
               className={styles.articleCard}
             >
               <div className={styles.articleCategory}>{article.category}</div>

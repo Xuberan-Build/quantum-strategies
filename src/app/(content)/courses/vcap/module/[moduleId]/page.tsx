@@ -101,9 +101,9 @@ export default async function ModulePage({ params }: ModulePageProps) {
     <div className={styles.page}>
       {/* Breadcrumb */}
       <div className={styles.breadcrumb}>
-        <Link href="/courses">Courses</Link>
+        <Link href="/courses/">Courses</Link>
         <span className={styles.separator}>→</span>
-        <Link href="/courses/vcap">VCAP</Link>
+        <Link href="/courses/vcap/">VCAP</Link>
         <span className={styles.separator}>→</span>
         <span>Module {module.number}</span>
       </div>
@@ -275,7 +275,7 @@ export default async function ModulePage({ params }: ModulePageProps) {
                   Access Module in Portal →
                 </Link>
               )}
-              <Link href="/courses/vcap" className={styles.backButton}>
+              <Link href="/courses/vcap/" className={styles.backButton}>
                 ← Back to Course Overview
               </Link>
             </div>

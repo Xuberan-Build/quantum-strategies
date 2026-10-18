@@ -62,7 +62,8 @@ async function seed() {
     const dir = path.join(contentRoot, 'articles', category);
     if (!fs.existsSync(dir)) continue;
 
-    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.mdx') && !f.endsWith('.bak') && !f.endsWith('.backup2'));
+    // "_"-prefixed files are templates (e.g. _pillar.mdx), not posts.
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.mdx') && !f.startsWith('_') && !f.endsWith('.bak') && !f.endsWith('.backup2'));
     for (const file of files) {
       const entry = readMdx(path.join(dir, file), { type: 'blog' });
       if (entry) {

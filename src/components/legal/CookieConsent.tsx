@@ -67,7 +67,7 @@ export default function CookieConsent() {
             We use essential cookies to run the site and optional analytics cookies to improve the
             experience. You can accept or reject non-essential cookies at any time.
           </p>
-          <Link className={styles.link} href="/privacy#cookies">
+          <Link className={styles.link} href="/privacy/#cookies">
             Learn more in our Privacy Policy
           </Link>
         </div>

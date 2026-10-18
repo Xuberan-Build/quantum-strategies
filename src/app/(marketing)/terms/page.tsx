@@ -3,6 +3,8 @@ import styles from "@/styles/pages/LegalPage.module.css";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
+  description: "The terms that govern use of the Quantum Strategies website, products and services.",
+  alternates: { canonical: "https://quantumstrategies.online/terms/" },
 };
 
 const tocItems = [

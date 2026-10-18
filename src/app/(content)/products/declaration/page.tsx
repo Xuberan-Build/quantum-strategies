@@ -74,8 +74,8 @@ export default function RiteIIIDeclarationPage() {
               It is highly recommended but not required.
             </p>
             <div className={styles.prereqLinks}>
-              <Link href="/products/perception">View Rite I: Perception</Link>
-              <Link href="/products/orientation">View Rite II: Orientation</Link>
+              <Link href="/products/perception/">View Rite I: Perception</Link>
+              <Link href="/products/orientation/">View Rite II: Orientation</Link>
             </div>
           </div>
         </div>
@@ -181,7 +181,7 @@ export default function RiteIIIDeclarationPage() {
               </ul>
               <div className={styles.productFooter}>
                 <span className={styles.productPrice}>$9</span>
-                <Link href="/products/declaration-rite-life-vision" className={styles.productButton}>
+                <Link href="/products/declaration-rite-life-vision/" className={styles.productButton}>
                   Learn More
                 </Link>
               </div>
@@ -202,7 +202,7 @@ export default function RiteIIIDeclarationPage() {
               </ul>
               <div className={styles.productFooter}>
                 <span className={styles.productPrice}>$9</span>
-                <Link href="/products/declaration-rite-business-model" className={styles.productButton}>
+                <Link href="/products/declaration-rite-business-model/" className={styles.productButton}>
                   Learn More
                 </Link>
               </div>
@@ -223,7 +223,7 @@ export default function RiteIIIDeclarationPage() {
               </ul>
               <div className={styles.productFooter}>
                 <span className={styles.productPrice}>$9</span>
-                <Link href="/products/declaration-rite-strategic-path" className={styles.productButton}>
+                <Link href="/products/declaration-rite-strategic-path/" className={styles.productButton}>
                   Learn More
                 </Link>
               </div>

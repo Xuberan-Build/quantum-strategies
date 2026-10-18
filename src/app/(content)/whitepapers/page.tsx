@@ -64,7 +64,7 @@ export default function WhitepapersPage() {
         {whitepapers.length > 0 ? (
           <div className={styles.grid}>
             {whitepapers.map((paper) => (
-              <Link key={paper.slug} href={`/whitepapers/${paper.slug}`} className={styles.card}>
+              <Link key={paper.slug} href={`/whitepapers/${paper.slug}/`} className={styles.card}>
                 <div className={styles.cardMeta}>
                   <span className={styles.cardTag}>White Paper</span>
                   {paper.date && (

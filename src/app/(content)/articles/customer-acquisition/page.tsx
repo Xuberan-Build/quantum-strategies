@@ -36,6 +36,7 @@ export const metadata = {
   title: "Customer Acquisition | Quantum Strategies",
   description:
     "Frameworks for predictable lead generation, conversion systems, and scalable acquisition operations.",
+  alternates: { canonical: "https://quantumstrategies.online/articles/customer-acquisition/" },
 };
 
 export default function CustomerAcquisitionHub() {
@@ -61,7 +62,7 @@ export default function CustomerAcquisitionHub() {
 
         <div className={styles.grid}>
           {articles.map((article) => (
-            <Link key={article.slug} href={`/articles/${article.slug}`} className={styles.card}>
+            <Link key={article.slug} href={`/articles/${article.slug}/`} className={styles.card}>
               <h3 className={styles.cardTitle}>{article.title}</h3>
               <p className={styles.cardDescription}>{article.description}</p>
               <span className={styles.cardMeta}>Read article -&gt;</span>
@@ -70,10 +71,10 @@ export default function CustomerAcquisitionHub() {
         </div>
 
         <div className={styles.ctaRow}>
-          <Link href="/whitepapers" className={styles.ctaButton}>
+          <Link href="/whitepapers/" className={styles.ctaButton}>
             Download white papers -&gt;
           </Link>
-          <Link href="/courses/vcap" className={styles.ctaButton}>
+          <Link href="/courses/vcap/" className={styles.ctaButton}>
             Explore VCAP -&gt;
           </Link>
         </div>

@@ -41,9 +41,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  alternates: {
-    canonical: "https://quantumstrategies.online/",
-  },
+  // No canonical here: every page that did not set its own inherited the
+  // homepage as canonical (values, terms, privacy, category pages...), telling
+  // Google they were duplicates of "/". Pages set their own self-canonical.
   openGraph: {
     title: "Quantum Strategies - Strategic Consulting & Business Growth",
     description:

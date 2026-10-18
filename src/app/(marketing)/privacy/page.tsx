@@ -3,6 +3,8 @@ import styles from "@/styles/pages/LegalPage.module.css";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
+  description: "How Quantum Strategies collects, uses and protects your personal information.",
+  alternates: { canonical: "https://quantumstrategies.online/privacy/" },
 };
 
 const tocItems = [

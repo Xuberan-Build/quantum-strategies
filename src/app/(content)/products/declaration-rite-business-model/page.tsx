@@ -73,9 +73,9 @@ export default function BusinessModelDeclarationPage() {
               Completing them first is highly recommended but not required.
             </p>
             <div className={styles.prereqLinks}>
-              <Link href="/products/perception">View Rite I: Perception</Link>
-              <Link href="/products/orientation">View Rite II: Orientation</Link>
-              <Link href="/products/declaration-rite-life-vision">View Life Vision Declaration</Link>
+              <Link href="/products/perception/">View Rite I: Perception</Link>
+              <Link href="/products/orientation/">View Rite II: Orientation</Link>
+              <Link href="/products/declaration-rite-life-vision/">View Life Vision Declaration</Link>
             </div>
           </div>
         </div>

@@ -97,7 +97,7 @@ export default function RiteSystemPage() {
                   <li>Competence Mapping Scan</li>
                 </ul>
               </div>
-              <Link href="/products/perception" className={styles.riteButtonActive}>
+              <Link href="/products/perception/" className={styles.riteButtonActive}>
                 Explore Perception
               </Link>
             </div>
@@ -121,7 +121,7 @@ export default function RiteSystemPage() {
                   <li>Brand Alignment Orientation</li>
                 </ul>
               </div>
-              <Link href="/products/orientation" className={styles.riteButtonActive}>
+              <Link href="/products/orientation/" className={styles.riteButtonActive}>
                 Explore Orientation ($17 bundle)
               </Link>
             </div>
@@ -145,7 +145,7 @@ export default function RiteSystemPage() {
                   <li>Strategic Path Declaration</li>
                 </ul>
               </div>
-              <Link href="/products/declaration" className={styles.riteButtonActive}>
+              <Link href="/products/declaration/" className={styles.riteButtonActive}>
                 Explore Declaration
               </Link>
             </div>
@@ -203,7 +203,7 @@ export default function RiteSystemPage() {
                 Start with <strong>Rite I: Perception</strong>. You're operating blind and need to develop
                 pattern recognition first.
               </p>
-              <Link href="/products/perception" className={styles.startButtonActive}>
+              <Link href="/products/perception/" className={styles.startButtonActive}>
                 Explore Perception
               </Link>
             </div>
@@ -215,7 +215,7 @@ export default function RiteSystemPage() {
                 Start with <strong>Rite II: Orientation</strong>. You can see some patterns but don't know
                 where you stand. This is the most common starting point.
               </p>
-              <Link href="/products/orientation" className={styles.startButtonActive}>
+              <Link href="/products/orientation/" className={styles.startButtonActive}>
                 Get Orientation Bundle ($17)
               </Link>
             </div>
@@ -226,7 +226,7 @@ export default function RiteSystemPage() {
                 You'll need <strong>Rite III: Declaration</strong>. You have clarity on your position
                 but haven't committed to a direction yet.
               </p>
-              <Link href="/products/declaration" className={styles.startButtonActive}>
+              <Link href="/products/declaration/" className={styles.startButtonActive}>
                 Explore Declaration
               </Link>
             </div>
@@ -291,7 +291,7 @@ export default function RiteSystemPage() {
             <p className={styles.ctaDescription}>
               All three rites are available now. Start where you are — perception, orientation, or declaration.
             </p>
-            <Link href="/products/orientation" className={styles.ctaButton}>
+            <Link href="/products/orientation/" className={styles.ctaButton}>
               Start with Orientation ($17)
             </Link>
             <div className={styles.ctaMeta}>

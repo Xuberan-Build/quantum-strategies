@@ -13,7 +13,9 @@ export default function MobileMenu() {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  // Nav hrefs carry the canonical trailing slash; usePathname may not.
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href.replace(/(.)\/$/, "$1"));
   const toggleSection = (label: string) => setExpandedSection(expandedSection === label ? null : label);
 
   const closeMenu = () => {

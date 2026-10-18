@@ -59,7 +59,7 @@ export default function GlossaryPage() {
         {entries.length > 0 ? (
           <div className={styles.grid}>
             {entries.map((entry) => (
-              <Link key={entry.slug} href={`/quantum-glossary/${entry.slug}`} className={styles.card}>
+              <Link key={entry.slug} href={`/quantum-glossary/${entry.slug}/`} className={styles.card}>
                 <h3 className={styles.cardTitle}>{entry.title}</h3>
                 <p className={styles.cardDescription}>{entry.description}</p>
                 <span className={styles.cardLink}>View term -&gt;</span>

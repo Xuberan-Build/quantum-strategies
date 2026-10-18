@@ -18,7 +18,9 @@ export default function ProductHeader() {
   const navItemRefs = useRef<{ [key: string]: HTMLLIElement | null }>({});
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  // Nav hrefs carry the canonical trailing slash; usePathname may not.
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href.replace(/(.)\/$/, "$1"));
 
   useEffect(() => {
     const handleScroll = () => {

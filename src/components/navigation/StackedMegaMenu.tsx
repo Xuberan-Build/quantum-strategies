@@ -30,56 +30,56 @@ interface StackedMegaMenuProps {
 const defaultContentTypes: ContentType[] = [
   {
     label: "Articles",
-    href: "/articles",
+    href: "/articles/",
     categories: [
       {
         label: "Customer Acquisition",
         articles: [
-          { label: "Customer Acquisition Hub", href: "/articles/customer-acquisition" },
-          { label: "B2B Digital Marketing", href: "/articles/b2b-digital-marketing-strategy" },
-          { label: "SEO Lead Generation", href: "/articles/seo-lead-generation" },
-          { label: "Content Marketing", href: "/articles/content-marketing" },
+          { label: "Customer Acquisition Hub", href: "/articles/customer-acquisition/" },
+          { label: "B2B Digital Marketing", href: "/articles/b2b-digital-marketing-strategy/" },
+          { label: "SEO Lead Generation", href: "/articles/seo-lead-generation/" },
+          { label: "Content Marketing", href: "/articles/content-marketing/" },
         ],
       },
       {
         label: "Operations",
         articles: [
-          { label: "Operations Hub", href: "/articles/operations" },
-          { label: "Automation Tools", href: "/articles/automation-tools" },
-          { label: "CRM Implementation", href: "/articles/crm-implementation" },
-          { label: "Marketing Operations", href: "/articles/marketing-operations" },
+          { label: "Operations Hub", href: "/articles/operations/" },
+          { label: "Automation Tools", href: "/articles/automation-tools/" },
+          { label: "CRM Implementation", href: "/articles/crm-implementation/" },
+          { label: "Marketing Operations", href: "/articles/marketing-operations/" },
         ],
       },
       {
         label: "Product Development",
         articles: [
-          { label: "Product Development Hub", href: "/articles/product-development" },
-          { label: "MVP Strategy", href: "/articles/mvp-strategy" },
-          { label: "Product Market Fit", href: "/articles/product-market-fit" },
-          { label: "User Research", href: "/articles/user-research" },
+          { label: "Product Development Hub", href: "/articles/product-development/" },
+          { label: "MVP Strategy", href: "/articles/mvp-strategy/" },
+          { label: "Product Market Fit", href: "/articles/product-market-fit/" },
+          { label: "User Research", href: "/articles/user-research/" },
         ],
       },
     ],
   },
   {
     label: "Courses",
-    href: "/courses",
+    href: "/courses/",
     categories: [
       {
         label: "Visionary Creator's Activation Protocol",
         articles: [
-          { label: "Reprogram Your Consciousness for Creative Life Mastery", href: "/courses/vcap" },
-          { label: "3 Modules • 125+ Interactive Slides • 8 Hours", href: "/courses/vcap" },
-          { label: "Preview Module 1 Free →", href: "/courses/vcap" },
+          { label: "Reprogram Your Consciousness for Creative Life Mastery", href: "/courses/vcap/" },
+          { label: "3 Modules • 125+ Interactive Slides • 8 Hours", href: "/courses/vcap/" },
+          { label: "Preview Module 1 Free →", href: "/courses/vcap/" },
         ],
       },
     ],
   },
   {
     label: "White Papers",
-    href: "/whitepapers",
+    href: "/whitepapers/",
   },
-  { label: "Case Studies", href: "/portfolio" },
+  { label: "Case Studies", href: "/portfolio/" },
 ];
 
 export default function StackedMegaMenu({ isActive, onMouseLeave, menuData }: StackedMegaMenuProps) {

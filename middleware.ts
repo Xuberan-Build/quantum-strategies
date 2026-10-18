@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { BUSINESS } from './config/business.config';
+import { trailingSlashTarget } from './src/lib/seo/trailing-slash';
 
 // Inline URL config to avoid dependency tracing overhead
 function normalizeUrl(url: string | undefined, fallback: string): string {
@@ -151,6 +152,23 @@ export async function middleware(request: NextRequest) {
   if (request.method === 'OPTIONS') {
     const response = new NextResponse(null, { status: 204 });
     return addCorsHeaders(response, origin);
+  }
+
+  // -------------------------------------------------------------------------
+  // 1b. TRAILING SLASH CANONICALISATION
+  // -------------------------------------------------------------------------
+  // skipTrailingSlashRedirect (needed for /api webhooks) disables Next's own
+  // /page -> /page/ redirect; restore it for page navigations. RSC fetches are
+  // left alone so client-side navigation is never bounced.
+  if (!isRsc) {
+    // Plain URL, not nextUrl: NextURL re-applies the trailing-slash config when
+    // serialised and strips the slash again (redirect loop).
+    const url = new URL(request.url);
+    const slashTarget = trailingSlashTarget(url.pathname, request.method);
+    if (slashTarget) {
+      url.pathname = slashTarget;
+      return NextResponse.redirect(url, 308);
+    }
   }
 
   // -------------------------------------------------------------------------
