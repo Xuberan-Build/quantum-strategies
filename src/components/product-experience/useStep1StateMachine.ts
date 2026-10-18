@@ -13,7 +13,8 @@ export type Step1State =
   | 'UPLOAD'         // Show upload interface
   | 'EXTRACTING'     // Extraction in progress
   | 'REVIEW'         // Show review/edit gate with extracted placements
-  | 'READY';         // Placements confirmed, ready to move to step 2
+  | 'READY'          // Placements confirmed, ready to move to step 2
+  | 'NO_CHART';      // Product has requires_chart = false: no gate, step 1 is a normal step
 
 interface Step1StateMachineProps {
   hasInstructions: boolean;
@@ -21,6 +22,8 @@ interface Step1StateMachineProps {
   placementsConfirmed: boolean;
   isExtracting: boolean;
   currentStep: number;
+  /** product_definitions.requires_chart; false skips the chart gate entirely. Default true. */
+  requiresChart?: boolean;
 }
 
 export function useStep1StateMachine({
@@ -29,13 +32,16 @@ export function useStep1StateMachine({
   placementsConfirmed,
   isExtracting,
   currentStep,
+  requiresChart = true,
 }: Step1StateMachineProps) {
   const [state, setState] = useState<Step1State>(() => {
     // Only apply state machine to step 1
-    if (currentStep !== 1) return 'READY';
+    // (chart-free products use NO_CHART so going Back to step 1 shows step 1, not an auto-advance)
+    if (currentStep !== 1) return requiresChart ? 'READY' : 'NO_CHART';
 
     // Initial state determination
     if (hasInstructions) return 'WELCOME';
+    if (!requiresChart) return 'NO_CHART';
     if (hasPlacementsData && !placementsConfirmed) return 'CONFIRMATION';
     if (hasPlacementsData && placementsConfirmed) return 'READY';
     return 'UPLOAD';
@@ -43,17 +49,19 @@ export function useStep1StateMachine({
 
   // Update state when extraction status changes
   useEffect(() => {
-    if (currentStep !== 1) return;
+    if (currentStep !== 1 || !requiresChart) return;
 
     if (isExtracting && state !== 'EXTRACTING') {
       setState('EXTRACTING');
     }
-  }, [isExtracting, currentStep, state]);
+  }, [isExtracting, currentStep, state, requiresChart]);
 
   // State transition functions
   const transitions = {
     welcomeComplete: () => {
-      if (hasPlacementsData) {
+      if (!requiresChart) {
+        setState('NO_CHART');
+      } else if (hasPlacementsData) {
         setState('CONFIRMATION');
       } else {
         setState('UPLOAD');
@@ -99,5 +107,7 @@ export function useStep1StateMachine({
     shouldShowExtracting: state === 'EXTRACTING',
     shouldShowReview: state === 'REVIEW',
     isReadyForStep2: state === 'READY',
+    /** True for chart-free products once past the welcome: render step 1 as a normal step. */
+    skipsChart: state === 'NO_CHART',
   };
 }

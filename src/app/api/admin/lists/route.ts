@@ -22,7 +22,7 @@ async function resolveSmartListCount(filterCriteria: Record<string, any>): Promi
       return count ?? 0;
     }
     case 'completed_product': {
-      let q = supabaseAdmin.from('product_sessions').select('user_id', { count: 'exact', head: true }).not('completed_at', 'is', null);
+      let q = supabaseAdmin.from('product_sessions').select('user_id', { count: 'exact', head: true }).not('completed_at', 'is', null).not('user_id', 'is', null);
       if (filterCriteria.product_slug) q = q.eq('product_slug', filterCriteria.product_slug);
       const { count } = await q;
       return count ?? 0;

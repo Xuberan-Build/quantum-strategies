@@ -15,7 +15,7 @@ async function getSmartListCount(filterCriteria: FilterCriteria): Promise<number
 
   if (source === 'completed_product') {
     const productSlug = filterCriteria?.product_slug;
-    let q = supabaseAdmin.from('product_sessions').select('user_id').not('completed_at', 'is', null);
+    let q = supabaseAdmin.from('product_sessions').select('user_id').not('completed_at', 'is', null).not('user_id', 'is', null);
     if (productSlug) q = q.eq('product_slug', productSlug);
     const { data } = await q;
     return new Set((data || []).map((r) => r.user_id)).size;

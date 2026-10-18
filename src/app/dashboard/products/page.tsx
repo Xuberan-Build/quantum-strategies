@@ -130,6 +130,8 @@ export default async function ProductsDashboardPage() {
       .from('product_definitions')
       .select('product_slug, name, description, price, total_steps, estimated_duration, display_order')
       .eq('is_active', true)
+      // The free Perception Read runs at /read, not in the Rites dashboard.
+      .neq('product_slug', 'perception-read')
       .order('created_at', { ascending: true }),
     supabase
       .from('product_access')

@@ -28,7 +28,7 @@ export async function POST(
         const source = fc.source as string | undefined;
 
         if (source === 'completed_product') {
-          let q = supabaseAdmin.from('product_sessions').select('user_id').not('completed_at', 'is', null);
+          let q = supabaseAdmin.from('product_sessions').select('user_id').not('completed_at', 'is', null).not('user_id', 'is', null);
           if (fc.product_slug) q = q.eq('product_slug', fc.product_slug);
           const { data, error: usersError } = await q;
           if (usersError) throw usersError;

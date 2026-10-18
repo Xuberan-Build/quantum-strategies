@@ -102,6 +102,8 @@ export interface ReadPreview {
   /** null when safety.tier === 'crisis' (support screen instead; no pattern, no offer). */
   mirror: WeekMirror | null;
   pattern: { id: PatternId; name: string; read: string } | null;
+  /** The loudest Q2 pick as its option label (variant wording applied), for the "You said" line. Absent for crisis. */
+  youSaid?: string | null;
 }
 
 /** One block of the full result page, in display order (spec v3 §8). */

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Validate next param to prevent open redirect
-  const safePaths = ['/dashboard', '/onboarding', '/billing', '/reset-password'];
+  const safePaths = ['/dashboard', '/onboarding', '/billing', '/reset-password', '/read/checkout'];
   const safeNext = safePaths.some(p => next.startsWith(p)) ? next : '/dashboard';
 
   // Create the redirect response first so we can attach session cookies directly to it.
@@ -43,6 +43,13 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[auth/callback] Code exchange failed:', error.message, error.code);
+      // Perception Read bridge: a magic link opened in another browser can't finish
+      // PKCE. Send them back to the bridge, which offers a new link or password sign-in.
+      if (safeNext.startsWith('/read/checkout')) {
+        const bridgeUrl = new URL(safeNext, origin);
+        bridgeUrl.searchParams.set('signin', 'failed');
+        return NextResponse.redirect(bridgeUrl.toString());
+      }
       const loginUrl = new URL('/login', origin);
       loginUrl.searchParams.set('error', 'link_expired');
       return NextResponse.redirect(loginUrl.toString());

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
 import ProductExperience from '@/components/product-experience/ProductExperience';
-import { isPlacementsEmpty } from '@/lib/utils/placements';
+import { isPlacementsEmpty, productRequiresChart } from '@/lib/utils/placements';
 import { ALL_BETA_PRODUCTS } from '@/lib/beta/constants';
 
 export const dynamic = 'force-dynamic';
@@ -105,11 +105,15 @@ export default async function ProductExperiencePage({
         .eq('id', access.id);
   }
 
+  // Chart-free products (requires_chart = false) skip every placements step below:
+  // no profile/session copy and no reset to step 1 for unconfirmed placements.
+  const requiresChart = productRequiresChart(product);
+
   const sessionPlacementsMissing =
     !productSession?.placements || isPlacementsEmpty(productSession?.placements);
 
   // Prefer profile placements if available
-  if (sessionPlacementsMissing) {
+  if (requiresChart && sessionPlacementsMissing) {
     const { data: profilePlacements, error: profileError } = await supabase
       .from('users')
       .select('placements, placements_confirmed')
@@ -146,7 +150,7 @@ export default async function ProductExperiencePage({
   }
 
   // Auto-copy placements from user's latest confirmed session if missing
-  if (!productSession?.placements || isPlacementsEmpty(productSession?.placements)) {
+  if (requiresChart && (!productSession?.placements || isPlacementsEmpty(productSession?.placements))) {
     const { data: placementSource, error: sourceError } = await supabase
       .from('product_sessions')
       .select('placements, product_slug')
@@ -185,7 +189,8 @@ export default async function ProductExperiencePage({
 
   // Treat missing/placeholder placements as not confirmed
   const needsConfirmation =
-    !productSession.placements_confirmed || isPlacementsEmpty(productSession.placements);
+    requiresChart &&
+    (!productSession.placements_confirmed || isPlacementsEmpty(productSession.placements));
 
   if (needsConfirmation) {
     // Normalize session on the server so the client can't skip confirmation
