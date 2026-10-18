@@ -12,6 +12,8 @@ import {
   mapViewToQuery,
   parseQueueLimit,
   rampColor,
+  assetState,
+  notQueuedReason,
   scoreWhy,
   whyNow,
   type TopicNode,
@@ -24,9 +26,14 @@ const node = (id: string, parent: string | null, demand: number, extra: Partial<
   parent,
   pillarCode: 'P1',
   intent: 'problem',
+  summary: '',
+  mapsTo: {},
+  queries: [],
   scores: { demand, proof: 50, coverage: 10, competition: 20, productFit: 60, priority: 70 },
   status: 'TO BUILD',
-  queryCount: 3,
+  assets: [],
+  competitors: [],
+  notes: '',
   ...extra,
 });
 
@@ -125,11 +132,63 @@ describe('plain-words lines', () => {
       expect(line.length).toBeGreaterThan(10);
       expect(line).not.toContain('—');
     }
-    const empty = { ...t, queryCount: 0, problems: [], claims: [], assets: [], competitors: [], products: [], queuePosition: null };
+    const empty = { ...t, queries: [], problems: [], claims: [], evidence: [], assets: [], competitors: [], products: [], queue: { position: null, size: 10 } };
     expect(scoreWhy('demand', empty)).toMatch(/No searches/);
     expect(scoreWhy('proof', empty)).toMatch(/No claim/);
     expect(scoreWhy('coverage', empty)).toMatch(/Nothing made/);
     expect(scoreWhy('competition', empty)).toMatch(/Context only/);
     expect(scoreWhy('priority', empty)).toMatch(/^Not in the make-next queue/);
   });
+
+  it('reads the real scorecard shape: queue position, claim strength + similarity, problem quotes, internal assets', () => {
+    const t = fixtureTopic('topic:fixture-topic-2-1-1')!;
+    const card = {
+      ...t,
+      queries: [{ text: 'i undercharge', sources: ['audience' as const], signal: 6.8 }],
+      problems: [{ id: 'problem:x', label: 'X', share: 1, quoteCount: 34, quotes: [] }],
+      claims: [
+        { id: 'claim:a', label: 'A', tier: 'M', strength: 'Moderate', similarity: 0.458, via: 'architecture source', evidence: [] },
+        { id: 'claim:b', label: 'B', tier: null, strength: 'Strong', similarity: null, via: null, evidence: [] },
+      ],
+      assets: [
+        { kind: 'deck', ref: 'deck:x', status: 'LIVE' as const, detail: 'internal' },
+        { kind: 'spoke', ref: 'spoke:y', status: 'TO BUILD' as const },
+      ],
+      queue: { position: 1, size: 31 },
+    };
+    expect(scoreWhy('demand', card)).toBe('1 search phrasing and 34 audience comments point here.');
+    expect(scoreWhy('proof', card)).toBe('2 claims, graded Moderate, Strong; the closest corpus evidence matches at 0.46 (1.00 is identical).');
+    expect(scoreWhy('coverage', card)).toBe('2 assets: 1 TO BUILD, 1 internal deck or doc, not public.');
+    expect(scoreWhy('priority', card)).toMatch(/^Number 1 of 31 in the make-next queue\. /);
+    expect(assetState(card.assets[0])).toBe('INTERNAL');
+    expect(assetState(card.assets[1])).toBe('TO BUILD');
+  });
+
+  it('says why a node is not queued', () => {
+    expect(notQueuedReason(node('topic:s', null, 10, { level: 'section' }))).toMatch(/only topics are queued, this is a section/);
+    expect(notQueuedReason(node('topic:g', null, 10, { stance: 'guardrail' }))).toMatch(/guardrail/);
+    expect(notQueuedReason(node('topic:c', null, 10, { scores: { demand: 10, proof: 0, coverage: 55, competition: 0, productFit: 0, priority: 50 } }))).toMatch(/coverage is already 55 \(the queue takes topics under 40\)/);
+  });
+});
+
+describe('fixture', () => {
+  it('matches the data layer shapes and queue rule', async () => {
+    const { fixtureQueue } = await import('../topical-map-fixture');
+    const map = fixtureTopicalMap();
+    expect(map.version).toBe(1);
+    expect(map.levels).toEqual(['pillar', 'section', 'topic', 'subtopic']);
+    const q = fixtureQueue(1000);
+    const byId = new Map(map.nodes.map((n) => [n.id, n]));
+    expect(q.length).toBeGreaterThan(0);
+    for (const item of q) {
+      const n = byId.get(item.id)!;
+      expect(n.level).toBe('topic');
+      expect(n.scores.coverage).toBeLessThan(40);
+    }
+    const first = fixtureTopic(q[0].id)!;
+    expect(first.topic.id).toBe(q[0].id);
+    expect(first.queue).toEqual({ position: 1, size: q.length });
+    expect(first.breadcrumb.map((b) => b.level)).toEqual(['pillar', 'section']);
+    for (const qq of first.queries) for (const s of qq.sources) expect(['google_ac', 'youtube_ac', 'audience', 'vidiq']).toContain(s);
+});
 });

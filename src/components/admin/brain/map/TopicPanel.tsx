@@ -1,10 +1,13 @@
 'use client';
 
 /**
- * Drill-down for one topic: what it is, the six scores with a one-line "why" each,
- * the audience's own words, the problems behind it with top quotes, claims with
- * evidence strength, assets (LIVE / BUILT / TO BUILD), competitors as context,
- * the products it routes to, its queue position and Austin's comments.
+ * Drill-down for one topic: where it sits, what it is, the six scores with a one-line
+ * "why" each, the audience's own words, the problems behind it (share + top quotes),
+ * claims with their graded strength and the corpus passages behind them, assets
+ * (LIVE / BUILT / TO BUILD / internal), competitors as context, the products it
+ * routes to (status + fit), its queue position and Austin's comments.
+ *
+ * Renders the data layer's TopicScorecard as-is (src/lib/brain/topical-map.ts).
  */
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
@@ -13,8 +16,11 @@ import {
   INTENT_LABEL,
   LEVEL_LABEL,
   METRIC_INFO,
+  QUERY_SOURCE_LABEL,
   SCORE_KEYS,
+  STANCE_LABEL,
   STATUS_INFO,
+  assetState,
   graphHref,
   rampColor,
   scoreWhy,
@@ -29,17 +35,26 @@ import styles from './map.module.css';
 const isHttp = (u: string | null | undefined): u is string => !!u && /^https?:\/\//i.test(u);
 const isLocal = (u: string | null | undefined): u is string => !!u && u.startsWith('/') && !u.startsWith('//');
 
-function evidenceGrade(sim: number | null): { label: string; cls: string } {
-  if (sim == null) return { label: 'unmatched', cls: styles.gradeThin };
-  if (sim >= 0.8) return { label: `strong · ${sim.toFixed(2)}`, cls: styles.gradeStrong };
-  if (sim >= 0.65) return { label: `medium · ${sim.toFixed(2)}`, cls: styles.gradeMedium };
-  return { label: `thin · ${sim.toFixed(2)}`, cls: styles.gradeThin };
+/** Chip for a claim's graded strength (Strong / Moderate / Weak / Model / Myth from the claim register). */
+function strengthGrade(strength: string | null): { label: string; cls: string } {
+  if (!strength) return { label: 'ungraded', cls: styles.gradeThin };
+  const s = strength.toLowerCase();
+  if (s.startsWith('strong')) return { label: strength, cls: styles.gradeStrong };
+  if (s.startsWith('moderate')) return { label: strength, cls: styles.gradeMedium };
+  return { label: strength, cls: styles.gradeThin };
 }
+
+const clip = (text: string, max = 280) => {
+  const t = text.replace(/\s+/g, ' ').trim();
+  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
+};
+const pctOf = (v: number) => `${Math.round(v * 100)}%`;
+const SOURCE_NAME: Record<string, string> = { youtube: 'YouTube', forum: 'a forum', reddit: 'Reddit' };
 
 export function StatusChip({ status }: { status: string }) {
   const s = status.toUpperCase();
   const cls = s === 'LIVE' ? styles.statusLive : s === 'BUILT' ? styles.statusBuilt : s === 'TO BUILD' ? styles.statusToBuild : styles.statusNone;
-  const label = s in STATUS_INFO ? STATUS_INFO[s as TopicNode['status']].label : status;
+  const label = s === 'INTERNAL' ? 'Internal' : s in STATUS_INFO ? STATUS_INFO[s as TopicNode['status']].label : status;
   return <span className={`${styles.statusChip} ${cls}`}>{label}</span>;
 }
 
@@ -84,8 +99,10 @@ export function TopicPanel({ id, lite, onClose }: Props) {
     headingRef.current?.focus({ preventScroll: true });
   }, [id]);
 
-  const n: TopicNode | null = detail ?? lite;
+  const n: TopicNode | null = detail?.topic ?? lite;
   const label = n?.label ?? id;
+  const stance = n?.stance ? STANCE_LABEL[n.stance] : null;
+  const queuePosition = detail?.queue.position ?? null;
 
   return (
     <aside className={styles.panel} aria-label={`Topic: ${label}`}>
@@ -95,6 +112,7 @@ export function TopicPanel({ id, lite, onClose }: Props) {
           {n && <span className={styles.metaChip}>{n.pillarCode}</span>}
           {n && <StatusChip status={n.status} />}
           {n && <span className={styles.metaChip}>{INTENT_LABEL[n.intent] ?? n.intent}</span>}
+          {stance && <span className={styles.metaChip}>{stance}</span>}
           {detail?.fixture && <span className={styles.fixtureChip}>fixture</span>}
         </div>
         <button type="button" className={styles.close} onClick={onClose} aria-label="Close topic">
@@ -102,6 +120,9 @@ export function TopicPanel({ id, lite, onClose }: Props) {
         </button>
       </header>
 
+      {detail && detail.breadcrumb.length > 0 && (
+        <p className={styles.hint}>{detail.breadcrumb.map((b) => b.label).join(' › ')}</p>
+      )}
       <h2 className={styles.panelTitle} tabIndex={-1} ref={headingRef}>
         {label}
       </h2>
@@ -110,10 +131,11 @@ export function TopicPanel({ id, lite, onClose }: Props) {
       {n && (
         <p className={styles.whyLine}>
           <span className={styles.whyTag}>Why it matters</span>
-          {detail?.queuePosition != null ? `Number ${detail.queuePosition} to make next. ` : ''}
+          {queuePosition != null ? `Number ${queuePosition} of ${detail?.queue.size} to make next. ` : ''}
           {whyNow(n)}
         </p>
       )}
+      {n?.reasons?.placement && <p className={styles.hint}>Why it sits here: {n.reasons.placement}.</p>}
 
       <div className={styles.linkRow}>
         <Link href={graphHref(id)} className={styles.textLink}>
@@ -162,10 +184,20 @@ export function TopicPanel({ id, lite, onClose }: Props) {
               .map((q, i) => (
                 <li key={`${q.text}-${i}`} className={styles.query}>
                   <span className={styles.queryText}>&ldquo;{q.text}&rdquo;</span>
-                  <span className={styles.queryMeta}>{q.sources.join(', ')}</span>
+                  <span className={styles.queryMeta}>{q.sources.map((src) => QUERY_SOURCE_LABEL[src] ?? src).join(', ')}</span>
                 </li>
               ))}
           </ul>
+          {n?.audienceWords && n.audienceWords.length > 0 && (
+            <>
+              <p className={styles.hint}>In their own words:</p>
+              {n.audienceWords.slice(0, 4).map((w, i) => (
+                <blockquote key={i} className={styles.excerpt}>
+                  {w}
+                </blockquote>
+              ))}
+            </>
+          )}
         </section>
       )}
 
@@ -177,13 +209,20 @@ export function TopicPanel({ id, lite, onClose }: Props) {
               <li key={p.id} className={styles.card}>
                 <div className={styles.cardHead}>
                   <span className={styles.cardTitle}>{p.label}</span>
-                  <span className={styles.metaChip}>{p.quoteCount.toLocaleString()} quotes</span>
+                  {p.quoteCount != null && <span className={styles.metaChip}>{p.quoteCount.toLocaleString()} quotes</span>}
                 </div>
-                {p.topQuotes.slice(0, 3).map((q, i) => (
+                {p.share != null && <span className={styles.queryMeta}>{pctOf(p.share)} of this problem&rsquo;s audience lands on this topic</span>}
+                {p.quotes.slice(0, 3).map((q, i) => (
                   <figure key={i} className={styles.quote}>
-                    <blockquote>{q.text}</blockquote>
+                    <blockquote>{clip(q.text)}</blockquote>
                     <figcaption>
-                      {q.source}
+                      {isHttp(q.url) ? (
+                        <a href={q.url} className={styles.textLink} target="_blank" rel="noopener noreferrer">
+                          {SOURCE_NAME[q.source ?? ''] ?? q.source ?? 'source'} ↗
+                        </a>
+                      ) : (
+                        (SOURCE_NAME[q.source ?? ''] ?? q.source ?? 'source')
+                      )}
                       {q.likes ? ` · ${q.likes.toLocaleString()} likes` : ''}
                     </figcaption>
                   </figure>
@@ -191,27 +230,59 @@ export function TopicPanel({ id, lite, onClose }: Props) {
               </li>
             ))}
           </ul>
-          <p className={styles.hint}>Likes show attention, not agreement.</p>
+          <p className={styles.hint}>Likes show attention, not agreement. The share is how much of the problem&rsquo;s audience this topic answers.</p>
         </section>
       )}
 
-      {detail && detail.claims.length > 0 && (
+      {detail && (detail.claims.length > 0 || detail.evidence.length > 0) && (
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Claims and evidence</h3>
+          <p className={styles.hint}>
+            Strength is the claim&rsquo;s grade in the claim register. The match is how close the nearest corpus passage sits to it (1.00 is identical).
+          </p>
           <ul className={styles.cardList}>
             {detail.claims.map((c) => {
-              const g = evidenceGrade(c.bestSimilarity);
+              const g = strengthGrade(c.strength);
               return (
                 <li key={c.id} className={styles.card}>
                   <div className={styles.cardHead}>
                     <span className={styles.cardTitle}>{c.label}</span>
                     <span className={`${styles.grade} ${g.cls}`}>{g.label}</span>
                   </div>
-                  <span className={styles.queryMeta}>{c.tier}</span>
-                  {c.excerpt && <blockquote className={styles.excerpt}>{c.excerpt}</blockquote>}
+                  <span className={styles.queryMeta}>
+                    {[c.tier && `tier ${c.tier}`, c.similarity != null ? `closest match ${c.similarity.toFixed(2)}` : 'no corpus match yet', c.via && `linked by ${c.via}`]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                  {c.evidence.slice(0, 2).map((e) => (
+                    <figure key={e.chunkId} className={styles.quote}>
+                      <blockquote>{clip(e.content)}</blockquote>
+                      <figcaption>
+                        {isHttp(e.url) ? (
+                          <a href={e.url} className={styles.textLink} target="_blank" rel="noopener noreferrer">
+                            {e.source} ↗
+                          </a>
+                        ) : (
+                          e.source
+                        )}
+                        {e.similarity != null ? ` · match ${e.similarity.toFixed(2)}` : ''}
+                        {e.tier ? ` · ${e.tier}` : ''}
+                      </figcaption>
+                    </figure>
+                  ))}
                 </li>
               );
             })}
+            {detail.evidence.map((e, i) => (
+              <li key={`own-${i}`} className={styles.card}>
+                <div className={styles.cardHead}>
+                  <span className={styles.cardTitle}>Closest corpus passage to the topic itself</span>
+                  {e.similarity != null && <span className={`${styles.grade} ${styles.gradeThin}`}>match {e.similarity.toFixed(2)}</span>}
+                </div>
+                <blockquote className={styles.excerpt}>{clip(e.label)}</blockquote>
+                {e.source && <span className={styles.queryMeta}>{e.source}</span>}
+              </li>
+            ))}
           </ul>
         </section>
       )}
@@ -225,19 +296,20 @@ export function TopicPanel({ id, lite, onClose }: Props) {
             <ul className={styles.rowList}>
               {detail.assets.map((a, i) => (
                 <li key={`${a.kind}-${a.ref}-${i}`} className={styles.row}>
-                  <StatusChip status={a.status} />
+                  <StatusChip status={assetState(a)} />
                   <span className={styles.rowKind}>{a.kind}</span>
                   {isLocal(a.href) ? (
                     <Link href={a.href} className={styles.textLink}>
-                      {a.ref}
+                      {a.label ?? a.ref}
                     </Link>
                   ) : isHttp(a.href) ? (
                     <a href={a.href} className={styles.textLink} target="_blank" rel="noopener noreferrer">
-                      {a.ref} ↗
+                      {a.label ?? a.ref} ↗
                     </a>
                   ) : (
-                    <span className={styles.rowLabel}>{a.ref}</span>
+                    <span className={styles.rowLabel}>{a.label ?? a.ref}</span>
                   )}
+                  {a.detail && assetState(a) !== 'INTERNAL' && <span className={styles.queryMeta}>{a.detail}</span>}
                 </li>
               ))}
             </ul>
@@ -251,7 +323,10 @@ export function TopicPanel({ id, lite, onClose }: Props) {
           <ul className={styles.rowList}>
             {detail.products.map((p) => (
               <li key={p.id} className={styles.row}>
+                {p.status && <StatusChip status={p.status} />}
                 <span className={styles.rowLabel}>{p.label}</span>
+                {p.fit != null && <span className={styles.queryMeta}>fit {pctOf(p.fit)}</span>}
+                {p.via && <span className={styles.queryMeta}>{p.via}</span>}
               </li>
             ))}
           </ul>
@@ -263,7 +338,7 @@ export function TopicPanel({ id, lite, onClose }: Props) {
           <h3 className={styles.sectionTitle}>Who else covers it (context)</h3>
           <ul className={styles.rowList}>
             {detail.competitors.map((c) => (
-              <li key={c.id} className={styles.row}>
+              <li key={c.creatorId} className={styles.row}>
                 {isHttp(c.url) ? (
                   <a href={c.url} className={styles.textLink} target="_blank" rel="noopener noreferrer">
                     {c.label} ↗
@@ -271,17 +346,19 @@ export function TopicPanel({ id, lite, onClose }: Props) {
                 ) : (
                   <span className={styles.rowLabel}>{c.label}</span>
                 )}
+                <span className={styles.queryMeta}>overlap {pctOf(c.weight)}</span>
                 {c.outlier != null && <span className={styles.queryMeta}>best video {c.outlier.toFixed(1)} times their usual views</span>}
+                {c.via && <span className={styles.queryMeta}>{c.via}</span>}
               </li>
             ))}
           </ul>
         </section>
       )}
 
-      {detail?.notes && (
+      {detail?.topic.notes && (
         <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>Notes</h3>
-          <p className={styles.summary}>{detail.notes}</p>
+          <h3 className={styles.sectionTitle}>Builder notes</h3>
+          <p className={styles.summary}>{detail.topic.notes}</p>
         </section>
       )}
 

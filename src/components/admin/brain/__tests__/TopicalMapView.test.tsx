@@ -75,7 +75,7 @@ describe('TopicalMapView (synthetic fixture)', () => {
     expect(new URLSearchParams(window.location.search).get('topic')).toBe(first.id);
     await within(panel).findByText(/sample search phrasing 1/);
     expect(within(panel).getByText('Product fit')).toBeInTheDocument();
-    expect(within(panel).getByText(/Number 1 in the make-next queue/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Number 1 of \d+ in the make-next queue/)).toBeInTheDocument();
     expect(within(panel).getByRole('link', { name: /Open in graph/ })).toHaveAttribute('href', `/admin/brain/graph?node=${encodeURIComponent(first.id)}`);
     expect(within(panel).getByText('Comments for Claude')).toBeInTheDocument();
     expect(within(panel).getByRole('form', { name: 'Leave feedback' })).toBeInTheDocument();

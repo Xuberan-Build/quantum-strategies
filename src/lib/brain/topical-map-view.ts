@@ -3,12 +3,14 @@
  * the sunburst (partition) layout, filter matching, URL state and the plain-words
  * "why" lines. Pure functions, no brain content, no data access.
  *
- * Types come from the contract in ./topical-map (type-only imports, so nothing
- * server-side reaches the client bundle).
+ * Types come from the data layer in ./topical-map (type-only imports, so nothing
+ * server-side reaches the client bundle); constants from the client-safe
+ * ./topical-map-types.
  */
-import type { getTopicalQueue, TopicalMap, TopicNode, TopicScorecard } from './topical-map';
+import type { getTopicalQueue, ScorecardAsset, TopicalMap, TopicNode, TopicScorecard } from './topical-map';
+import { QUEUE_MAX_COVERAGE } from './topical-map-types';
 
-export type { TopicalMap, TopicNode, TopicScorecard };
+export type { ScorecardAsset, TopicalMap, TopicNode, TopicScorecard };
 export type TopicStatus = TopicNode['status'];
 export type TopicIntent = TopicNode['intent'];
 export type TopicLevel = TopicNode['level'];
@@ -104,6 +106,22 @@ export const INTENT_LABEL: Record<TopicIntent, string> = {
   comparison: 'Comparing options',
   commercial: 'Ready to buy',
   navigational: 'Looking for us',
+};
+
+/** Plain names for where a search phrasing was seen (TopicQuery.sources). */
+export const QUERY_SOURCE_LABEL: Record<TopicNode['queries'][number]['sources'][number], string> = {
+  google_ac: 'Google autocomplete',
+  youtube_ac: 'YouTube autocomplete',
+  audience: 'audience comments',
+  vidiq: 'vidIQ keywords',
+};
+
+/** Vocabulary stance worth flagging on a topic (use is the default and goes unsaid). */
+export const STANCE_LABEL: Record<NonNullable<TopicNode['stance']>, string | null> = {
+  use: null,
+  reframe: 'Their word, reframed',
+  avoid: 'Word to avoid',
+  guardrail: 'Guardrail',
 };
 
 export const LEVEL_LABEL: Record<TopicLevel, string> = {
@@ -360,28 +378,48 @@ export function mapViewToQuery(v: MapViewState): string {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
+/**
+ * Where an asset really stands. The data layer folds the architecture's own statuses into the four map
+ * statuses (an "internal" deck or doc reads as LIVE); this keeps internal work apart from public work.
+ */
+export function assetState(a: ScorecardAsset): string {
+  return a.detail?.toLowerCase() === 'internal' ? 'INTERNAL' : a.status;
+}
+
+/** Best corpus similarity behind a scorecard: its claims first, else the topic's own closest passage. */
+export function bestSimilarity(t: TopicScorecard): number | null {
+  const sims = [...t.claims.map((c) => c.similarity), ...t.evidence.map((e) => e.similarity)].filter((v): v is number => typeof v === 'number');
+  return sims.length ? Math.max(...sims) : null;
+}
+
 /** One line per score explaining where the number comes from, for the drill-down panel. */
 export function scoreWhy(key: ScoreKey, t: TopicScorecard): string {
   switch (key) {
     case 'demand': {
-      const quotes = t.problems.reduce((s, p) => s + (p.quoteCount ?? 0), 0);
-      if (!t.queryCount && !quotes) return 'No searches or audience comments point here yet.';
-      return `${plural(t.queryCount, 'search phrasing')} and ${plural(quotes, 'audience comment')} point here.`;
+      const queries = t.queries.length;
+      const quotes = t.problems.reduce((s, p) => s + (p.quoteCount ?? p.quotes.length), 0);
+      if (!queries && !quotes) return 'No searches or audience comments point here yet.';
+      return `${plural(queries, 'search phrasing')} and ${plural(quotes, 'audience comment')} point here.`;
     }
     case 'proof': {
-      if (!t.claims.length) return 'No claim in the corpus backs this yet.';
-      const best = t.claims.reduce<number | null>((m, c) => (c.bestSimilarity == null ? m : Math.max(m ?? 0, c.bestSimilarity)), null);
+      const best = bestSimilarity(t);
+      if (!t.claims.length) {
+        return best == null ? 'No claim in the corpus backs this yet.' : `No claim linked yet; the closest corpus passage matches at ${best.toFixed(2)} (1.00 is identical).`;
+      }
+      const graded = t.claims.map((c) => c.strength).filter((v): v is string => !!v);
+      const grades = graded.length ? `, graded ${[...new Set(graded)].join(', ')}` : '';
       return best == null
-        ? `${plural(t.claims.length, 'claim')} here, none matched to corpus evidence yet.`
-        : `${plural(t.claims.length, 'claim')}; the closest corpus evidence matches at ${best.toFixed(2)} (1.00 is identical).`;
+        ? `${plural(t.claims.length, 'claim')}${grades}; none matched to corpus evidence yet.`
+        : `${plural(t.claims.length, 'claim')}${grades}; the closest corpus evidence matches at ${best.toFixed(2)} (1.00 is identical).`;
     }
     case 'coverage': {
       if (!t.assets.length) return 'Nothing made on this yet.';
-      const count = (s: string) => t.assets.filter((a) => a.status.toUpperCase() === s).length;
+      const count = (s: string) => t.assets.filter((a) => assetState(a) === s).length;
       const parts = [
         count('LIVE') && `${count('LIVE')} LIVE`,
         count('BUILT') && `${count('BUILT')} BUILT`,
         count('TO BUILD') && `${count('TO BUILD')} TO BUILD`,
+        count('INTERNAL') && `${count('INTERNAL')} internal ${count('INTERNAL') === 1 ? 'deck or doc' : 'decks or docs'}, not public`,
       ].filter(Boolean);
       return `${plural(t.assets.length, 'asset')}: ${parts.join(', ') || 'status unverified'}.`;
     }
@@ -392,9 +430,20 @@ export function scoreWhy(key: ScoreKey, t: TopicScorecard): string {
     }
     case 'productFit':
       return t.products.length ? `Leads to ${t.products.map((p) => p.label).join(', ')}.` : 'Does not lead to a Rite, the quiz or the beta yet.';
-    case 'priority':
-      return t.queuePosition != null ? `Number ${t.queuePosition} in the make-next queue. ${whyNow(t)}` : `Not in the make-next queue. ${whyNow(t)}`;
+    case 'priority': {
+      const { position, size } = t.queue;
+      if (position != null) return `Number ${position} of ${size} in the make-next queue. ${whyNow(t.topic)}`;
+      return `${notQueuedReason(t.topic)} ${whyNow(t.topic)}`;
+    }
   }
+}
+
+/** Why a node is not in the make-next queue (mirrors queueFrom() in the data layer). */
+export function notQueuedReason(n: TopicNode): string {
+  if (n.level !== 'topic') return `Not in the make-next queue: only topics are queued, this is a ${LEVEL_LABEL[n.level].toLowerCase()}.`;
+  if (n.stance === 'guardrail') return 'Not in the make-next queue: a guardrail topic, never queued.';
+  if (n.scores.coverage >= QUEUE_MAX_COVERAGE) return `Not in the make-next queue: coverage is already ${Math.round(n.scores.coverage)} (the queue takes topics under ${QUEUE_MAX_COVERAGE}).`;
+  return 'Not in the make-next queue.';
 }
 
 type WhyInput = Pick<QueueItem, 'demand' | 'proof' | 'coverage' | 'status'>;

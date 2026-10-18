@@ -1,6 +1,7 @@
 'use client';
 
 /** The "Make next" list: top topics by priority, each with a one-line reason. */
+import { QUEUE_MAX_COVERAGE } from '@/lib/brain/topical-map-types';
 import { whyNow, type QueuePayload } from '@/lib/brain/topical-map-view';
 import { StatusChip } from './TopicPanel';
 import styles from './map.module.css';
@@ -20,7 +21,7 @@ export function QueuePanel({ queue, error, labelFor, onPick }: Props) {
         {queue?.fixture && <span className={styles.fixtureChip}>fixture</span>}
       </header>
       <p className={styles.hint}>
-        The topics to make first, highest priority at the top. Topics with a LIVE asset drop out. Click one for its scorecard.
+        The topics to make first, highest priority at the top. A topic stays here until its coverage reaches {QUEUE_MAX_COVERAGE}, so a thin LIVE asset does not take it off the list. Click one for its scorecard.
       </p>
       {error && (
         <p className={styles.error} role="alert">

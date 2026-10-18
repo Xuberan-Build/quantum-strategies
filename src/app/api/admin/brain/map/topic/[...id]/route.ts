@@ -1,9 +1,9 @@
 /**
  * /api/admin/brain/map/topic/topic:<slug>
  *
- * GET → TopicScorecard: the topic plus its queries, problems (with top quotes),
- *   claims (evidence strength), assets, competitors (context), products and its
- *   place in the make-next queue.
+ * GET → TopicScorecard { topic, breadcrumb, children, queries, problems (share + top
+ *   quotes), claims (strength, similarity, evidence passages), evidence, assets,
+ *   competitors (context), products (status, fit), queue { position, size } }.
  *
  * Catch-all segment so slugs holding slashes survive. Admin only, checked first.
  * Dev-only fixture fallback, as in the map route.

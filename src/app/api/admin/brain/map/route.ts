@@ -1,13 +1,14 @@
 /**
  * /api/admin/brain/map
  *
- * GET → TopicalMap { centralEntity, sourceContext, generatedAt, nodes }
+ * GET → TopicalMap { version, centralEntity, sourceContext, generatedAt, levels, nodes, meta }
  *   The whole pillar → section → topic → subtopic tree with scores, for the
  *   /admin/brain/map sunburst. Filtering happens on the client.
  *
- * Admin only (validateAdminApiRequest), checked before any data access. In development
- * only, a synthetic fixture is served when the data cannot be read, flagged
- * `fixture: true`. Production returns the error.
+ * Admin only (validateAdminApiRequest), checked before any data access. A synthetic
+ * fixture is served when the data cannot be read only in development with
+ * BRAIN_GRAPH_FIXTURE=1 (fixtureAllowed()), flagged `fixture: true`. Otherwise the
+ * error is returned.
  */
 import { NextResponse } from 'next/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';

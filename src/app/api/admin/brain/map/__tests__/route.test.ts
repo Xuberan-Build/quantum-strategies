@@ -13,7 +13,7 @@ import { GET as getTopicRoute } from '../topic/[...id]/route';
 import { GET as getQueue } from '../queue/route';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getTopic, getTopicalMap, getTopicalQueue } from '@/lib/brain/topical-map';
-import type { TopicNode, TopicScorecard } from '@/lib/brain/topical-map';
+import type { TopicNode, TopicScorecard, TopicalMap } from '@/lib/brain/topical-map';
 
 const ADMIN = { id: '9c1d2e3f-0000-4000-8000-000000000001', email: 'admin@example.com', name: 'Admin' };
 
@@ -24,27 +24,37 @@ const NODE: TopicNode = {
   parent: 'topic:pillar-a',
   pillarCode: 'P1',
   intent: 'problem',
+  summary: 'A synthetic topic.',
+  mapsTo: {},
+  queries: [{ text: 'why does x', sources: ['google_ac'], signal: 5 }],
   scores: { demand: 80, proof: 60, coverage: 10, competition: 30, productFit: 70, priority: 77 },
   status: 'TO BUILD',
-  queryCount: 12,
+  assets: [],
+  competitors: [],
+  notes: '',
 };
 
-const MAP = {
+const MAP: TopicalMap = {
+  version: 1,
   centralEntity: { label: 'Centre', definition: 'A definition.' },
   sourceContext: 'Synthetic.',
   generatedAt: '2026-10-17T00:00:00Z',
+  levels: ['pillar', 'section', 'topic', 'subtopic'],
   nodes: [NODE],
 };
 
 const CARD: TopicScorecard = {
-  ...NODE,
-  queries: [{ text: 'why does x', sources: ['autocomplete'], signal: 50 }],
-  problems: [],
-  claims: [],
+  topic: NODE,
+  breadcrumb: [{ id: 'topic:pillar-a', label: 'Pillar A', level: 'pillar' }],
+  children: [],
+  queries: NODE.queries,
+  problems: [{ id: 'problem:x', label: 'X', share: 1, quoteCount: 4, quotes: [{ text: 'a quote', likes: 3, source: 'youtube', url: null }] }],
+  claims: [{ id: 'claim:a', label: 'A', tier: 'M', strength: 'Moderate', similarity: 0.46, via: 'architecture source', evidence: [] }],
+  evidence: [],
   assets: [],
   competitors: [],
-  products: [],
-  queuePosition: 3,
+  products: [{ id: 'product:p', label: 'P', status: 'LIVE', fit: 1, via: 'route' }],
+  queue: { position: 3, size: 31 },
 };
 
 const ctx = (...id: string[]) => ({ params: Promise.resolve({ id }) });
@@ -87,6 +97,8 @@ describe('/api/admin/brain/map routes', () => {
     expect(body.nodes).toEqual([]);
 
     vi.stubEnv('NODE_ENV', 'development');
+    expect((await getMap()).status).toBe(500); // dev without the opt-in flag still shows the real error
+    vi.stubEnv('BRAIN_GRAPH_FIXTURE', '1');
     const dev = await getMap();
     expect(dev.status).toBe(200);
     const devBody = await dev.json();
@@ -124,12 +136,14 @@ describe('/api/admin/brain/map routes', () => {
 
   it('serves a fixture scorecard in development when the data layer fails', async () => {
     vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('BRAIN_GRAPH_FIXTURE', '1');
     vi.mocked(getTopic).mockRejectedValue(new Error('not built'));
     const res = await getTopicRoute(req(), ctx('topic:fixture-topic-2-1-1'));
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toMatchObject({ id: 'topic:fixture-topic-2-1-1', fixture: true });
+    expect(json).toMatchObject({ topic: { id: 'topic:fixture-topic-2-1-1' }, fixture: true });
     expect(Array.isArray(json.queries)).toBe(true);
+    expect(json.queue).toHaveProperty('size');
   });
 
   it('returns the queue, clamping the limit', async () => {
@@ -154,6 +168,7 @@ describe('/api/admin/brain/map routes', () => {
     expect(await prod.json()).toEqual({ error: 'Could not load the queue', items: [] });
 
     vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('BRAIN_GRAPH_FIXTURE', '1');
     const dev = await getQueue(req('http://localhost/api/admin/brain/map/queue?limit=5'));
     const body = await dev.json();
     expect(body.fixture).toBe(true);
