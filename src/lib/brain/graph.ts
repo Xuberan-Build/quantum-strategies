@@ -32,6 +32,8 @@ export const NODE_TYPES = [
   'doc',
   'corpus_source',
   'segment',
+  'topic',
+  'query',
 ] as const;
 
 export const EDGE_TYPES = [
@@ -51,6 +53,9 @@ export const EDGE_TYPES = [
   'belongs_to_pillar',
   'decided_in',
   'feedback_on',
+  'asks_about',
+  'covered_by',
+  'competes_on',
 ] as const;
 
 export type NodeType = (typeof NODE_TYPES)[number];
@@ -299,6 +304,8 @@ export const NODE_TYPE_COLOR: Record<NodeType, string> = {
   deck: '#d8c7a4',
   doc: '#cfc0a8',
   corpus_source: '#7d8a99',
+  topic: '#d48a6a',
+  query: '#a7dccb',
 };
 
 export const GAP_COLOR = '#fab219';

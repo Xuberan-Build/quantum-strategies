@@ -238,7 +238,9 @@ export async function buildGraph(brainDir: string, configPath: string | undefine
 
   // Prune what disappeared from the sources this run owns (never corpus tables; only kg_*).
   const ran: string[] = opts.only ? [opts.only] : [...PIPELINE.map(([n]) => n), ...(runCorpus && corpusIdx ? ['corpus'] : [])];
-  const shrink = existing.size > 0 && nodes.length < existing.size * 0.5 && !opts.only;
+  // Rows owned only by the topical map (scripts/brain/build-topical-map.ts) are not this builder's; don't count them.
+  const ownExisting = [...existing.values()].filter((v) => !(v.extractors.length === 1 && v.extractors[0] === 'topical-map')).length;
+  const shrink = ownExisting > 0 && nodes.length < ownExisting * 0.5 && !opts.only;
   if (shrink && !opts.forcePrune) {
     report.warnings.push(`prune skipped: this build has ${nodes.length} nodes vs ${existing.size} in the database (<50%). Check --brain-dir, or pass --force-prune.`);
   } else {

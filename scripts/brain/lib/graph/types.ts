@@ -6,13 +6,14 @@
 export const NODE_TYPES = [
   'note', 'pillar', 'sub_pillar', 'cluster', 'cornerstone', 'spoke', 'problem', 'quote', 'source',
   'community', 'creator', 'claim', 'mechanism', 'solution_type', 'product', 'rite', 'decision',
-  'principle', 'deck', 'doc', 'corpus_source', 'segment',
+  'principle', 'deck', 'doc', 'corpus_source', 'segment', 'topic', 'query',
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
 export const EDGE_TYPES = [
   'links_to', 'part_of', 'mentions', 'voices', 'from_source', 'in_community', 'evidences', 'supports',
   'contradicts', 'explains', 'solves', 'addresses', 'routes_to', 'belongs_to_pillar', 'decided_in', 'feedback_on',
+  'asks_about', 'covered_by', 'competes_on',
 ] as const;
 export type EdgeType = (typeof EDGE_TYPES)[number];
 
