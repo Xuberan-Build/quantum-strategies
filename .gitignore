@@ -89,3 +89,6 @@ scripts/brain/tick.env
 
 # Test fixtures for the brain graph builder (synthetic, no secrets)
 !scripts/brain/lib/graph/__tests__/fixtures/**/*.json
+
+# Perception Read email previews (dev)
+.read-email-previews/
