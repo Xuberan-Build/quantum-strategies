@@ -101,11 +101,17 @@ export function GraphCanvas(props: GraphCanvasProps) {
     const order = g.order;
     const settings = {
       ...lib.inferSettings(g),
-      gravity: variant === 'mini' ? 2 : 0.8,
-      scalingRatio: variant === 'mini' ? 6 : 12,
-      slowDown: 2 + Math.log10(order + 1) * 2,
+      // Obsidian-like spread: LinLog pulls communities into separate islands,
+      // outbound attraction distribution keeps hubs from swallowing their
+      // neighbourhoods, and low gravity lets the islands breathe.
+      linLogMode: variant !== 'mini',
+      outboundAttractionDistribution: true,
+      gravity: variant === 'mini' ? 1.5 : 0.05,
+      scalingRatio: variant === 'mini' ? 8 : 60,
+      slowDown: 1 + Math.log10(order + 1),
       barnesHutOptimize: order > 800,
-      edgeWeightInfluence: 0.6,
+      barnesHutTheta: 0.6,
+      edgeWeightInfluence: 0.3,
       adjustSizes: false,
     };
     const reduced = propsRef.current.reducedMotion;
@@ -125,6 +131,9 @@ export function GraphCanvas(props: GraphCanvasProps) {
         });
       }
       savePositions();
+      // Fit the settled layout to the view so the graph sits centred.
+      sigmaRef.current?.refresh();
+      sigmaRef.current?.getCamera().animatedReset({ duration: propsRef.current.reducedMotion ? 0 : 600 });
       propsRef.current.onSettledChange?.(true);
     }, durationMs);
   }
@@ -161,9 +170,9 @@ export function GraphCanvas(props: GraphCanvasProps) {
           labelSize: mini ? 10 : 11,
           labelWeight: '500',
           labelColor: { color: '#efe6d6' },
-          labelDensity: mini ? 2 : 0.9,
-          labelGridCellSize: mini ? 60 : 110,
-          labelRenderedSizeThreshold: mini ? 0 : 4.5,
+          labelDensity: mini ? 2 : 0.45,
+          labelGridCellSize: mini ? 60 : 160,
+          labelRenderedSizeThreshold: mini ? 0 : 9,
           defaultDrawNodeLabel: drawFadingLabel,
           defaultDrawNodeHover: drawGlowHover,
           stagePadding: mini ? 24 : 48,
@@ -382,7 +391,7 @@ export function GraphCanvas(props: GraphCanvasProps) {
       const initial = firstSync.current;
       firstSync.current = false;
       const n = g.order;
-      runLayout(initial ? Math.min(9000, 2500 + n * 1.2) : variant === 'mini' ? 1500 : 2200);
+      runLayout(initial ? Math.min(14000, 4000 + n * 3) : variant === 'mini' ? 1500 : 2200);
     } else {
       sigma.refresh();
     }

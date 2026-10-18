@@ -110,6 +110,10 @@ describe('/api/admin/brain/graph', () => {
     expect(body.nodes).toEqual([]);
 
     vi.stubEnv('NODE_ENV', 'development');
+    const devNoFlag = await getGraph(new NextRequest('http://localhost/api/admin/brain/graph'));
+    expect(devNoFlag.status).toBe(500); // no silent fallback without BRAIN_GRAPH_FIXTURE=1
+
+    vi.stubEnv('BRAIN_GRAPH_FIXTURE', '1');
     const dev = await getGraph(new NextRequest('http://localhost/api/admin/brain/graph'));
     expect(dev.status).toBe(200);
     const devBody = await dev.json();

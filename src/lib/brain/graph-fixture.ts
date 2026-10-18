@@ -15,8 +15,17 @@ import {
   withDegree,
 } from './graph';
 
+/**
+ * The synthetic fixture only replaces real data when explicitly switched on
+ * (BRAIN_GRAPH_FIXTURE=1 in a dev environment). Silently falling back hid a real
+ * load failure on 2026-10-17, so by default the API returns the error instead.
+ */
 export function fixtureAllowed(): boolean {
-  return process.env.NODE_ENV === 'development' && process.env.VERCEL_ENV !== 'production';
+  return (
+    process.env.BRAIN_GRAPH_FIXTURE === '1' &&
+    process.env.NODE_ENV === 'development' &&
+    process.env.VERCEL_ENV !== 'production'
+  );
 }
 
 function rng(seed: number) {

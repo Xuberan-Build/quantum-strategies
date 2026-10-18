@@ -314,7 +314,7 @@ export const NODE_TYPE_LABEL: Record<NodeType, string> = Object.fromEntries(
 export function nodeSize(weight: number | null, degree: number, maxWeight: number, maxDegree: number, scale = 1): number {
   const w = maxWeight > 0 ? Math.max(0, weight ?? 0) / maxWeight : 0;
   const d = maxDegree > 0 ? Math.log1p(degree) / Math.log1p(maxDegree) : 0;
-  return (2.2 + 9 * Math.sqrt(0.45 * w + 0.55 * d)) * scale;
+  return (1.4 + 7 * Math.pow(0.45 * w + 0.55 * d, 0.75)) * scale;
 }
 
 /* ---------------------------------------------------------------- URL state */
