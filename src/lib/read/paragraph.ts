@@ -4,11 +4,14 @@
  * SERVER-ONLY. Imports the OpenAI client (API key) and keeps the system prompt on the server.
  * Never import this from a client component; results.ts loads it lazily inside buildResult.
  *
- * Flow: pick the person's quotable phrases (free text below safety tier 2) → one model call
- * (12s budget, one retry if time allows) → verify in code → else a static per-pattern fallback.
- * Verification: at least two quotes, each verbatim from their answers; every quote is theirs;
- * 60-130 words; no "?"; no em-dash; no banned word (Read list + voice-pack banned terms and
- * AI-prose patterns). Tier-1 and tier-2 text is never sent to the model.
+ * Flow: pick the person's quotable phrases (free text below safety tier 2) → one model call that
+ * returns JSON (the paragraph plus the exact spans it quotes; 12s budget, one retry if time allows)
+ * → verify in code → else a static per-pattern fallback. The model gets two separate inputs: the
+ * person's own typed words (quotable) and their tapped option labels (paraphrase only).
+ * Verification: the number of verbatim quotes the free text allows (two, or one when it is thin);
+ * every quote is theirs; the quotes listed match the quoted spans; no option-label wording; 60-130
+ * words; no "?"; no em-dash; no banned word (Read list + voice-pack banned terms and AI-prose patterns).
+ * Tier-1 and tier-2 text is never sent to the model.
  */
 import { openai } from '@/lib/openai/client';
 import { FALLBACK_VOICE_PACK, findAiProse, findBannedTerms, normaliseQuotes } from '@/lib/content/voice-pack';
@@ -51,17 +54,23 @@ export const READ_PARAGRAPH_BANNED = {
   ],
 };
 
-export const MIRROR_SYSTEM_PROMPT = `You write one short paragraph for a free reflection tool called the Perception Read. You mirror a person's own answers back to them so they feel accurately read. You are not a coach and you don't give advice.
+export const MIRROR_SYSTEM_PROMPT = `You write one short paragraph for a free reflection tool called the Perception Read. You reflect a person's own answers back to them so they feel accurately read. You are not a coach, and you give no advice.
+
+The user message has two separate inputs. Treat them differently.
+- "Their own words": text the person typed. You may quote from these, and only these.
+- "Their picks": labels for options the person tapped. These are our wording, not theirs. Never quote them and never copy their wording. Say what the pick means in your own words.
 
 Rules, all required:
-1. Quote at least two phrases from the person's own words exactly as written, in straight double quotes. Copy them character for character. Only quote text listed under "Their words". Never put anything else in double quotes.
-2. Describe what they did and said. Never what they are. No labels, no types, no archetypes, no pattern names.
-3. Write to them as "you". No questions. No advice, tips or next steps. No outcomes, promises or timelines.
-4. Never mention a birth chart, astrology, Human Design or any sign or type. Never use these words: quantum, frequency, vibration, energy, universe, manifest, alignment, abundance.
-5. Never name or hint at a health condition or a diagnosis. No clinical or therapy words.
-6. Plain sentences of 8 to 20 words. No em-dashes. No "it's not X, it's Y". No lists of three for rhythm. No exclamation marks.
-7. Between 70 and 110 words, one paragraph, plain text.
-8. If there isn't enough in their words to quote two phrases, reply with exactly: INSUFFICIENT
+1. Quote exactly the number of phrases the user message asks for. Each quote is copied character for character from one item under "Their own words", in straight double quotes in the paragraph. A quote is at least two words, or the whole item.
+2. Put nothing in double quotes except those quotes. Never quote a pick, and never reuse a pick's wording, quoted or not. Say the same idea in fresh words.
+3. Describe what they did and said. Never what they are. No labels, types, archetypes or pattern names.
+4. Write to them as "you". No questions. No advice, tips or next steps. No outcomes, promises or timelines.
+5. Never mention a birth chart, astrology, Human Design or any sign or type. Never use these words: quantum, frequency, vibration, energy, universe, manifest, alignment, abundance.
+6. Never name or hint at a health condition or a diagnosis. No clinical or therapy words.
+7. Plain sentences of 8 to 20 words. No em-dashes. No "it's not X, it's Y". No lists of three for rhythm. No exclamation marks.
+8. 70 to 110 words, one paragraph.
+9. Reply with JSON only, in this shape: {"paragraph": "...", "quotes": ["...", "..."]}. "quotes" lists every phrase quoted in the paragraph, exactly as it appears between the quote marks.
+10. If "Their own words" has nothing to quote, reply {"paragraph": "INSUFFICIENT", "quotes": []}.
 
 Voice: an operator reporting what he saw in their answers. Direct, plain, kind. Concrete beats clever.`;
 
@@ -107,13 +116,11 @@ function labels(values: string[]): string[] {
   return values.map((v) => optionLabel(v)).filter((x): x is string => !!x);
 }
 
-/** The user message: their tapped answers as labels, their words as quotable text. No chart, ever. */
-export function buildUserMessage(input: MirrorParagraphInput, quotable: Record<string, string>): string {
-  const { answers, pattern } = input;
-  const lines: string[] = [];
+/** The person's tapped answers as labels. Our wording: the model paraphrases these and never quotes them. */
+function tappedLines(answers: ReadAnswers): [string, string[]][] {
   const own = wantOrShouldOf(answers);
   const hours = q7HoursTag(answers);
-  const tapped: [string, string[]][] = [
+  return [
     ['Their week right now', labels(choiceOf(answers, 'q1'))],
     ['Things they have said in the last month', labels(choiceOf(answers, 'q2').filter((t) => t !== 'say:other'))],
     ['When asked a favour on a full day', labels(choiceOf(answers, 'q3'))],
@@ -124,10 +131,41 @@ export function buildUserMessage(input: MirrorParagraphInput, quotable: Record<s
     ['What got the hours instead', labels([partString(answers, 'q7', 'instead') ?? ''].filter(Boolean))],
     ['Want or supposed to', own ? [own === 'should' ? 'supposed to want' : own === 'unsure' ? 'not sure' : 'want'] : []],
   ];
-  lines.push('Their tapped answers (paraphrase these, never quote them):');
-  for (const [k, v] of tapped) if (v.length) lines.push(`- ${k}: ${v.join('; ')}`);
-  lines.push('', 'Their words (quote at least two of these exactly):');
-  for (const [k, v] of Object.entries(quotable)) lines.push(`- ${FIELD_LABELS[k] ?? 'Their words'}: ${v}`);
+}
+
+/** Every option label the person tapped, for the wording check in verification. */
+export function tappedLabels(answers: ReadAnswers): string[] {
+  return tappedLines(answers).flatMap(([, v]) => v);
+}
+
+/**
+ * How many verbatim quotes the paragraph must carry. Two when the free text allows two quotes
+ * (two usable answers, or one answer with two clauses); one when it is thin; zero means no usable text.
+ */
+export function requiredQuotes(quotable: Record<string, string>): number {
+  const fields = Object.values(quotable).filter((t) => wordCount(t) >= 2);
+  if (fields.length >= 2) return 2;
+  if (fields.length === 1 && fields[0].split(/[.!?\n]/).filter((c) => wordCount(c) >= 2).length >= 2) return 2;
+  return fields.length ? 1 : 0;
+}
+
+/**
+ * The user message. Two separate inputs: their own words (quotable, copied exactly) and their picks
+ * (labels to paraphrase). No chart, ever.
+ */
+export function buildUserMessage(input: MirrorParagraphInput, quotable: Record<string, string>, required = requiredQuotes(quotable)): string {
+  const { answers, pattern } = input;
+  const lines: string[] = [];
+  lines.push(`Quotes required: exactly ${required}, taken from "Their own words" only.`, '');
+  lines.push('Their own words (you may quote from these, copied exactly):');
+  const words = Object.entries(quotable);
+  if (!words.length) lines.push('- (nothing typed)');
+  for (const [k, v] of words) lines.push(`- ${FIELD_LABELS[k] ?? 'Their words'}: ${v}`);
+  lines.push(
+    '',
+    'Their picks (our labels for what they tapped. These are not their words: paraphrase the idea, never quote or copy the wording):',
+  );
+  for (const [k, v] of tappedLines(answers)) if (v.length) lines.push(`- ${k}: ${v.join('; ')}`);
   lines.push('', `What their answers point to, for your focus only (don't name it): ${PATTERNS[pattern].read}`);
   return lines.join('\n');
 }
@@ -159,13 +197,71 @@ export function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+/** Lower-case words: letters, digits and apostrophes. Used for the label-wording check. */
+function tokens(text: string): string[] {
+  return normaliseQuotes(text).toLowerCase().replace(/[^a-z0-9']+/g, ' ').trim().split(' ').filter(Boolean);
+}
+
+/** Runs of six words from a label. Shorter runs are ordinary phrases that free text also uses. */
+const RUN_WORDS = 6;
+function wordRuns(words: string[]): string[] {
+  return Array.from({ length: Math.max(0, words.length - RUN_WORDS + 1) }, (_, i) => words.slice(i, i + RUN_WORDS).join(' '));
+}
+
+/**
+ * Option-label wording in the paragraph, quoted or not. A pick may be paraphrased, never copied:
+ * any six-word run from a label fails, unless the person's own words contain that run too.
+ * (Quoted label text is caught earlier, by the quote check.)
+ */
+export function labelWordingLeaks(text: string, labels: string[], freeText: string[]): string[] {
+  const hay = ` ${tokens(text).join(' ')} `;
+  const own = new Set(freeText.flatMap((f) => wordRuns(tokens(f))));
+  const hits = new Set<string>();
+  for (const label of labels) {
+    for (const run of wordRuns(tokens(label))) {
+      if (own.has(run)) continue;
+      if (hay.includes(` ${run} `)) hits.add(run);
+    }
+  }
+  return [...hits];
+}
+
 export interface Verification {
   ok: boolean;
   failures: string[];
 }
 
+export interface VerifyOptions {
+  /** Verbatim quotes the paragraph must carry from the person's own words. Default 2. */
+  required?: number;
+  /** The person's option labels. Their wording may not appear in the paragraph. */
+  labels?: string[];
+  /** The quotes the model listed in its reply. Must match the quoted spans in the paragraph exactly. */
+  listed?: string[];
+}
+
+export interface MirrorReply {
+  paragraph: string;
+  quotes: string[];
+}
+
+/** Parse the model's JSON reply. Null when it is not the expected shape. */
+export function parseMirrorReply(raw: string): MirrorReply | null {
+  const body = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  try {
+    const o = JSON.parse(body) as unknown;
+    if (!o || typeof o !== 'object') return null;
+    const { paragraph, quotes } = o as Record<string, unknown>;
+    if (typeof paragraph !== 'string' || !Array.isArray(quotes) || !quotes.every((q) => typeof q === 'string')) return null;
+    return { paragraph: paragraph.trim(), quotes: quotes as string[] };
+  } catch {
+    return null;
+  }
+}
+
 /** Every check in code; any failure means the static fallback is used. */
-export function verifyMirrorParagraph(text: string, quotable: string[]): Verification {
+export function verifyMirrorParagraph(text: string, quotable: string[], opts: VerifyOptions = {}): Verification {
+  const required = opts.required ?? 2;
   const failures: string[] = [];
   const t = text.trim();
   if (!t || /^insufficient\b/i.test(t)) return { ok: false, failures: ['insufficient'] };
@@ -187,7 +283,16 @@ export function verifyMirrorParagraph(text: string, quotable: string[]): Verific
     else if (nq.split(' ').length < 2 && !wholeAnswer) failures.push(`quote too short: ${q.slice(0, 40)}`);
     else verified.add(nq);
   }
-  if (verified.size < 2) failures.push(`verified quotes ${verified.size} of 2`);
+  if (verified.size < required) failures.push(`verified quotes ${verified.size} of ${required}`);
+
+  if (opts.listed) {
+    const inline = new Set(quotes.map(normForMatch));
+    const listed = new Set(opts.listed.map((q) => normForMatch(trimQuote(q))).filter(Boolean));
+    for (const q of listed) if (!inline.has(q)) failures.push(`listed quote not in paragraph: ${q.slice(0, 40)}`);
+    for (const q of inline) if (!listed.has(q)) failures.push(`unlisted quote: ${q.slice(0, 40)}`);
+  }
+
+  for (const leak of labelWordingLeaks(t, opts.labels ?? [], quotable)) failures.push(`option label wording: ${leak}`);
 
   const outside = stripQuotes(t);
   const hit = (patterns: string[], hay: string) => findBannedTerms(hay, { bannedTerms: patterns }).map((m) => m.pattern);
@@ -248,6 +353,24 @@ function model(): string {
   return process.env.OPENAI_MODEL || 'gpt-4o';
 }
 
+/** The reply shape: the paragraph and the exact spans it quotes, so code can check them before render. */
+const MIRROR_RESPONSE_FORMAT = {
+  type: 'json_schema' as const,
+  json_schema: {
+    name: 'mirror_paragraph',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        paragraph: { type: 'string' },
+        quotes: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['paragraph', 'quotes'],
+      additionalProperties: false,
+    },
+  },
+};
+
 async function callModel(userMessage: string, timeoutMs: number): Promise<string> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -266,7 +389,8 @@ async function callModel(userMessage: string, timeoutMs: number): Promise<string
             { role: 'system', content: MIRROR_SYSTEM_PROMPT },
             { role: 'user', content: userMessage },
           ],
-          max_completion_tokens: 400,
+          response_format: MIRROR_RESPONSE_FORMAT,
+          max_completion_tokens: 1000,
         },
         { signal: controller.signal, timeout: timeoutMs, maxRetries: 0 },
       ),
@@ -278,31 +402,42 @@ async function callModel(userMessage: string, timeoutMs: number): Promise<string
   }
 }
 
+export interface MirrorOptions {
+  timeoutMs?: number;
+  /** Model attempts before the fallback. Production uses two; the measurement uses one. */
+  attempts?: number;
+}
+
 /**
- * The mirror paragraph. Never throws. Crisis tier, too little to quote, an API error, a timeout
- * or any failed check returns the static fallback with usedFallback true.
+ * The mirror paragraph. Never throws. Crisis tier, no usable free text, an INSUFFICIENT reply, an
+ * API error, a timeout or any failed check returns the static fallback with usedFallback true.
  */
-export async function writeMirrorParagraph(
-  input: MirrorParagraphInput,
-  opts: { timeoutMs?: number } = {},
-): Promise<MirrorParagraphResult> {
+export async function writeMirrorParagraph(input: MirrorParagraphInput, opts: MirrorOptions = {}): Promise<MirrorParagraphResult> {
   const budget = opts.timeoutMs ?? PARAGRAPH_TIMEOUT_MS;
+  const attempts = opts.attempts ?? 2;
   const fallback = (): MirrorParagraphResult => ({ text: staticMirrorParagraph(input.pattern, input.answers), usedFallback: true });
   if (input.safety.tier === 'crisis') return { text: '', usedFallback: true };
 
   const quotable = quotablePhrases(input.answers);
-  const quotableList = Object.values(quotable);
-  if (quotableList.length < 2 && !quotableList.some((q) => q.split(/[.!?\n]/).filter((s) => s.trim()).length >= 2)) return fallback();
+  const sources = Object.values(quotable);
+  const required = requiredQuotes(quotable);
+  if (required === 0) return fallback();
 
-  const userMessage = buildUserMessage(input, quotable);
+  const userMessage = buildUserMessage(input, quotable, required);
+  const labelsTapped = tappedLabels(input.answers);
   const started = Date.now();
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const remaining = budget - (Date.now() - started);
     if (attempt > 0 && remaining < Math.min(RETRY_MIN_REMAINING_MS, budget / 3)) break;
     try {
-      const text = await callModel(userMessage, remaining);
-      const check = verifyMirrorParagraph(text, quotableList);
-      if (check.ok) return { text, usedFallback: false };
+      const reply = parseMirrorReply(await callModel(userMessage, remaining));
+      if (!reply) {
+        console.warn('[read/paragraph] reply was not the expected JSON');
+        continue;
+      }
+      if (/^insufficient\b/i.test(reply.paragraph)) break;
+      const check = verifyMirrorParagraph(reply.paragraph, sources, { required, labels: labelsTapped, listed: reply.quotes });
+      if (check.ok) return { text: reply.paragraph, usedFallback: false };
       console.warn('[read/paragraph] verification failed:', check.failures.join('; '));
     } catch (err) {
       console.warn('[read/paragraph] model call failed:', err instanceof Error ? err.message : 'unknown error');
