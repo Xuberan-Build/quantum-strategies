@@ -11,6 +11,9 @@
   background: var(--plane);
   color: var(--ink);
   overflow: hidden;
+  /* clip, not just hidden: focusing a control inside an off-screen drawer must not
+     scroll the presenter sideways (it shifted slides 344px on 2026-10-18). */
+  overflow: clip;
 }
 
 .presenter:fullscreen {
@@ -516,6 +519,7 @@
 
 /* ---------- Thumbnail rail ---------- */
 .rail {
+  position: relative; /* offsetParent for the thumbnail scroll maths */
   display: flex;
   gap: 0.6rem;
   padding: 0.75rem 1.25rem 0.9rem;

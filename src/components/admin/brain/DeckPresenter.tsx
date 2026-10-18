@@ -67,7 +67,7 @@ export function DeckPresenter({
   const deckNotes = notesBySlide.get('') ?? [];
   const closeFeedback = useCallback(() => {
     setFeedbackOpen(false);
-    feedbackButtonRef.current?.focus();
+    feedbackButtonRef.current?.focus({ preventScroll: true });
   }, []);
   const pillarTitle = useCallback((slug: PillarSlug) => pillarTitles[slug], [pillarTitles]);
 
@@ -83,7 +83,7 @@ export function DeckPresenter({
 
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
-    sourcesButtonRef.current?.focus();
+    sourcesButtonRef.current?.focus({ preventScroll: true });
   }, []);
 
   useEffect(() => {
@@ -136,11 +136,17 @@ export function DeckPresenter({
   }, [nav, drawerOpen, feedbackOpen, toggleFullscreen, closeDrawer, closeFeedback]);
 
   useEffect(() => {
-    thumbRefs.current[nav.index]?.scrollIntoView?.({ block: 'nearest', inline: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    // Scroll only the thumbnail rail. scrollIntoView would also scroll every
+    // ancestor (the presenter and the page), shifting the whole view per slide.
+    const thumb = thumbRefs.current[nav.index];
+    const rail = thumb?.parentElement;
+    if (!thumb || !rail) return;
+    const left = thumb.offsetLeft - (rail.clientWidth - thumb.offsetWidth) / 2;
+    rail.scrollTo?.({ left: Math.max(0, left), behavior: reduce ? 'auto' : 'smooth' });
   }, [nav.index, reduce]);
 
   useEffect(() => {
-    if (drawerOpen) drawerCloseRef.current?.focus();
+    if (drawerOpen) drawerCloseRef.current?.focus({ preventScroll: true });
   }, [drawerOpen]);
 
   const variants = {
