@@ -56,7 +56,6 @@ export function ReadFlow({ utm, variant: variantProp }: ReadFlowProps) {
       if (!sid) {
         const started = await api.start({ utm: { ...utm, variant: v }, variant: v });
         sid = started.sessionId;
-        void api.event({ sessionId: sid, event: 'read_start', props: { variant: v ?? null, utm } });
       }
       const seg = saved?.segment;
       const qs = await api.getQuestions({ segment: seg, variant: v });
@@ -106,9 +105,7 @@ export function ReadFlow({ utm, variant: variantProp }: ReadFlowProps) {
     setPhase('completing');
     try {
       const preview = await api.complete(sid);
-      void api.event({ sessionId: sid, event: 'read_complete', props: { tier: preview.safety.tier } });
       if (preview.safety.tier === 'crisis') {
-        void api.event({ sessionId: sid, event: 'read_safety_triggered', props: { tier: 'crisis', at: 'complete' } });
         setPhase('support');
         return;
       }
@@ -131,17 +128,15 @@ export function ReadFlow({ utm, variant: variantProp }: ReadFlowProps) {
     setSaving(true);
     setError(null);
     try {
+      // The server records read_step_submit and read_safety_triggered for each saved answer.
+      // A skipped optional question has no answer to save, so nothing is sent.
       if (raw) {
         const payload = normaliseAnswer(question, raw);
         const res = await api.saveAnswer(sessionId, payload);
-        void api.event({ sessionId, event: 'read_step_submit', step: question.order, props: { questionId: question.id } });
         if (res?.safety?.tier === 'crisis') {
-          void api.event({ sessionId, event: 'read_safety_triggered', step: question.order, props: { tier: 'crisis' } });
           setPhase('support');
           return;
         }
-      } else {
-        void api.event({ sessionId, event: 'read_step_submit', step: question.order, props: { questionId: question.id, skipped: true } });
       }
 
       // After Q1 the rest of the questions depend on the segment.

@@ -76,8 +76,9 @@ describe('ReadResultView', () => {
 
     await screen.findByTestId('read-result');
     expect(api.unlock).toHaveBeenCalledWith('sess-1', { email: 'me@example.com', consentMarketing: false, utm: undefined });
-    expect(api.event).toHaveBeenCalledWith(expect.objectContaining({ event: 'read_email_submit' }));
-    await waitFor(() => expect(api.event).toHaveBeenCalledWith(expect.objectContaining({ event: 'read_result_view' })));
+    // read_email_submit and read_result_view are recorded server-side (unlock and result routes).
+    expect(api.event).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'read_email_submit' }));
+    expect(api.event).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'read_result_view' }));
   });
 
   it('shows an error and keeps the gate when unlock fails', async () => {

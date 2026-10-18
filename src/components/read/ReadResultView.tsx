@@ -37,7 +37,6 @@ export function ReadResultView({ sessionId, token }: ReadResultViewProps) {
   const api = useReadApi();
   const [view, setView] = useState<View>({ kind: 'loading' });
   const sentPreviewView = useRef(false);
-  const sentResultView = useRef(false);
   const booted = useRef(false);
 
   const progress = typeof window !== 'undefined' ? loadProgressFor(sessionId) : null;
@@ -94,18 +93,9 @@ export function ReadResultView({ sessionId, token }: ReadResultViewProps) {
         },
       });
     }
-    if (view.kind === 'result' && !sentResultView.current) {
-      sentResultView.current = true;
-      void api.event({
-        sessionId,
-        event: 'read_result_view',
-        props: { pattern: view.result.pattern, usedFallback: view.result.usedFallback, viaLink: Boolean(token) },
-      });
-    }
   }, [api, sessionId, token, view]);
 
   const unlock = async (lead: Omit<ReadLeadInput, 'utm'>) => {
-    void api.event({ sessionId, event: 'read_email_submit', props: { consentMarketing: lead.consentMarketing } });
     const result = await api.unlock(sessionId, { ...lead, utm: progress?.utm });
     setView({ kind: 'result', result });
     if (typeof window !== 'undefined') window.scrollTo({ top: 0 });

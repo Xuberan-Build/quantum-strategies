@@ -40,7 +40,8 @@ describe('ReadFlow', () => {
     expect(screen.getByText('1 of 6')).toBeInTheDocument();
     expect(api.start).toHaveBeenCalledWith({ utm: { source: 'youtube', content: 'stall', variant: undefined }, variant: undefined });
     expect(api.getQuestions).toHaveBeenCalledWith({ segment: undefined, variant: undefined });
-    expect(api.event).toHaveBeenCalledWith(expect.objectContaining({ event: 'read_start', sessionId: 'sess-1' }));
+    // read_start is recorded by POST /api/read/start. The client does not send it (the server refuses it).
+    expect(api.event).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'read_start' }));
     expect(api.event).toHaveBeenCalledWith(expect.objectContaining({ event: 'read_step_view', step: 1 }));
   });
 
@@ -60,7 +61,8 @@ describe('ReadFlow', () => {
 
     await screen.findByRole('heading', { name: /Pick up to three/ });
     expect(api.saveAnswer).toHaveBeenCalledWith('sess-1', { questionId: 'q1', choice: ['seg:operator'] });
-    expect(api.event).toHaveBeenCalledWith(expect.objectContaining({ event: 'read_step_submit', step: 1 }));
+    // Server-recorded (answer route). The client only sends the events the server accepts from browsers.
+    expect(api.event).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'read_step_submit' }));
     expect(api.getQuestions).toHaveBeenLastCalledWith({ segment: 'operator', variant: undefined });
     // operator sees the pricing option (spec v3 Q2 j)
     expect(screen.getByLabelText(/I undercharge/)).toBeInTheDocument();
@@ -152,7 +154,7 @@ describe('ReadFlow', () => {
     expect(screen.queryByText(/Running on shoulds/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
     expect(api.complete).not.toHaveBeenCalled();
-    expect(api.event).toHaveBeenCalledWith(expect.objectContaining({ event: 'read_safety_triggered', props: { tier: 'crisis' } }));
+    expect(api.event).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'read_safety_triggered' }));
 
     // "Show me my answers anyway" shows the week answers only, with no sell
     await user.click(screen.getByRole('button', { name: 'Show me my answers anyway' }));
@@ -175,7 +177,7 @@ describe('ReadFlow', () => {
     await user.click(screen.getByRole('button', { name: 'See my Read' }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/read/result/sess-1/'));
     expect(api.complete).toHaveBeenCalledWith('sess-1');
-    expect(api.event).toHaveBeenCalledWith(expect.objectContaining({ event: 'read_complete' }));
+    expect(api.event).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'read_complete' }));
     expect(JSON.parse(sessionStorage.getItem('qs_read_preview:sess-1')!)).toEqual(PREVIEW);
   });
 
