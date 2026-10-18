@@ -20,6 +20,7 @@ import { FEATURES } from '../../../../config/features.config';
 import { enrollInPurchaseCampaigns } from '@/lib/crm/auto-enroll';
 import { FOUNDING_MEMBER_SLUG } from '@/lib/beta/founding-member';
 import { recordFoundingMemberPayment } from '@/lib/beta/founding-member-server';
+import { recordReadPurchase } from '@/lib/read/lead-link';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-02-25.clover',
@@ -185,6 +186,21 @@ export async function POST(request: NextRequest) {
   // ── 3b. CAMPAIGN PURCHASE TRIGGER ───────────────────────────────────────────
   if (accessResult.userId) {
     enrollInPurchaseCampaigns(accessResult.userId, productSlug).catch(() => {});
+  }
+
+  // ── 3c. PERCEPTION READ PURCHASE ────────────────────────────────────────────
+  // read_purchase when the buyer took the free Read (lead by email or bridge session).
+  try {
+    await recordReadPurchase({
+      email: customerEmail,
+      userId: accessResult.userId || authUserId || null,
+      productSlug,
+      stripeSessionId: session.id,
+      amount,
+      readSessionId: session.metadata?.read_session_id ?? null,
+    });
+  } catch (err: any) {
+    console.error('⚠️ Read purchase event failed (non-fatal):', err.message);
   }
 
   // ── 4. CRM SYNC (Sheets) ─────────────────────────────────────────────────────

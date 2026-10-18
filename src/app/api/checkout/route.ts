@@ -32,7 +32,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Please sign in before purchasing' }, { status: 401 });
     }
 
-    const { productSlug } = await req.json();
+    const { productSlug, readSessionId } = await req.json();
+    // Perception Read bridge (/read/checkout): carried to the webhook for read_purchase.
+    const readSessionMeta: Record<string, string> =
+      typeof readSessionId === 'string' && /^[0-9a-f-]{36}$/i.test(readSessionId)
+        ? { read_session_id: readSessionId }
+        : {};
 
     if (!productSlug || typeof productSlug !== 'string') {
       return NextResponse.json({ error: 'productSlug is required' }, { status: 400 });
@@ -130,6 +135,7 @@ export async function POST(req: NextRequest) {
         product_slug: productSlug,
         referral_code: referralCode,
         ...upgradeMetadata,
+        ...readSessionMeta,
         ...(bundleProducts.length > 0 && { bundle_products: bundleProducts.join(',') }),
       },
       allow_promotion_codes: allowPromoCodes,
