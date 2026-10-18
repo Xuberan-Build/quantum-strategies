@@ -34,7 +34,10 @@ function youSaidFrom(answers: ReadAnswers, variant: string | null): string | nul
     | { label: string; variantLabels?: Record<string, string> }
     | undefined;
   if (!opt) return null;
-  return (variant && opt.variantLabels?.[variant]) || opt.label;
+  // Option labels are written as quotations. The UI adds its own quote marks, so strip these
+  // (same rule as loudestQuote in components/read/answers.ts) to avoid doubled quotes.
+  const label = (variant && opt.variantLabels?.[variant]) || opt.label;
+  return label.replace(/^["“]|["”]$/g, '');
 }
 
 /**

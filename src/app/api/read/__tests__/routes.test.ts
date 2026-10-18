@@ -34,13 +34,35 @@ vi.mock('@/lib/read/store', async (importOriginal) => {
   };
 });
 
-vi.mock('@/lib/read/notify', () => ({
+// The unlock route runs its email work through `after()`. Outside a request scope the real
+// `after` throws, so the test runs the callback immediately instead.
+vi.mock('next/server', async (importOriginal) => {
+  const real = await importOriginal<typeof import('next/server')>();
+  return {
+    ...real,
+    after: (task: unknown) => {
+      if (typeof task === 'function') return task();
+      return task;
+    },
+  };
+});
+
+// The mirror paragraph model is not called from these route tests (no network): the
+// writer resolves a fixed paragraph. Its own behaviour is covered in __tests__/paragraph.test.ts.
+vi.mock('@/lib/read/paragraph', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/lib/read/paragraph')>();
+  return { ...real, writeMirrorParagraph: vi.fn(async () => ({ text: 'Fixed mirror paragraph.', usedFallback: false })) };
+});
+
+vi.mock('@/lib/read/emails', () => ({
+  onReadUnlocked: vi.fn(),
   sendReadResultEmail: vi.fn(),
   scheduleReadFollowups: vi.fn(),
 }));
 
 import * as store from '@/lib/read/store';
-import * as notify from '@/lib/read/notify';
+import * as emails from '@/lib/read/emails';
+import { SHOULDS_ANSWERS } from '@/lib/read/__tests__/fixtures';
 import { POST as start } from '../start/route';
 import { GET as questions } from '../questions/route';
 import { POST as answer } from '../answer/route';
@@ -85,12 +107,10 @@ const baseRow = (over: Partial<ReadSessionRow> = {}): ReadSessionRow => ({
   ...over,
 });
 
+/** A complete, valid answer set that lands on SHOULDS (every required question answered). */
 const fullAnswers = (q8 = 'gets things done') => ({
-  q1: { questionId: 'q1', choice: ['seg:operator'] },
-  q2: { questionId: 'q2', choice: ['say:shoulds', 'say:stall'], parts: { loudest: 'say:shoulds' } },
-  q7: { questionId: 'q7', parts: { thing: 'writing again', hours: 'hours:0', wantOrShould: 'own:want' } },
-  q8: { questionId: 'q8', parts: { line1: q8 } },
-  q10: { questionId: 'q10', number: 4 },
+  ...SHOULDS_ANSWERS,
+  q8: { questionId: 'q8', parts: { line1: q8, line2: 'keeps the house running', line3: 'reads on Sundays' } },
 });
 
 /** Cookie auth succeeds only for TOKEN, returning `row`. */
@@ -253,15 +273,15 @@ describe('POST /api/read/answer', () => {
   it('screens text, returns the tier, stores the worst tier and records tier only', async () => {
     authAs(baseRow());
     const res = await post({ sessionId: SID, answer: { questionId: 'q8', parts: { line1: 'I want to die' } } });
-    expect(await res.json()).toEqual({ ok: true, safety: { tier: 'crisis', matchedLists: ['crisis_stub'] } });
-    expect(store.updateSessionData).toHaveBeenCalledWith(SID, { safety: { tier: 'crisis', matchedLists: ['crisis_stub'] } });
+    expect(await res.json()).toEqual({ ok: true, safety: { tier: 'crisis', matchedLists: ['crisis:suicide'] } });
+    expect(store.updateSessionData).toHaveBeenCalledWith(SID, { safety: { tier: 'crisis', matchedLists: ['crisis:suicide'] } });
     const safetyEvent = vi.mocked(store.recordEvent).mock.calls.find((c) => c[0].event === 'read_safety_triggered')!;
     expect(safetyEvent[0].props).toMatchObject({ tier: 'crisis' });
     expect(JSON.stringify(safetyEvent)).not.toContain('die');
   });
 
   it('does not downgrade a stored worse tier', async () => {
-    authAs(baseRow({ session_data: { safety: { tier: 'crisis', matchedLists: ['crisis_stub'] } } }));
+    authAs(baseRow({ session_data: { safety: { tier: 'crisis', matchedLists: ['crisis:suicide'] } } }));
     await post({ sessionId: SID, answer: { questionId: 'q8', parts: { line1: 'I got laid off' } } });
     expect(store.updateSessionData).not.toHaveBeenCalled();
   });
@@ -300,12 +320,12 @@ describe('POST /api/read/complete', () => {
   it('crisis tier: no mirror, no pattern, no scores stored', async () => {
     authAs(baseRow({ step_data: fullAnswers('sometimes I want to kill myself') as any }));
     const preview = await (await post()).json();
-    expect(preview).toEqual({ sessionId: SID, safety: { tier: 'crisis', matchedLists: ['crisis_stub'] }, mirror: null, pattern: null });
+    expect(preview).toEqual({ sessionId: SID, safety: { tier: 'crisis', matchedLists: ['crisis:suicide'] }, mirror: null, pattern: null });
     expect(store.markComplete).toHaveBeenCalledWith(SID, expect.objectContaining({ scores: null, mirror: null }));
   });
 
   it('crisis stored from an earlier answer wins even if text was later changed', async () => {
-    authAs(baseRow({ step_data: fullAnswers() as any, session_data: { safety: { tier: 'crisis', matchedLists: ['crisis_stub'] } } }));
+    authAs(baseRow({ step_data: fullAnswers() as any, session_data: { safety: { tier: 'crisis', matchedLists: ['crisis:suicide'] } } }));
     const preview = await (await post()).json();
     expect(preview.pattern).toBeNull();
   });
@@ -350,9 +370,12 @@ describe('POST /api/read/unlock', () => {
 
   beforeEach(() => {
     vi.mocked(store.createLead).mockResolvedValue(lead);
+    // onReadUnlocked sends R1 and schedules the follow-ups; its own behaviour is covered in
+    // src/lib/read/__tests__/emails.test.ts. The route only has to hand it the right inputs.
+    vi.mocked(emails.onReadUnlocked).mockResolvedValue({ r1: { ok: true } as any, followups: {} as any });
   });
 
-  it('creates the lead, builds + stores the result, emails a signed link and schedules follow-ups', async () => {
+  it('creates the lead, builds + stores the result, hands the email work off after the response', async () => {
     authAs(completedRow());
     const res = await post({ sessionId: SID, lead: { email: ' A@B.co ', consentMarketing: true } });
     expect(res.status).toBe(200);
@@ -361,17 +384,19 @@ describe('POST /api/read/unlock', () => {
     expect(store.createLead).toHaveBeenCalledWith(expect.objectContaining({ email: 'A@B.co', consentMarketing: true, sessionId: SID, pattern: 'SHOULDS', utm: { source: 'yt' } }));
     expect(store.linkLeadToSession).toHaveBeenCalledWith(SID, 'L1');
     expect(store.updateSessionData).toHaveBeenCalledWith(SID, expect.objectContaining({ result }));
-    const emailArg = vi.mocked(notify.sendReadResultEmail).mock.calls[0][0];
+    expect(emails.onReadUnlocked).toHaveBeenCalledTimes(1);
+    const emailArg = vi.mocked(emails.onReadUnlocked).mock.calls[0][0];
     expect(emailArg.lead).toBe(lead);
+    expect(emailArg.result).toEqual(result);
+    expect(emailArg.answers).toEqual(completedRow().step_data);
     const t = new URL(emailArg.resultUrl).searchParams.get('t');
     expect(store.verifyResultToken(SID, t)).toBe(true);
-    expect(notify.scheduleReadFollowups).toHaveBeenCalledWith({ leadId: 'L1', sessionId: SID, pattern: 'SHOULDS' });
     expect(store.recordEvent).toHaveBeenCalledWith(expect.objectContaining({ event: 'read_email_submit', leadId: 'L1' }));
   });
 
-  it('still returns the result when the email fails', async () => {
+  it('still returns the result when the email work fails', async () => {
     authAs(completedRow());
-    vi.mocked(notify.sendReadResultEmail).mockRejectedValueOnce(new Error('smtp down'));
+    vi.mocked(emails.onReadUnlocked).mockRejectedValueOnce(new Error('smtp down'));
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = await post({ sessionId: SID, lead: { email: 'a@b.co', consentMarketing: false } });
     expect(res.status).toBe(200);
@@ -390,7 +415,7 @@ describe('POST /api/read/unlock', () => {
     const res = await post({ sessionId: SID, lead: { email: 'a@b.co', consentMarketing: true } });
     expect(res.status).toBe(403);
     expect(store.createLead).not.toHaveBeenCalled();
-    expect(notify.sendReadResultEmail).not.toHaveBeenCalled();
+    expect(emails.onReadUnlocked).not.toHaveBeenCalled();
   });
 
   it('409 before complete', async () => {
