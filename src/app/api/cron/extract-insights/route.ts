@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
     .from('product_sessions')
     .select('id, user_id, product_slug, placements, users(placements)')
     .not('completed_at', 'is', null)
+    // Anonymous attempts (the free Perception Read) are never sent for AI insight extraction.
+    .not('user_id', 'is', null)
     .limit(20);
 
   if (existingIds.length > 0) {
