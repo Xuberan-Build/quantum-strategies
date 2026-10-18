@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import styles from '@/app/admin/admin-layout.module.css';
 
 interface AdminNavProps {
@@ -10,8 +11,47 @@ interface AdminNavProps {
   userRole: string;
 }
 
+const NAV_STORAGE_KEY = 'qs-admin-nav';
+
 export default function AdminNav({ userName, userEmail, userRole }: AdminNavProps) {
   const pathname = usePathname();
+  // Desktop: full sidebar or a slim icon rail. Mobile: hidden until opened.
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(NAV_STORAGE_KEY) === 'collapsed');
+    } catch {
+      /* storage unavailable: stay expanded */
+    }
+  }, []);
+
+  useEffect(() => {
+    // The layout's main column reads this to adjust its left margin.
+    document.documentElement.dataset.adminNav = collapsed ? 'collapsed' : 'expanded';
+    try {
+      window.localStorage.setItem(NAV_STORAGE_KEY, collapsed ? 'collapsed' : 'expanded');
+    } catch {
+      /* ignore */
+    }
+  }, [collapsed]);
+
+  useEffect(() => setMobileOpen(false), [pathname]);
+
+  const toggle = useCallback(() => setCollapsed((c) => !c), []);
+
+  useEffect(() => {
+    // "[" toggles the sidebar, unless the user is typing.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '[' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      toggle();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggle]);
 
   const navItems = [
     {
@@ -197,11 +237,38 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
     : userEmail?.[0]?.toUpperCase() || 'A';
 
   return (
-    <aside className={styles.adminSidebar}>
+    <>
+    <button
+      type="button"
+      className={styles.mobileNavToggle}
+      onClick={() => setMobileOpen((o) => !o)}
+      aria-expanded={mobileOpen}
+      aria-controls="admin-sidebar"
+      aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+    >
+      <MenuIcon />
+    </button>
+    {mobileOpen && <button type="button" className={styles.mobileScrim} aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
+    <aside
+      id="admin-sidebar"
+      className={`${styles.adminSidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.open : ''}`}
+    >
       {/* Brand */}
       <div className={styles.sidebarBrand}>
-        <h1 className={styles.brandTitle}>Quantum Strategies</h1>
-        <p className={styles.brandSubtitle}>Admin Panel</p>
+        <div className={styles.brandText}>
+          <h1 className={styles.brandTitle}>Quantum Strategies</h1>
+          <p className={styles.brandSubtitle}>Admin Panel</p>
+        </div>
+        <button
+          type="button"
+          className={styles.collapseToggle}
+          onClick={toggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-pressed={collapsed}
+          title={collapsed ? 'Expand sidebar ( [ )' : 'Collapse sidebar ( [ )'}
+        >
+          <ChevronIcon flipped={collapsed} />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -215,11 +282,13 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
                 href={item.href}
                 className={`${styles.navLink} ${item.active ? styles.active : ''}`}
                 style={'muted' in item && item.muted ? { opacity: 0.55 } : undefined}
+                title={collapsed ? item.label : undefined}
+                aria-label={collapsed ? item.label : undefined}
               >
                 <item.icon className={styles.navIcon} />
-                {item.label}
+                <span className={styles.navLabel}>{item.label}</span>
                 {'muted' in item && item.muted && (
-                  <span style={{ marginLeft: 'auto', fontSize: '0.65rem', opacity: 0.7 }}>Soon</span>
+                  <span className={styles.navLabel} style={{ marginLeft: 'auto', fontSize: '0.65rem', opacity: 0.7 }}>Soon</span>
                 )}
               </Link>
             ))}
@@ -236,12 +305,29 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
             <div className={styles.userRole}>{userRole.replace('_', ' ')}</div>
           </div>
         </div>
-        <Link href="/dashboard" className={styles.backLink}>
+        <Link href="/dashboard" className={styles.backLink} title={collapsed ? 'Back to Dashboard' : undefined}>
           <ArrowLeftIcon />
-          Back to Dashboard
+          <span className={styles.navLabel}>Back to Dashboard</span>
         </Link>
       </div>
     </aside>
+    </>
+  );
+}
+
+function ChevronIcon({ flipped }: { flipped: boolean }) {
+  return (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true" style={{ transform: flipped ? 'rotate(180deg)' : undefined }}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
   );
 }
 

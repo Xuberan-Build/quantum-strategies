@@ -27,6 +27,7 @@
 
 .adminSidebar {
   width: 260px;
+  transition: width 0.2s ease;
   background-color: var(--admin-surface);
   border-right: 1px solid var(--admin-border);
   display: flex;
@@ -43,6 +44,96 @@
   margin-left: 260px;
   padding: 2rem;
   min-height: 100vh;
+  min-width: 0;
+  transition: margin-left 0.2s ease;
+}
+
+/* ── Collapsible sidebar ── */
+.sidebarBrand {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.brandText {
+  min-width: 0;
+}
+
+.collapseToggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 0.5rem;
+  background: var(--admin-surface);
+  color: var(--admin-text-muted);
+  cursor: pointer;
+}
+
+.collapseToggle:hover {
+  color: var(--admin-text);
+  background: var(--admin-bg);
+}
+
+.collapseToggle:focus-visible,
+.mobileNavToggle:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: 2px;
+}
+
+.adminSidebar.collapsed {
+  width: 64px;
+}
+
+.adminSidebar.collapsed .brandText,
+.adminSidebar.collapsed .navLabel,
+.adminSidebar.collapsed .navSectionTitle,
+.adminSidebar.collapsed .userDetails {
+  display: none;
+}
+
+.adminSidebar.collapsed .sidebarBrand {
+  padding: 1rem 0;
+  justify-content: center;
+}
+
+.adminSidebar.collapsed .navSection {
+  padding: 0 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.adminSidebar.collapsed .navLink,
+.adminSidebar.collapsed .backLink {
+  justify-content: center;
+  padding: 0.625rem 0;
+}
+
+.adminSidebar.collapsed .sidebarFooter {
+  padding: 0.75rem 0.5rem;
+}
+
+.adminSidebar.collapsed .userInfo {
+  justify-content: center;
+}
+
+:global(html[data-admin-nav='collapsed']) .adminMain {
+  margin-left: 64px;
+}
+
+.mobileNavToggle,
+.mobileScrim {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adminSidebar,
+  .adminMain {
+    transition: none;
+  }
 }
 
 /* Sidebar Brand */
@@ -831,19 +922,63 @@
 }
 
 @media (max-width: 768px) {
-  .adminSidebar {
+  .adminSidebar,
+  .adminSidebar.collapsed {
     transform: translateX(-100%);
     width: 280px;
     transition: transform 0.3s;
   }
 
-  .adminSidebar.open {
+  .adminSidebar.collapsed .brandText,
+  .adminSidebar.collapsed .navLabel,
+  .adminSidebar.collapsed .navSectionTitle,
+  .adminSidebar.collapsed .userDetails {
+    display: revert;
+  }
+
+  .collapseToggle {
+    display: none;
+  }
+
+  .mobileNavToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 60;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--admin-border);
+    border-radius: 0.5rem;
+    background: var(--admin-surface);
+    color: var(--admin-text);
+    cursor: pointer;
+  }
+
+  .mobileScrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    border: 0;
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  :global(html[data-admin-nav='collapsed']) .adminMain {
+    margin-left: 0;
+  }
+
+  .adminSidebar.open,
+  .adminSidebar.collapsed.open {
     transform: translateX(0);
   }
 
   .adminMain {
     margin-left: 0;
     padding: 1rem;
+    padding-top: 4rem;
   }
 
   .statsGrid {

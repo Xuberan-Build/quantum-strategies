@@ -367,8 +367,8 @@ export function DeckPresenter({
             transition={{ duration: reduce ? 0.12 : 0.32, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className={styles.drawerHead}>
-              <div>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: '0.66rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+              <div className={styles.drawerHeadText}>
+                <div className={styles.drawerEyebrow} title={feedbackScope === 'slide' ? slide.title : undefined}>
                   {feedbackScope === 'slide' ? `Slide ${nav.index + 1} · ${slide.title}` : `Whole deck · ${deck.period}`}
                 </div>
                 <div className={styles.drawerTitle}>Feedback</div>
