@@ -133,6 +133,35 @@ export function groupQueries(
   return { groups, rest };
 }
 
+/**
+ * Leftover queries big enough to stand alone (`isBig`, e.g. at least 10,000 Keyword Planner searches a month) each head
+ * a group of their own, biggest first; other leftovers no bigger than the head join it at `group`. The groups skip the
+ * size and signal bars of groupQueries: one measured search term is demand enough for a topic.
+ */
+export function bigTermGroups(
+  queries: HarvestedQuery[],
+  sim: (a: HarvestedQuery, b: HarvestedQuery) => number,
+  t: Thresholds,
+  isBig: (q: HarvestedQuery) => boolean,
+  minVolume: number,
+): { groups: QueryGroup[]; rest: HarvestedQuery[] } {
+  const vol = (q: HarvestedQuery) => q.volume ?? 0;
+  const taken = new Set<string>();
+  const groups: QueryGroup[] = [];
+  for (const q of queries.filter(isBig).sort((a, b) => vol(b) - vol(a) || a.text.localeCompare(b.text))) {
+    if (taken.has(q.key)) continue;
+    const members = [q, ...queries.filter((o) => o.key !== q.key && !taken.has(o.key) && vol(o) <= vol(q) && sim(o, q) >= t.group)];
+    for (const m of members) taken.add(m.key);
+    groups.push({
+      head: q,
+      members,
+      signal: Math.round(members.reduce((s, m) => s + m.signal, 0) * 100) / 100,
+      reason: `"${q.text}" has ${vol(q).toLocaleString('en-US')} US searches a month (Keyword Planner, at least ${minVolume.toLocaleString('en-US')}) and no topic within ${t.assign}${members.length > 1 ? `; ${members.length - 1} leftover quer${members.length === 2 ? 'y' : 'ies'} within ${t.group} joined it` : ''}`,
+    });
+  }
+  return { groups, rest: queries.filter((q) => !taken.has(q.key)) };
+}
+
 /** Nearest node by similarity to a text-like key, optionally restricted. */
 export function nearest<T extends { id: string }>(items: T[], score: (x: T) => number): { item: T; s: number } | null {
   let best: { item: T; s: number } | null = null;

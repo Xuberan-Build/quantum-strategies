@@ -14,7 +14,7 @@ import { nodeId, slugify } from '../graph/ids';
 import { keywordMatchers, matchesAny, truncate } from '../graph/md';
 import { restGetAll, type RestEnv } from '../graph/rest';
 import type { Graph } from '../graph/types';
-import { assignQueries, attachSubtopics, EMBED_THRESHOLDS, groupQueries, LEXICAL_THRESHOLDS, nearest, type Placement, type Thresholds } from './cluster';
+import { assignQueries, attachSubtopics, bigTermGroups, EMBED_THRESHOLDS, groupQueries, LEXICAL_THRESHOLDS, nearest, type Placement, type Thresholds } from './cluster';
 import { dot, EmbedCache, unit } from './embed';
 import { kpIndex, kpKey, searchDemandFor, spikeVolume, type KpFile, type SearchDemand } from './keyword-planner';
 import { AcCache, expansions, Harvester, type AcRequest, type AcSource, type Fetcher } from './harvest';
@@ -59,6 +59,16 @@ export const MAX_QUERIES_PER_NODE = 40;
 /** a head-term candidate must sit this close to the node's own texts (cosine with embeddings, overlap without) */
 export const HEAD_TERM_RELEVANCE = { embed: 0.8, lexical: 0.5 };
 export const MAX_NEW_SUBTOPICS_PER_TOPIC = 6;
+/**
+ * A Keyword Planner phrasing with at least this many US searches a month that no topic fits becomes a demand topic
+ * of its own (it skips the relevance floor and the group-size bar; seeds exclude patterns still drop it).
+ */
+export const KP_DEMAND_TOPIC_MIN = 10_000;
+/**
+ * A Keyword Planner phrasing (--kp-add-new) that no topic fits and that is too small or too clinical for a demand topic
+ * of its own joins the nearest topic when it is at least this close (a fraction of the relevance floor).
+ */
+export const KP_PARK_FLOOR = 0.75;
 
 interface Landscape {
   channels: { name: string; channel_id: string; category_label?: string; subscribers?: number; median_views_last_long_uploads?: number; top_outliers?: { title: string; video_id: string; views: number; outlier: number }[]; pillars?: string[]; problem_clusters?: string[]; audience_overlap?: string; role?: string; priority?: number }[];
@@ -427,7 +437,9 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
   if (kp && opts.kpAddNewMin !== undefined) {
     const have = new Set(queries.map((q) => kpKey(q.text)));
     const fresh = [...kp.values()].filter((r) => !have.has(kpKey(r.keyword)) && (r.avgMonthlySearches ?? 0) >= opts.kpAddNewMin!);
+    // a phrasing that is also a cluster's seed phrase gets that topic's seed bonus, as an autocomplete answer would
     const added = mergeQueries(fresh.map((r) => ({ text: r.keyword, source: 'keyword_planner' as const, monthly: r.avgMonthlySearches ?? 0 })));
+    for (const q of added) q.seedTopics = seedTopic(q.text);
     const keys = new Set(queries.map((q) => q.key));
     for (const q of added) if (!keys.has(q.key)) queries.push(q);
     queries.sort((a, b) => b.signal - a.signal || a.text.localeCompare(b.text));
@@ -456,9 +468,17 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
   // Off-topic noise: queries matching a seed's exclude patterns, or too far from every node to belong to the map.
   const exclude = seeds.exclude.map((x) => new RegExp(`\\b(?:${x})\\b`, 'i'));
   let offTopic = 0;
+  // head-term exclusions: clinical or off-stance phrasings (seeds headTermExclude) stay search terms, never titles
+  const headExclude = seeds.headTermExclude.map((x) => new RegExp(`\\b(?:${x})\\b`, 'i'));
+  const noHead = (text: string) => headExclude.some((re) => re.test(text));
+  const bigKp = (q: HarvestedQuery) => (q.volume ?? 0) >= KP_DEMAND_TOPIC_MIN && !noHead(q.text);
+  // Phrasings a person chose: Keyword Planner rows added with --kp-add-new (seed sets), and hand-placed probes that
+  // Keyword Planner measured. The relevance floor does not drop them; the seeds exclude patterns still do.
+  const chosen = (q: HarvestedQuery) =>
+    (q.sources.length === 1 && q.sources[0] === 'keyword_planner') || (probePlacement.has(normalizeQuery(q.text)) && (q.volume ?? 0) >= (opts.kpAddNewMin ?? 50));
   for (const p of placements) {
     const excluded = exclude.some((re) => re.test(p.query.text));
-    if (excluded || (!p.topic && p.sim < th.relevance)) {
+    if (excluded || (!p.topic && p.sim < th.relevance && !bigKp(p.query) && !chosen(p.query))) {
       if (p.topic) p.topic = null;
       p.reason = excluded ? 'excluded by a seeds exclude pattern (off-topic sense of the word)' : `off-topic: nearest node at ${p.sim} (relevance floor ${th.relevance})`;
       (p as Placement & { dropped?: boolean }).dropped = true;
@@ -467,7 +487,11 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
   }
   const unplaced = placements.filter((p) => !p.topic && !(p as Placement & { dropped?: boolean }).dropped).map((p) => p.query);
   const strongHead = (q: HarvestedQuery) => q.sources.includes('vidiq') || probePlacement.has(normalizeQuery(q.text));
-  const { groups, rest } = groupQueries(unplaced, qqSim, { ...th, minGroupSignal: th.minTopicSignal, minGroupSize: th.minTopicSize }, strongHead);
+  const grouped = groupQueries(unplaced, qqSim, { ...th, minGroupSignal: th.minTopicSignal, minGroupSize: th.minTopicSize }, strongHead);
+  // a high-volume search term with no fitting topic is a demand topic on its own, with any leftovers close to it
+  const big = bigTermGroups(grouped.rest, qqSim, th, bigKp, KP_DEMAND_TOPIC_MIN);
+  const groups = [...grouped.groups, ...big.groups];
+  let rest = big.rest;
   const sections = () => nodes.filter((n) => n.level === 'section');
   const GUARD = /\b(trauma|depress|adhd|suicid|numb|ptsd|bipolar|anxiety disorder)\b/;
   let inDemandTopics = 0;
@@ -512,6 +536,27 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
     }
   }
   await embedNodes();
+  // Keyword Planner phrasings still unplaced (under KP_DEMAND_TOPIC_MIN, or clinical): the nearest topic, demand topics
+  // included, when it clears KP_PARK_FLOOR × the relevance floor. Clinical / off-stance phrasings only join use or
+  // reframe topics, so they count as search terms where the stance allows and never title anything.
+  const parkable = rest.filter((q) => chosen(q) || (q.volume ?? 0) >= KP_DEMAND_TOPIC_MIN);
+  if (parkable.length) {
+    const stanceOf = (id: string) => byId.get(id)?.stance ?? ctx.get(id)?.stance ?? 'use';
+    const parkFloor = r3(KP_PARK_FLOOR * th.relevance);
+    const parked = new Set<string>();
+    for (const q of parkable) {
+      const pool = topicList().filter((t) => !noHead(q.text) || ['use', 'reframe'].includes(stanceOf(t.id)));
+      const [pl] = assignQueries([q], pool, qSim, { ...th, assign: parkFloor });
+      if (!pl?.topic) continue;
+      const p = placements.find((x) => x.query.key === q.key)!;
+      p.topic = pl.topic;
+      p.sim = pl.sim;
+      p.reason = `Keyword Planner phrasing with no topic within ${th.assign}${noHead(q.text) ? ' (clinical or off-stance: a search term, never a head term)' : ''}; joined the nearest topic (floor ${parkFloor}): ${pl.reason}`;
+      parked.add(q.key);
+    }
+    rest = rest.filter((q) => !parked.has(q.key));
+    log(`keyword planner: ${parked.size} phrasings with no close topic joined their nearest topic, ${parkable.length - parked.size} left unplaced`);
+  }
 
   // subtopics
   const subOf = (tid: string) => nodes.filter((n) => n.parent === tid && n.level === 'subtopic').map((n) => ({ id: n.id, label: n.label }));
@@ -836,6 +881,11 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
     const qs = queriesOfNode(n);
     const aud = [...qs].filter((q) => q.sources.includes('audience')).sort((a, b) => b.signal - a.signal)[0]?.text ?? null;
     const override = seeds.headTerms[n.id] ?? seeds.headTerms[n.label];
+    if (override === '') {
+      n.headTerm = null;
+      n.reasons = { ...n.reasons, headTerm: 'left search-light by hand in the seeds file (headTerms ""): the phrasings with volume are off-stance; title it in the audience\'s words and lead on YouTube and the quiz' };
+      continue;
+    }
     if (override) {
       const vol = kp?.get(kpKey(override))?.avgMonthlySearches ?? 0;
       n.headTerm = { text: override, volume: vol, audience: aud ?? n.label.toLowerCase(), via: 'seeds' };
@@ -850,8 +900,14 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
       const r = kp.get(kpKey(q.text));
       return r ? spikeVolume(r).volume : 0;
     };
-    const cands = qs.filter((q) => vol(q) > 0 && queryIntent(q.text, navNames) !== 'navigational' && rel(q) >= floor);
+    const near = qs.filter((q) => vol(q) > 0 && queryIntent(q.text, navNames) !== 'navigational' && rel(q) >= floor);
+    const cands = near.filter((q) => !noHead(q.text));
     const best = cands.sort((a, b) => vol(b) - vol(a) || a.text.length - b.text.length)[0];
+    if (!best && near.length) {
+      n.headTerm = null;
+      n.reasons = { ...n.reasons, headTerm: `the phrasings close to this topic with volume are clinical or off-stance (${near.slice(0, 3).map((q) => `"${q.text}"`).join(', ')}; seeds headTermExclude), so they stay search terms; title it in the audience's words` };
+      continue;
+    }
     if (!best) {
       n.headTerm = null;
       n.reasons = { ...n.reasons, headTerm: 'no phrasing close to this topic has measurable Google searches yet; title it in the audience\'s words and add search seeds (research/keywords/next-seeds.md)' };
@@ -975,6 +1031,11 @@ export async function buildTopicalMap(opts: BuildTopicalOptions): Promise<BuildT
       thresholds: th,
       proof: report.proof,
       unplacedSample: rest.slice(0, 25).map((q) => q.text),
+      droppedSample: placements
+        .filter((p) => (p as Placement & { dropped?: boolean }).dropped)
+        .sort((a, b) => (b.query.volume ?? 0) - (a.query.volume ?? 0) || b.query.signal - a.query.signal)
+        .slice(0, 40)
+        .map((p) => ({ text: p.query.text, volume: p.query.volume ?? null, reason: p.reason })),
       queueMaxCoverage: QUEUE_MAX_COVERAGE,
       ...(kpReport ? { keywordPlanner: { ...kpReport, sources: opts.keywordPlanner!.map((f) => f.source), demandBlend: '0.6 × max(searchDemand, audienceDemand) + 0.4 × min(...)' } } : {}),
       sources: ['content/architecture.json', 'gtm/problem-solution-map.md', 'gtm/free-quiz-spec-v2.md', 'strategy/thesis-evidence-map.md', 'research/conversation/*.json', 'research/creators/landscape.json', 'research/language/audience-vocabulary.md', 'content/topical-map-seeds.json', ...(kpReport ? ['research/keywords/*.json (Google Keyword Planner)'] : [])],

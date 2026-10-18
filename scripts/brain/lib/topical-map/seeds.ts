@@ -22,6 +22,13 @@ export const SeedsSchema = z.object({
   excludeNotes: z.record(z.string(), z.string()).default({}),
   /** manual head-term overrides: topic label or id -> the search phrasing to title it with */
   headTerms: z.record(z.string(), z.string()).default({}),
+  /**
+   * regex fragments (word-bounded, case-insensitive) for clinical or off-stance phrasings: they stay a topic's search
+   * terms but never become its head term, never head a demand topic of their own, and only join use/reframe topics
+   */
+  headTermExclude: z.array(z.string()).default([]),
+  /** why each headTermExclude pattern was added (pattern -> reason); documentation only */
+  headTermExcludeNotes: z.record(z.string(), z.string()).default({}),
 });
 export type Seeds = z.infer<typeof SeedsSchema>;
 

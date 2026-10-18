@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { TopicalMap, TopicNode } from '../../../../../src/lib/brain/topical-map-types';
-import { assignQueries, attachSubtopics, groupQueries, LEXICAL_THRESHOLDS } from '../cluster';
+import { assignQueries, attachSubtopics, bigTermGroups, groupQueries, LEXICAL_THRESHOLDS } from '../cluster';
 import { AcCache, expansions, Harvester, parseSuggest } from '../harvest';
 import { isUsableQuery, lexicalSim, mergeQueries, normalizeQuery, queryIntent, queryKey, type HarvestedQuery } from '../queries';
 import { decodeKpBuffer, fromNormalisedJson, kpIndex, kpKey, monthOf, normalisedKpJson, parseKpNumber, parseKpPercent, parseKpTsv, searchDemandFor, spikeVolume, type KpRow } from '../keyword-planner';
@@ -12,7 +12,7 @@ import { buildQueue, shortQuote } from '../queue';
 import { replayQueriesFrom } from '../build';
 import { renderTopicalMapMd } from '../render';
 import { audienceMass, blendDemand, channelFitScores, searchDemandScore, competitionScore, competitorWeight, coverageScore, demandRaw, demandScore, priorityScore, productFitScore, proofScore } from '../score';
-import { parseVidiqTable, parseVolume } from '../seeds';
+import { parseVidiqTable, parseVolume, SeedsSchema } from '../seeds';
 import { derivedSeed, mapProblems, pieceStatus, problemTopic, seedTree, type ProblemInfo } from '../tree';
 import { ARCH } from './fixtures/architecture';
 
@@ -445,5 +445,33 @@ describe('keyword planner ideas as queries', () => {
     const [q] = mergeQueries([{ text: 'law of assumption', source: 'keyword_planner', monthly: 9900 }]);
     expect(q.sources).toEqual(['keyword_planner']);
     expect(q.perSource.keyword_planner).toBe(2);
+  });
+});
+
+describe('high-volume search terms with no topic', () => {
+  const kq = (text: string, volume: number): HarvestedQuery => ({ ...mergeQueries([{ text, source: 'keyword_planner', monthly: volume }])[0], volume });
+  it('turns each term over the bar into a group of its own, biggest first, and pulls close leftovers in', () => {
+    const qs = [kq('habit stacking', 3600), kq('atomic habits', 110000), kq('ikigai', 90500), kq('369 method', 2900)];
+    const sim = (a: HarvestedQuery, b: HarvestedQuery) => lexicalSim(a.text, b.text);
+    const { groups, rest } = bigTermGroups(qs, sim, { ...LEXICAL_THRESHOLDS, group: 0.3 }, (q) => (q.volume ?? 0) >= 10000, 10000);
+    expect(groups.map((g) => g.head.text)).toEqual(['atomic habits', 'ikigai']);
+    expect(groups[0].members.map((m) => m.text)).toEqual(['atomic habits', 'habit stacking']);
+    expect(groups[0].reason).toContain('110,000 US searches a month');
+    expect(rest.map((q) => q.text)).toEqual(['369 method']);
+  });
+  it('leaves everything loose when nothing clears the bar', () => {
+    const qs = [kq('fear of judgment', 880)];
+    const { groups, rest } = bigTermGroups(qs, () => 1, LEXICAL_THRESHOLDS, (q) => (q.volume ?? 0) >= 10000, 10000);
+    expect(groups).toEqual([]);
+    expect(rest).toHaveLength(1);
+  });
+});
+
+describe('seeds head-term rules', () => {
+  it('defaults the clinical / off-stance list to empty and keeps an empty head-term override (search-light)', () => {
+    const s = SeedsSchema.parse({ headTerms: { 'Why we say quantum': '' }, headTermExclude: ['polyvagal(?: theory)?'] });
+    expect(s.headTerms['Why we say quantum']).toBe('');
+    expect(s.headTermExclude).toEqual(['polyvagal(?: theory)?']);
+    expect(SeedsSchema.parse({}).headTermExclude).toEqual([]);
   });
 });
