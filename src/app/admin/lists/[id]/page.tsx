@@ -36,7 +36,7 @@ export default async function ListDetailPage({
       let userIds: string[] = [];
       if (source === 'completed_product') {
         const productSlug = (list.filter_criteria as any)?.product_slug;
-        let q = supabaseAdmin.from('product_sessions').select('user_id').not('completed_at', 'is', null);
+        let q = supabaseAdmin.from('product_sessions').select('user_id').not('completed_at', 'is', null).not('user_id', 'is', null);
         if (productSlug) q = q.eq('product_slug', productSlug);
         const { data } = await q;
         userIds = [...new Set((data || []).map((r: any) => r.user_id))];

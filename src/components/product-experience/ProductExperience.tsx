@@ -8,7 +8,7 @@ import { DeliverableView } from './DeliverableView';
 import { WelcomeBanner } from './WelcomeBanner';
 import { FileUpload } from './FileUpload';
 import { supabase } from '@/lib/supabase/client';
-import { isPlacementsEmpty } from '@/lib/utils/placements';
+import { isPlacementsEmpty, productRequiresChart } from '@/lib/utils/placements';
 import { useStep1StateMachine } from './useStep1StateMachine';
 import { useProductPlacements } from './useProductPlacements';
 import { useProductDeliverable } from './useProductDeliverable';
@@ -73,6 +73,7 @@ export default function ProductExperience({
     placementsConfirmed: !!session.placements_confirmed,
     isExtracting: false,
     currentStep: session.current_step,
+    requiresChart: productRequiresChart(product),
   });
 
   const {

@@ -90,3 +90,12 @@ export function isPlacementsEmpty(placements: Placements | null | undefined): bo
   // Placements are NOT empty if any of the above are true
   return !(astroHas || hdHas || notesHas);
 }
+
+/**
+ * Whether a product runs the chart/placements gate before its steps.
+ * product_definitions.requires_chart defaults to true; only an explicit false skips the gate
+ * (chart-free products such as the Perception scans and the free Read).
+ */
+export function productRequiresChart(product: unknown): boolean {
+  return (product as { requires_chart?: unknown } | null | undefined)?.requires_chart !== false;
+}
