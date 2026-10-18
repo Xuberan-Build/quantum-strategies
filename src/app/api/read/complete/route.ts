@@ -64,13 +64,17 @@ export async function POST(req: NextRequest) {
 
     const answers: ReadAnswers = row.step_data ?? {};
     const variant = row.session_data?.variant ?? row.utm?.variant ?? null;
-    const missing = visibleQuestions(segmentOf(answers), variant)
-      .filter((q) => q.required && !answers[q.id])
-      .map((q) => q.id);
-    if (missing.length) return jsonError(400, 'incomplete', { missing });
-
+    // Safety first: a crisis-tier session gets the support preview even if it
+    // stopped before answering every required question.
     const safety = worst(row.session_data?.safety, screenAnswers(answers));
     const ctx = eventContext(row);
+
+    if (safety.tier !== 'crisis') {
+      const missing = visibleQuestions(segmentOf(answers), variant)
+        .filter((q) => q.required && !answers[q.id])
+        .map((q) => q.id);
+      if (missing.length) return jsonError(400, 'incomplete', { missing });
+    }
 
     if (safety.tier === 'crisis') {
       const preview: ReadPreview = { sessionId, safety, mirror: null, pattern: null };
