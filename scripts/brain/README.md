@@ -340,6 +340,44 @@ run_ts scripts/brain/build-graph.ts --brain-dir "$BRAIN_DIR" && run_ts scripts/b
 
 It writes `graph/gaps.md` and `graph/ingestion-proposals.md` into the brain worktree, so the tick's commit picks them up.
 
+## Topical map (topic / query nodes on the graph)
+
+A hierarchical topic architecture around Austin's method (pillar → section → topic → subtopic), scored by demand,
+proof, coverage, competition and product fit. Austin's 8 pillars + the Spine are the frame
+(`content/architecture.json`); demand decides priority and adds topics the architecture lacks (`origin: demand`).
+Source of truth: `<brain>/content/topical-map.json` (+ `topical-map.md`, rendered from it). Graph: `topic` and
+`query` nodes; `asks_about` (query → topic), `covered_by` (topic → cornerstone/spoke/deck/doc), `competes_on`
+(creator → topic), plus `part_of`, `mentions` (problem → topic, `props.via = 'about'`), `supports` (claim → topic),
+`routes_to` (topic → product). Migration `20261018090000_topical_map.sql` (type CHECKs + `topical_map_queue()`).
+Consumer: `src/lib/brain/topical-map.ts` (`getTopicalMap`, `getTopic`, `getTopicalQueue`; service role only).
+
+| File | Role |
+|---|---|
+| `build-topical-map.ts` | Seed, harvest, cluster, score, write JSON/MD, upsert graph rows. Flags `--brain-dir`, `--dry-run`, `--no-harvest`, `--no-embed`, `--max-requests <n>` (default 600), `--expand-top <n>`, `--no-graph`, `--force-prune`, `--json` |
+| `topical-map-queue.ts` | `<brain>/content/topical-map-queue.md`: the next 20 pieces (questions, audience words, evidence, route, format, why now), per `content/briefing-standard.md`. File I/O only |
+| `lib/topical-map/*` | `tree` (seed from architecture + problem map), `harvest` (autocomplete, cache, pacing, cap, block stop), `queries` (normalise, dedupe, signal, intent), `cluster`, `score` (all formulas documented at the top), `embed` (cache), `render`, `graph`, `queue`. Unit-tested in `__tests__` |
+| `<brain>/content/topical-map-seeds.json` | Search-shaped seed phrases per cluster and problem, probes for demand outside the architecture, vidIQ phrase placement and vocabulary stance. Strategy lives here, never in code |
+
+**Demand data is free only.** Google and YouTube autocomplete (`suggestqueries.google.com`, `client=firefox`, `ds=yt`
+for YouTube), the coded audience items (problem map phrases, weighted by item counts and likes) and the vidIQ
+volumes already in `research/language/audience-vocabulary.md` as anchors. Raw answers are cached in
+`scripts/research/.cache/topical-map/<date>/` (gitignored) and reused for 30 days, so a rebuild usually makes 0
+requests. Pacing 1–3 s with jitter; the harvest stops at the first 429/403/non-JSON answer and the build continues on
+cache + audience data. a-z expansion only for the top few topics, inside the request cap. Embeddings
+(`text-embedding-3-small`) are cached in `scripts/research/.cache/topical-map/embeddings.jsonl`.
+
+**Graph writes are upserts plus a final cleanup.** Rows carry `props.extractor(s) = 'topical-map'`; stale rows of
+this extractor are deleted only after the upsert (never a delete-then-insert), and never when the new map has under
+half the old topic count (unless `--force-prune`). Existing nodes owned by other extractors are never overwritten;
+the graph builder ignores topical-map rows in its own prune and shrink check.
+
+**Tick hook (one line, not wired yet).** Add after the knowledge graph line in `tick.sh` (`--no-harvest` keeps the
+weekly tick off the network; drop it once a week to refresh demand):
+
+```bash
+run_ts scripts/brain/build-topical-map.ts --brain-dir "$BRAIN_DIR" --no-harvest && run_ts scripts/brain/topical-map-queue.ts --brain-dir "$BRAIN_DIR" || warn "topical map build failed"
+```
+
 ## Run it manually
 
 ```bash
