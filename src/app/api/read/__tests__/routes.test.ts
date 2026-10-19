@@ -5,6 +5,11 @@ import type { ReadSessionRow } from '@/lib/read/store';
 
 const h = vi.hoisted(() => ({
   productRow: { data: { product_slug: 'perception-read', is_active: true } as unknown, error: null as unknown },
+  admin: null as null | { id: string; email: string; name: string | null },
+}));
+
+vi.mock('@/lib/admin/auth', () => ({
+  validateAdminApiRequest: () => Promise.resolve({ admin: h.admin, error: h.admin ? null : 'Not authenticated' }),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -161,6 +166,16 @@ describe('POST /api/read/start', () => {
     const res = await start(req('/api/read/start', { body: {}, cookie: null }));
     expect(res.status).toBe(503);
     expect(store.createReadSession).not.toHaveBeenCalled();
+  });
+
+  it('lets a signed-in admin run it while switched off, tagged admin-preview', async () => {
+    h.productRow = { data: { product_slug: 'perception-read', is_active: false }, error: null };
+    h.admin = { id: 'a1', email: 'admin@example.com', name: null };
+    vi.mocked(store.createReadSession).mockResolvedValue({ sessionId: SID, token: 't' });
+    const res = await start(req('/api/read/start', { body: {}, cookie: null }));
+    h.admin = null;
+    expect(res.status).toBe(200);
+    expect(store.createReadSession).toHaveBeenCalledWith(null, 'admin-preview');
   });
 
   it('rate limits per IP', async () => {

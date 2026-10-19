@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { createReadSession, recordEvent } from '@/lib/read/store';
 import { READ_PRODUCT_SLUG } from '@/lib/read/types';
+import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { jsonError, limit, logRouteError, readJson, setReadTokenCookie } from '../_lib/http';
 import { startSchema, zodIssues } from '../_lib/validate';
 
@@ -25,10 +26,17 @@ export async function POST(req: NextRequest) {
       .eq('product_slug', READ_PRODUCT_SLUG)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!product?.is_active) return jsonError(503, 'read_unavailable');
+    // While the Read is switched off, a signed-in admin can still run it to test.
+    // Those sessions are tagged so they can be filtered out of real data.
+    let sessionVariant = variant;
+    if (!product?.is_active) {
+      const { admin } = await validateAdminApiRequest();
+      if (!admin) return jsonError(503, 'read_unavailable');
+      sessionVariant = 'admin-preview';
+    }
 
-    const { sessionId, token } = await createReadSession(utm ?? null, variant);
-    await recordEvent({ event: 'read_start', sessionId, props: { utm: utm ?? null, variant } });
+    const { sessionId, token } = await createReadSession(utm ?? null, sessionVariant);
+    await recordEvent({ event: 'read_start', sessionId, props: { utm: utm ?? null, variant: sessionVariant } });
 
     const res = NextResponse.json({ sessionId });
     setReadTokenCookie(res, token);
