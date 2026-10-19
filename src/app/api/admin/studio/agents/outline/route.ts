@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
@@ -109,10 +109,10 @@ Key claims: ${(b.key_claims as string[] ?? []).join(' | ')}`;
 
   // ── Generate outline ──────────────────────────────────────────────────────
   try {
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
-      response_format: { type: 'json_object' },
-      max_completion_tokens: 1000,
+    const completion = await generateText({
+      tier: 'standard',
+      json: true,
+      maxTokens: 1000,
       temperature: 0.35,
       messages: [
         {
@@ -161,7 +161,7 @@ Requirements:
       ],
     });
 
-    const raw = completion.choices[0].message.content ?? '{}';
+    const raw = completion.text ?? '{}';
     let parsed: { sections?: OutlineSection[]; total_word_count?: number };
     try {
       parsed = JSON.parse(raw);

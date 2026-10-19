@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { openai } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
@@ -28,8 +28,9 @@ export async function POST(_req: Request, { params }: Params) {
 
   let completion;
   try {
-    completion = await openai.chat.completions.create({
-      model: FAST_MODEL,
+    completion = await generateText({
+      tier: 'light',
+      openaiModel: FAST_MODEL,
       messages: [
         { role: 'system', content: system },
         {
@@ -54,8 +55,8 @@ Return JSON: { "audience": "...", "goal": "...", "angle": "..." }
 Return ONLY valid JSON.`,
         },
       ],
-      response_format: { type: 'json_object' },
-      max_completion_tokens: 600,
+      json: true,
+      maxTokens: 600,
       temperature: 0.6,
     });
   } catch (e) {
@@ -64,7 +65,7 @@ Return ONLY valid JSON.`,
   }
 
   try {
-    const enhanced = JSON.parse(completion.choices[0].message.content ?? '{}');
+    const enhanced = JSON.parse(completion.text ?? '{}');
     return NextResponse.json({
       audience: enhanced.audience ?? pillar.audience,
       goal: enhanced.goal ?? pillar.goal,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
@@ -63,16 +63,16 @@ Write the section now. Do not include a title header — just the body content.`
 
   let draftBody: string;
   try {
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
+    const completion = await generateText({
+      tier: 'standard',
       messages: [
         { role: 'system', content: buildVoiceSystemPrompt(pack, { role: 'You write sections of long-form pieces.', includeCanon: true }) },
         { role: 'user', content: prompt },
       ],
-      max_completion_tokens: 1400,
+      maxTokens: 1400,
       temperature: 0.7,
     });
-    draftBody = completion.choices[0].message.content ?? '';
+    draftBody = completion.text ?? '';
   } catch (err) {
     console.error('[section draft]', err);
     return NextResponse.json({ error: 'Model call failed', detail: err instanceof Error ? err.message : undefined }, { status: 500 });

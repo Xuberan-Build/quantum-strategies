@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client'
+import { streamText } from '@/lib/ai/generate'
 import { checkRateLimit } from '@/lib/security/rate-limit'
 
 export async function POST(req: Request) {
@@ -97,20 +97,23 @@ Only include the [GOAL_SUGGESTION] block when you have a specific, actionable pr
       })
     }
 
-    const stream = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
-      messages: [{ role: 'system', content: systemPrompt }, ...fullMessages],
-      stream: true,
-      max_completion_tokens: 600,
+    const stream = streamText({
+      tier: 'light',
+      system: systemPrompt,
+      messages: fullMessages,
+      maxTokens: 600,
       temperature: 0.7,
     })
+    // Pull the first chunk before responding so auth/config errors still return a 500
+    // (the old OpenAI call threw before the stream was returned).
+    const first = await stream.next()
 
     const readable = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder()
         try {
-          for await (const chunk of stream) {
-            const text = chunk.choices[0]?.delta?.content || ''
+          if (!first.done && first.value) controller.enqueue(encoder.encode(first.value))
+          for await (const text of stream) {
             if (text) controller.enqueue(encoder.encode(text))
           }
         } finally {

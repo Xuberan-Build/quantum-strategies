@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     const effectiveTradition = (rawTradition && !rawTradition.includes(',')) ? rawTradition : null;
 
     // ── Expand first query for additional search vectors ──────────────────────
-    const expansion = await expandQuery(openai, primaryQuery, angle);
+    const expansion = await expandQuery(primaryQuery, angle);
     const allQueries = [...queries, ...expansion.queries].slice(0, 5);
 
     // ── Batch embed ───────────────────────────────────────────────────────────
@@ -97,7 +97,6 @@ export async function POST(req: NextRequest) {
 
     if (candidates.length >= RERANK_THRESHOLD) {
       const ranked = await rerankChunks(
-        openai,
         angle,
         candidates.map((c) => ({
           id: c.id,

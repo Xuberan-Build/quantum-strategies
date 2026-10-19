@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/supabase/server', () => ({ supabaseAdmin: {} }));
-vi.mock('@/lib/openai/client', () => ({
-  openai: { chat: { completions: { create: vi.fn() } } },
+vi.mock('@/lib/ai/generate', () => ({
+  generateText: vi.fn(),
 }));
 
-import { openai } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import {
   MIRROR_SYSTEM_PROMPT,
   PARAGRAPH_TIMEOUT_MS,
@@ -25,8 +25,8 @@ import { screenAnswers } from '../safety';
 import type { ReadAnswers } from '../types';
 import { ON_EMPTY_ANSWERS, SHOULDS_ANSWERS } from './fixtures';
 
-const create = vi.mocked(openai.chat.completions.create);
-const reply = (content: string) => ({ choices: [{ message: { content } }] }) as never;
+const create = vi.mocked(generateText);
+const reply = (content: string) => ({ text: content, finishReason: 'stop' }) as never;
 /** The model's JSON reply, quoting whatever is in the paragraph between straight quotes. */
 const replyFor = (paragraph: string, quotes: string[] = extractQuotes(paragraph)) => reply(JSON.stringify({ paragraph, quotes }));
 
@@ -87,11 +87,23 @@ describe('writeMirrorParagraph', () => {
     const r = await writeMirrorParagraph(input);
     expect(r).toEqual({ text: GOOD, usedFallback: false });
     const [params] = create.mock.calls[0] as unknown as [
-      { messages: { role: string; content: string }[]; model: string; response_format: { type: string } },
+      {
+        system: string;
+        messages: { role: string; content: string }[];
+        openaiModel: string;
+        json: { name: string; schema: { required: string[]; additionalProperties: boolean } };
+        maxRetries: number;
+      },
     ];
-    expect(params.messages[0]).toEqual({ role: 'system', content: MIRROR_SYSTEM_PROMPT });
-    expect(params.model).toBe(process.env.OPENAI_MODEL || 'gpt-4o');
-    expect(params.response_format.type).toBe('json_schema');
+    expect(params.system).toBe(MIRROR_SYSTEM_PROMPT);
+    expect((params as unknown as { tier: string }).tier).toBe('standard');
+    expect(params.messages[0].role).toBe('user');
+    expect(params.openaiModel).toBe(process.env.OPENAI_MODEL || 'gpt-4o');
+    // Strict JSON schema -> Claude structured outputs.
+    expect(params.json.name).toBe('mirror_paragraph');
+    expect(params.json.schema.required).toEqual(['paragraph', 'quotes']);
+    expect(params.json.schema.additionalProperties).toBe(false);
+    expect(params.maxRetries).toBe(0);
   });
 
   it('retries once, then falls back when verification keeps failing', async () => {
@@ -132,7 +144,7 @@ describe('writeMirrorParagraph', () => {
     create.mockResolvedValueOnce(replyFor('You keep meaning to get to "a podcast".'));
     await writeMirrorParagraph({ answers: thin, pattern: 'SHOULDS', safety: screenAnswers(thin) });
     const [params] = create.mock.calls[0] as unknown as [{ messages: { content: string }[] }];
-    expect(params.messages[1].content).toContain('Quotes required: exactly 1');
+    expect(params.messages[0].content).toContain('Quotes required: exactly 1');
   });
 
   it('keeps the fallback when the reply is not the JSON shape', async () => {
@@ -150,7 +162,7 @@ describe('writeMirrorParagraph', () => {
     create.mockResolvedValueOnce(replyFor(GOOD));
     await writeMirrorParagraph({ answers, pattern: 'SHOULDS', safety: screenAnswers(answers) });
     const [params] = create.mock.calls[0] as unknown as [{ messages: { content: string }[] }];
-    expect(params.messages[1].content).not.toMatch(/depress|diagnos/i);
+    expect(params.messages[0].content).not.toMatch(/depress|diagnos/i);
   });
 
   it('returns nothing for crisis and never calls the model', async () => {

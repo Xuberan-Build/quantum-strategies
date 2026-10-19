@@ -94,6 +94,7 @@ Product: ${productName || 'Business Alignment Orientation'}
         systemPrompt: `${systemPrompt || ''}\n\n${context}`,
         messages: messages as any[],
         maxTokens: 10000,
+        tier: 'standard',
         context: 'step-insight',
         retries: 2,
       });

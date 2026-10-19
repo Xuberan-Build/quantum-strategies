@@ -1,18 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock OpenAI client before importing
-vi.mock('@/lib/openai/client', () => ({
-  openai: {
-    chat: {
-      completions: {
-        create: vi.fn(),
-      },
-    },
-  },
+// Mock the provider-neutral AI layer before importing
+vi.mock('@/lib/ai/generate', () => ({
+  generateText: vi.fn(),
+  activeModelLabel: (m?: string) => m ?? 'claude-opus-5-5',
 }));
 
 import { AIRequestService } from '../AIRequestService';
-import { openai } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
+
+const create = vi.mocked(generateText);
+
+/** Old OpenAI-shaped fixtures -> the neutral GenerateResult shape. */
+function asResult(r: { choices: Array<{ message: { content: string }; finish_reason: string }>; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } }) {
+  return {
+    text: r.choices[0]?.message?.content ?? '',
+    finishReason: r.choices[0]?.finish_reason ?? 'unknown',
+    usage: { prompt: r.usage.prompt_tokens, completion: r.usage.completion_tokens, total: r.usage.total_tokens },
+    provider: 'anthropic' as const,
+    model: 'claude-opus-5-5',
+  };
+}
 
 describe('AIRequestService', () => {
   beforeEach(() => {
@@ -35,9 +43,10 @@ describe('AIRequestService', () => {
         },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
       const result = await AIRequestService.request({
+        tier: 'standard',
         messages: [{ role: 'user', content: 'Test message' }],
       });
 
@@ -54,19 +63,18 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
       await AIRequestService.request({
+        tier: 'standard',
         systemPrompt: 'Custom system prompt',
         messages: [{ role: 'user', content: 'Test' }],
       });
 
-      expect(openai.chat.completions.create).toHaveBeenCalledWith(
+      expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
-          messages: expect.arrayContaining([
-            { role: 'system', content: 'Custom system prompt' },
-            { role: 'user', content: 'Test' },
-          ]),
+          system: 'Custom system prompt',
+          messages: [{ role: 'user', content: 'Test' }],
         })
       );
     });
@@ -77,16 +85,17 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
       await AIRequestService.request({
+        tier: 'standard',
         model: 'gpt-3.5-turbo',
         messages: [{ role: 'user', content: 'Test' }],
       });
 
-      expect(openai.chat.completions.create).toHaveBeenCalledWith(
+      expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-3.5-turbo',
+          openaiModel: 'gpt-3.5-turbo',
         })
       );
     });
@@ -97,20 +106,36 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
       await AIRequestService.request({
+        tier: 'standard',
         messages: [{ role: 'user', content: 'Test' }],
         temperature: 0.5,
         maxTokens: 1000,
       });
 
-      expect(openai.chat.completions.create).toHaveBeenCalledWith(
+      expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           temperature: 0.5,
-          max_completion_tokens: 1000,
+          maxTokens: 1000,
         })
       );
+    });
+
+    it('passes effort through and disables SDK retries (this service retries itself)', async () => {
+      create.mockResolvedValue(asResult({
+        choices: [{ message: { content: 'Response' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }));
+
+      await AIRequestService.request({
+        tier: 'standard',
+        messages: [{ role: 'user', content: 'Test' }],
+        effort: 'medium',
+      });
+
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ tier: 'standard', effort: 'medium', maxRetries: 0 }));
     });
 
     it('should retry on transient failures', async () => {
@@ -120,50 +145,53 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
       };
 
-      vi.mocked(openai.chat.completions.create)
+      create
         .mockRejectedValueOnce(error)
-        .mockResolvedValueOnce(mockResponse as any);
+        .mockResolvedValueOnce(asResult(mockResponse as any));
 
       const result = await AIRequestService.request({
+        tier: 'standard',
         messages: [{ role: 'user', content: 'Test' }],
         retries: 1,
       });
 
       expect(result.content).toBe('Success after retry');
-      expect(openai.chat.completions.create).toHaveBeenCalledTimes(2);
+      expect(create).toHaveBeenCalledTimes(2);
     });
 
     it('should retry specified number of times', async () => {
       const error = new Error('Service unavailable');
 
-      vi.mocked(openai.chat.completions.create).mockRejectedValue(error);
+      create.mockRejectedValue(error);
 
       await expect(
         AIRequestService.request({
+          tier: 'standard',
           messages: [{ role: 'user', content: 'Test' }],
           retries: 2,
         })
       ).rejects.toThrow();
 
       // Original call + 2 retries = 3 total
-      expect(openai.chat.completions.create).toHaveBeenCalledTimes(3);
+      expect(create).toHaveBeenCalledTimes(3);
     });
 
     it('should not retry on authentication errors', async () => {
       const authError = new Error('Invalid API key');
       (authError as any).status = 401;
 
-      vi.mocked(openai.chat.completions.create).mockRejectedValue(authError);
+      create.mockRejectedValue(authError);
 
       await expect(
         AIRequestService.request({
+          tier: 'standard',
           messages: [{ role: 'user', content: 'Test' }],
           retries: 2,
         })
       ).rejects.toThrow('Invalid API key');
 
       // Should only be called once (no retries for auth errors)
-      expect(openai.chat.completions.create).toHaveBeenCalledTimes(1);
+      expect(create).toHaveBeenCalledTimes(1);
     });
 
     it('should handle empty response content', async () => {
@@ -172,10 +200,11 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 10, completion_tokens: 0, total_tokens: 10 },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
       await expect(
         AIRequestService.request({
+          tier: 'standard',
           messages: [{ role: 'user', content: 'Test' }],
         })
       ).rejects.toThrow();
@@ -187,10 +216,11 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 10, completion_tokens: 0, total_tokens: 10 },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
       await expect(
         AIRequestService.request({
+          tier: 'standard',
           messages: [{ role: 'user', content: 'Test' }],
         })
       ).rejects.toThrow();
@@ -199,10 +229,11 @@ describe('AIRequestService', () => {
     it('should throw error when all retries exhausted', async () => {
       const error = new Error('Service unavailable');
 
-      vi.mocked(openai.chat.completions.create).mockRejectedValue(error);
+      create.mockRejectedValue(error);
 
       await expect(
         AIRequestService.request({
+          tier: 'standard',
           messages: [{ role: 'user', content: 'Test' }],
           retries: 1,
         })
@@ -215,15 +246,16 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
       await AIRequestService.request({
+        tier: 'standard',
         messages: [{ role: 'user', content: 'Test' }],
         context: { userId: 'user-123', sessionId: 'session-456' },
       });
 
-      // Context is logged but not sent to OpenAI
-      expect(openai.chat.completions.create).toHaveBeenCalled();
+      // Context is logged but not sent to the provider
+      expect(create).toHaveBeenCalled();
     });
   });
 
@@ -234,12 +266,12 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 5, completion_tokens: 2, total_tokens: 7 },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
-      const result = await AIRequestService.complete('Test prompt');
+      const result = await AIRequestService.complete('Test prompt', { tier: 'light' });
 
       expect(result).toBe('Simple completion');
-      expect(openai.chat.completions.create).toHaveBeenCalledWith(
+      expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: [{ role: 'user', content: 'Test prompt' }],
         })
@@ -252,15 +284,13 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
-      await AIRequestService.complete('Prompt', { systemPrompt: 'Custom system' });
+      await AIRequestService.complete('Prompt', { tier: 'light', systemPrompt: 'Custom system' });
 
-      expect(openai.chat.completions.create).toHaveBeenCalledWith(
+      expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
-          messages: expect.arrayContaining([
-            { role: 'system', content: 'Custom system' },
-          ]),
+          system: 'Custom system',
         })
       );
     });
@@ -273,7 +303,7 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
       const messages = [
         { role: 'user' as const, content: 'First message' },
@@ -281,10 +311,10 @@ describe('AIRequestService', () => {
         { role: 'user' as const, content: 'Second message' },
       ];
 
-      const result = await AIRequestService.chat(messages);
+      const result = await AIRequestService.chat(messages, { tier: 'standard' });
 
       expect(result).toBe('Chat response');
-      expect(openai.chat.completions.create).toHaveBeenCalledWith(
+      expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: expect.arrayContaining([
             { role: 'user', content: 'First message' },
@@ -301,9 +331,9 @@ describe('AIRequestService', () => {
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
       };
 
-      vi.mocked(openai.chat.completions.create).mockResolvedValue(mockResponse as any);
+      create.mockResolvedValue(asResult(mockResponse as any));
 
-      const result = await AIRequestService.chat([{ role: 'user', content: 'Message' }]);
+      const result = await AIRequestService.chat([{ role: 'user', content: 'Message' }], { tier: 'standard' });
 
       expect(result).toBe('Response');
     });

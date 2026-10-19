@@ -1,14 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock OpenAI client before any imports
-vi.mock('@/lib/openai/client', () => ({
-  openai: {
-    chat: {
-      completions: {
-        create: vi.fn(),
-      },
-    },
-  },
+// Mock the provider-neutral AI layer. `completionsCreate` receives the generateText options
+// and returns OpenAI-shaped fixtures, which the adapter maps to the GenerateResult shape.
+const { completionsCreate } = vi.hoisted(() => ({ completionsCreate: vi.fn() }));
+vi.mock('@/lib/ai/generate', () => ({
+  generateText: vi.fn(async (opts: unknown) => {
+    const r = (await completionsCreate(opts)) as
+      | { choices?: Array<{ message?: { content?: string | null }; finish_reason?: string }>; usage?: Record<string, number> }
+      | undefined;
+    return {
+      text: r?.choices?.[0]?.message?.content ?? '',
+      finishReason: r?.choices?.[0]?.finish_reason ?? 'stop',
+      usage: { prompt: r?.usage?.prompt_tokens ?? 0, completion: r?.usage?.completion_tokens ?? 0, total: r?.usage?.total_tokens ?? 0 },
+      provider: 'anthropic',
+      model: 'claude-opus-5-5',
+    };
+  }),
+  activeModelLabel: (m?: string) => m ?? 'claude-opus-5-5',
+  parseJsonReply: (raw: string) => JSON.parse(raw),
+  extractJson: (raw: string) => raw,
 }));
 
 // Mock models
@@ -36,7 +46,6 @@ vi.mock('@/lib/security/input-validation', () => ({
 
 import { POST } from '../route';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { openai } from '@/lib/openai/client';
 import { checkRateLimit } from '@/lib/security/rate-limit';
 import { validateUserInput, validateSessionOwnership } from '@/lib/security/input-validation';
 
@@ -45,7 +54,7 @@ describe('POST /api/products/followup-response', () => {
     vi.clearAllMocks();
 
     // Default mock for OpenAI
-    vi.mocked(openai.chat.completions.create).mockResolvedValue({
+    completionsCreate.mockResolvedValue({
       id: 'test-completion',
       object: 'chat.completion',
       created: Date.now(),
@@ -230,13 +239,13 @@ describe('POST /api/products/followup-response', () => {
     expect(data.aiResponse).toBeTruthy();
 
     // Verify OpenAI was called with correct messages
-    const callArgs = vi.mocked(openai.chat.completions.create).mock.calls[0][0];
-    expect(callArgs.messages).toHaveLength(4); // system + 2 history messages + new question
-    expect(callArgs.messages[3].content).toContain('What price should I charge?');
+    const callArgs = completionsCreate.mock.calls[0][0];
+    expect(callArgs.messages).toHaveLength(3); // 2 history messages + new question (system is separate)
+    expect(callArgs.messages[2].content).toContain('What price should I charge?');
 
     // Verify system prompt includes placements
-    expect(callArgs.messages[0].content).toContain('Leo 5th house');
-    expect(callArgs.messages[0].content).toContain('Generator');
+    expect(callArgs.system).toContain('Leo 5th house');
+    expect(callArgs.system).toContain('Generator');
   });
 
   it('should handle missing placements with UNKNOWN', async () => {
@@ -258,8 +267,8 @@ describe('POST /api/products/followup-response', () => {
 
     expect(response.status).toBe(200);
 
-    const callArgs = vi.mocked(openai.chat.completions.create).mock.calls[0][0];
-    expect(callArgs.messages[0].content).toContain('UNKNOWN');
+    const callArgs = completionsCreate.mock.calls[0][0];
+    expect(callArgs.system).toContain('UNKNOWN');
   });
 
   it('should use product-specific prompt from database', async () => {
@@ -278,7 +287,7 @@ describe('POST /api/products/followup-response', () => {
     await POST(request);
 
     // PromptService is called internally
-    expect(openai.chat.completions.create).toHaveBeenCalled();
+    expect(completionsCreate).toHaveBeenCalled();
   });
 
   it('should log conversation to database', async () => {
@@ -344,7 +353,7 @@ describe('POST /api/products/followup-response', () => {
   });
 
   it('should handle AI generation errors', async () => {
-    vi.mocked(openai.chat.completions.create).mockRejectedValue(
+    completionsCreate.mockRejectedValue(
       new Error('OpenAI rate limit exceeded')
     );
 
@@ -382,7 +391,7 @@ describe('POST /api/products/followup-response', () => {
     await POST(request);
 
     // Should still work with default quantum-initiation slug
-    expect(openai.chat.completions.create).toHaveBeenCalled();
+    expect(completionsCreate).toHaveBeenCalled();
   });
 
   it('should skip welcome message in conversation history', async () => {
@@ -403,10 +412,10 @@ describe('POST /api/products/followup-response', () => {
 
     await POST(request);
 
-    const callArgs = vi.mocked(openai.chat.completions.create).mock.calls[0][0];
-    // Should have system + 2 history messages (welcome skipped) + new question = 4 total
-    expect(callArgs.messages).toHaveLength(4);
-    expect(callArgs.messages[1].content).toBe('My first answer');
+    const callArgs = completionsCreate.mock.calls[0][0];
+    // 2 history messages (welcome skipped) + new question = 3 (system is passed separately)
+    expect(callArgs.messages).toHaveLength(3);
+    expect(callArgs.messages[0].content).toBe('My first answer');
   });
 
   it('should use correct AI model and parameters', async () => {
@@ -423,9 +432,10 @@ describe('POST /api/products/followup-response', () => {
 
     await POST(request);
 
-    const callArgs = vi.mocked(openai.chat.completions.create).mock.calls[0][0];
-    expect(callArgs.model).toBe('gpt-4o');
-    expect(callArgs.max_completion_tokens).toBe(10000);
+    const callArgs = completionsCreate.mock.calls[0][0];
+    expect(callArgs.openaiModel).toBe('gpt-4o');
+    expect(callArgs.tier).toBe('standard');
+    expect(callArgs.maxTokens).toBe(10000);
   });
 
   it('should handle malformed request body', async () => {
@@ -460,8 +470,8 @@ describe('POST /api/products/followup-response', () => {
 
     await POST(request);
 
-    const callArgs = vi.mocked(openai.chat.completions.create).mock.calls[0][0];
-    const systemPrompt = callArgs.messages[0].content;
+    const callArgs = completionsCreate.mock.calls[0][0];
+    const systemPrompt = callArgs.system;
 
     expect(systemPrompt).toContain('step 3');
     expect(systemPrompt).toContain('Revenue Strategy');

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
-import { openai } from '@/lib/openai/client';
+import { activeModelLabel, generateText } from '@/lib/ai/generate';
 import { chartAnalysisModel } from '@/lib/ai/models';
 // @ts-ignore
 import pdfParse from 'pdf-parse';
@@ -160,7 +160,7 @@ Return JSON only:
 
     const callExtraction = async (type: string, promptText: string, images: string[], pdfText: string | null) => {
       console.log(`\n=== Calling ${type} extraction ===`);
-      console.log(`Model: ${chartAnalysisModel}`);
+      console.log(`Model: ${activeModelLabel('light', chartAnalysisModel)}`);
       console.log(`Images: ${images.length}`);
       console.log(`PDF text: ${pdfText ? 'Yes' : 'No'}`);
 
@@ -175,18 +175,19 @@ Return JSON only:
       console.log(`Calling OpenAI with ${content.length} content items...`);
 
       try {
-        const completion = await openai.chat.completions.create({
-          model: chartAnalysisModel,
+        const completion = await generateText({
+          tier: 'light',
+          openaiModel: chartAnalysisModel,
           messages: [{ role: 'user', content }],
           temperature: 0,
-          max_completion_tokens: 1500,
-          response_format: { type: 'json_object' },
+          maxTokens: 1500,
+          json: true,
         });
 
-        console.log(`OpenAI response received for ${type}`);
-        console.log(`Response content: ${completion.choices[0].message.content?.substring(0, 200)}...`);
+        console.log(`AI response received for ${type}`);
+        console.log(`Response content: ${completion.text?.substring(0, 200)}...`);
 
-        const parsed = JSON.parse(completion.choices[0].message.content || '{}');
+        const parsed = JSON.parse(completion.text || '{}');
         console.log(`Parsed ${type} result:`, JSON.stringify(parsed, null, 2));
         return parsed;
       } catch (error: any) {

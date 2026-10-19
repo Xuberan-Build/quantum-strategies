@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { AIRequestService } from '@/lib/services/AIRequestService';
+import { parseJsonReply } from '@/lib/ai/generate';
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -98,10 +99,11 @@ export async function GET(request: NextRequest) {
             'You are an insight extractor. Given user responses from a brand strategy session, return a JSON array of 3-5 short topic tags (1-3 words each) representing the main themes. Return only the JSON array, nothing else.',
           messages: [{ role: 'user', content: userResponses.slice(0, 3000) }],
           maxTokens: 100,
+          tier: 'light',
           context: 'extract-insights-themes',
           retries: 0,
         });
-        themes = JSON.parse(themeResult.content);
+        themes = parseJsonReply(themeResult.content);
         if (!Array.isArray(themes)) themes = [];
       } catch {
         // Skip themes if LLM fails

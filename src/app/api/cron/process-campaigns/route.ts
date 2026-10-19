@@ -74,9 +74,8 @@ export async function GET(request: NextRequest) {
 
       if (hdType || sunSign) {
         try {
-          const OpenAI = (await import('openai')).default;
+          const { generateText, activeModelLabel } = await import('@/lib/ai/generate');
           const voicePack = await getVoicePack();
-          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
           const chartContext = [
             hdType && `HD Type: ${hdType}`,
             authority && `Authority: ${authority}`,
@@ -84,8 +83,9 @@ export async function GET(request: NextRequest) {
             sunSign && `Sun: ${sunSign}`,
           ].filter(Boolean).join(', ');
 
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+          const completion = await generateText({
+            tier: 'standard',
+            openaiModel: 'gpt-4o-mini',
             messages: [
               {
                 role: 'system',
@@ -96,14 +96,14 @@ export async function GET(request: NextRequest) {
                 content: `Recipient: ${firstName}\nChart: ${chartContext}\n\nHTML:\n${htmlBody}\n\nText:\n${textBody}`,
               },
             ],
-            response_format: { type: 'json_object' },
-            max_completion_tokens: 2000,
+            json: true,
+            maxTokens: 2000,
           });
 
-          const parsed = JSON.parse(completion.choices[0].message.content || '{}');
+          const parsed = JSON.parse(completion.text || '{}');
           if (parsed.html_body) htmlBody = parsed.html_body;
           if (parsed.text_body) textBody = parsed.text_body;
-          personalizationModel = 'gpt-4o-mini';
+          personalizationModel = activeModelLabel('standard', 'gpt-4o-mini');
         } catch (e) {
           console.warn('[process-campaigns] AI personalization failed, using original:', (e as Error).message);
         }

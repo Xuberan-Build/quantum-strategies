@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { openai } from '@/lib/openai/client';
+import { activeModelLabel, generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { EVIDENCE_TIERS, parseTiers } from '@/lib/corpus/evidence';
@@ -96,8 +97,8 @@ export async function POST(req: NextRequest) {
 
     // 6. Synthesize with LLM
     const llmStart = Date.now();
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
+    const completion = await generateText({
+      tier: 'standard',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         {
@@ -105,12 +106,12 @@ export async function POST(req: NextRequest) {
           content: `SOURCE PASSAGES:\n\n${contextBlock}\n\n---\n\nQUESTION: ${query}`,
         },
       ],
-      max_completion_tokens: 800,
+      maxTokens: 800,
       temperature: 0.4,
     });
     const latencyMs = Date.now() - llmStart;
 
-    const answer = completion.choices[0].message.content ?? '';
+    const answer = completion.text ?? '';
 
     // 7. Return answer + source metadata (no raw embeddings)
     const sources = chunks.map((c) => ({
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
       threshold,
       match_count: count,
       chunks_returned: chunks.length,
-      model: DEFAULT_MODEL,
+      model: activeModelLabel('standard'),
       answer,
       top_sources: topSources,
       latency_ms: latencyMs,
@@ -143,7 +144,7 @@ export async function POST(req: NextRequest) {
       if (error) console.error('[knowledge/query] log insert failed:', error.message);
     });
 
-    return NextResponse.json({ answer, sources, query, model: DEFAULT_MODEL });
+    return NextResponse.json({ answer, sources, query, model: activeModelLabel('standard') });
   } catch (err) {
     console.error('[knowledge/query]', err);
     const message = err instanceof Error ? err.message : 'Unknown error';

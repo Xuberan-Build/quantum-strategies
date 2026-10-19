@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
@@ -221,13 +221,13 @@ export async function POST(req: NextRequest, { params }: Params) {
         sectionBody: section.body || undefined,
       });
 
-      const completion = await openai.chat.completions.create({
-        model: DEFAULT_MODEL,
+      const completion = await generateText({
+        tier: 'standard',
         messages: [
           { role: 'system', content: voiceSystem(system) },
           { role: 'user', content: user },
         ],
-        max_completion_tokens: maxTokens,
+        maxTokens: maxTokens,
         temperature: 0.7,
       });
 
@@ -236,7 +236,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         parent_section_id: section.id,
         piece_type: type,
         title: section.title,
-        body: completion.choices[0].message.content ?? '',
+        body: completion.text ?? '',
         platform_meta: {},
       });
     }
@@ -253,13 +253,13 @@ export async function POST(req: NextRequest, { params }: Params) {
       sectionBody: allBody,
     });
 
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
+    const completion = await generateText({
+      tier: 'standard',
       messages: [
         { role: 'system', content: voiceSystem(system) },
         { role: 'user', content: user },
       ],
-      max_completion_tokens: maxTokens,
+      maxTokens: maxTokens,
       temperature: 0.7,
     });
 
@@ -268,7 +268,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       parent_section_id: null,
       piece_type: type,
       title: pillar.title,
-      body: completion.choices[0].message.content ?? '',
+      body: completion.text ?? '',
       platform_meta: {},
     });
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 
@@ -43,8 +43,8 @@ export async function GET(_req: Request, { params }: Params) {
     ? `Primary tradition: ${pillar.tradition_filter} — corpus includes: ${TRADITION_CORPUS[pillar.tradition_filter] ?? pillar.tradition_filter}`
     : 'All traditions available: Taoism, Kabbalah, Tantra, Sufism, Christian Mysticism, Hermeticism, Rosicrucianism, Buddhism, Hinduism, Science overlay';
 
-  const completion = await openai.chat.completions.create({
-    model: DEFAULT_MODEL,
+  const completion = await generateText({
+    tier: 'light',
     messages: [{
       role: 'user',
       content: `You are a research director for Quantum Strategies, a mystical consciousness and transformation company. You're helping surface relevant passages from a sacred text corpus for a content piece.
@@ -67,14 +67,14 @@ Generate 6 specific corpus search queries that will surface the most relevant pa
 Return JSON: { "queries": ["query1", "query2", "query3", "query4", "query5", "query6"] }
 Return ONLY valid JSON.`,
     }],
-    response_format: { type: 'json_object' },
-    max_completion_tokens: 400,
+    json: true,
+    maxTokens: 400,
     temperature: 0.5,
   });
 
   let queries: string[] = [];
   try {
-    const parsed = JSON.parse(completion.choices[0].message.content ?? '{}');
+    const parsed = JSON.parse(completion.text ?? '{}');
     queries = Array.isArray(parsed.queries) ? parsed.queries.slice(0, 6) : [];
   } catch { /* return empty */ }
 

@@ -33,7 +33,7 @@
 
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
-import { openai } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { validateUserInput } from '@/lib/security/input-validation';
 import { checkRateLimit } from '@/lib/security/rate-limit';
 import type { Database } from '@/types/supabase';
@@ -136,19 +136,18 @@ export async function POST(req: Request) {
 
     let rawContent: string;
     try {
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+      const completion = await generateText({
+        tier: 'light',
+        openaiModel: 'gpt-4o-mini',
         temperature: 0,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: sanitizedResponse },
-        ],
+        json: true,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: sanitizedResponse }],
       });
-      rawContent = completion.choices[0]?.message?.content ?? '';
+      rawContent = completion.text ?? '';
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'OpenAI request error';
-      console.error('[dynamic-step/extract-signals] OpenAI call failed:', message);
+      console.error('[dynamic-step/extract-signals] AI call failed:', message);
       return NextResponse.json(
         { error: 'Signal extraction failed', detail: message },
         { status: 502 }

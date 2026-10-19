@@ -95,6 +95,7 @@ Placements: ${placementSummary}
         systemPrompt: `${systemPrompt}\n\n${contextPrompt}`,
         messages: [...previousMessages, { role: 'user', content: sanitizedQuestion }],
         maxTokens: 10000,
+        tier: 'standard',
         context: 'followup-response',
         retries: 2,
       });

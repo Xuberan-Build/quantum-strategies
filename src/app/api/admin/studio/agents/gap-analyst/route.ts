@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { EVIDENCE_TIERS } from '@/lib/corpus/evidence';
@@ -46,10 +46,11 @@ export async function POST(req: NextRequest) {
   // ── Analyze each section in parallel ─────────────────────────────────────
   const sectionAnalyses = await Promise.all(
     (sections as Section[]).map(async (section) => {
-      const completion = await openai.chat.completions.create({
-        model: FAST_MODEL,
-        response_format: { type: 'json_object' },
-        max_completion_tokens: 400,
+      const completion = await generateText({
+        tier: 'light',
+        openaiModel: FAST_MODEL,
+        json: true,
+        maxTokens: 400,
         temperature: 0.2,
         messages: [
           {
@@ -74,7 +75,7 @@ What key claims or evidence does this section need that isn't covered above?`,
 
       let parsed: { missing: string[]; suggested_queries: string[] } = { missing: [], suggested_queries: [] };
       try {
-        parsed = JSON.parse(completion.choices[0].message.content ?? '{}');
+        parsed = JSON.parse(completion.text ?? '{}');
       } catch { /* use empty fallback */ }
 
       return {

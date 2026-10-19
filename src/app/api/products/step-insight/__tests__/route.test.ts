@@ -1,14 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock OpenAI client before any imports
-vi.mock('@/lib/openai/client', () => ({
-  openai: {
-    chat: {
-      completions: {
-        create: vi.fn(),
-      },
-    },
-  },
+// Mock the provider-neutral AI layer. `completionsCreate` receives the generateText options
+// and returns OpenAI-shaped fixtures, which the adapter maps to the GenerateResult shape.
+const { completionsCreate } = vi.hoisted(() => ({ completionsCreate: vi.fn() }));
+vi.mock('@/lib/ai/generate', () => ({
+  generateText: vi.fn(async (opts: unknown) => {
+    const r = (await completionsCreate(opts)) as
+      | { choices?: Array<{ message?: { content?: string | null }; finish_reason?: string }>; usage?: Record<string, number> }
+      | undefined;
+    return {
+      text: r?.choices?.[0]?.message?.content ?? '',
+      finishReason: r?.choices?.[0]?.finish_reason ?? 'stop',
+      usage: { prompt: r?.usage?.prompt_tokens ?? 0, completion: r?.usage?.completion_tokens ?? 0, total: r?.usage?.total_tokens ?? 0 },
+      provider: 'anthropic',
+      model: 'claude-opus-5-5',
+    };
+  }),
+  activeModelLabel: (m?: string) => m ?? 'claude-opus-5-5',
+  parseJsonReply: (raw: string) => JSON.parse(raw),
+  extractJson: (raw: string) => raw,
 }));
 
 // Mock all dependencies
@@ -79,6 +89,7 @@ describe('POST /api/products/step-insight', () => {
     expect(data.aiResponse).toBe('AI generated insight');
     expect(AIRequestService.request).toHaveBeenCalledWith(
       expect.objectContaining({
+        tier: 'standard',
         model: 'gpt-4o',
         maxTokens: 10000,
         context: 'step-insight',

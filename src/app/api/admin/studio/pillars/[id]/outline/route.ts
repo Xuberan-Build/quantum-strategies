@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
@@ -97,15 +97,15 @@ Return ONLY valid JSON: { "sections": [{ "title": "...", "description": "..." }]
 
   let completion;
   try {
-    completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
+    completion = await generateText({
+      tier: 'standard',
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: prompt },
       ],
-      max_completion_tokens: 1500,
+      maxTokens: 1500,
       temperature: 0.6,
-      response_format: { type: 'json_object' },
+      json: true,
     });
   } catch (err) {
     console.error('[pillar outline]', err);
@@ -114,7 +114,7 @@ Return ONLY valid JSON: { "sections": [{ "title": "...", "description": "..." }]
 
   let outline: { sections: { title: string; description: string }[] };
   try {
-    outline = JSON.parse(completion.choices[0].message.content ?? '{}');
+    outline = JSON.parse(completion.text ?? '{}');
   } catch {
     return NextResponse.json({ error: 'Failed to parse outline from AI' }, { status: 500 });
   }

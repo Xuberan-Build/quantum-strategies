@@ -113,6 +113,7 @@ export async function POST(
         { role: 'user', content: product?.final_deliverable_prompt || 'Generate the full blueprint deliverable.' },
       ],
       maxTokens: 15000,
+      tier: 'deep',
       context: 'admin-regenerate-briefing',
       retries: 1,
     });

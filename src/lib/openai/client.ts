@@ -1,30 +1,16 @@
 import OpenAI from 'openai';
 
+/**
+ * OpenAI client. Text generation no longer uses this directly: it goes through
+ * src/lib/ai/generate.ts (Claude by default; this client only when AI_PROVIDER=openai).
+ * Embeddings (text-embedding-3-small) still use it until they move to Voyage.
+ */
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Prefer explicit model via env; default to GPT-5 (can be set to gpt-5.2 snapshot or gpt-4o if access is limited)
+// Used for embeddings-adjacent code and the AI_PROVIDER=openai rollback path only.
 export const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-5';
 
-// Helper to generate AI responses (chat)
-export async function generateAIResponse({
-  systemPrompt,
-  messages,
-  maxTokens = 500,
-  temperature = 0.7,
-}: {
-  systemPrompt: string;
-  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
-  maxTokens?: number;
-  temperature?: number;
-}) {
-  const completion = await openai.chat.completions.create({
-    model: DEFAULT_MODEL,
-    messages: [{ role: 'system', content: systemPrompt }, ...messages],
-    max_completion_tokens: maxTokens,
-    temperature,
-  });
-
-  return completion.choices[0].message.content || '';
-}
+// Kept for backwards compatibility; now provider-neutral (Claude by default).
+export { generateAIResponse } from '@/lib/ai/generate';

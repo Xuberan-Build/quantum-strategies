@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
@@ -99,9 +99,9 @@ Return the full section prose. After the prose, on a new line output:
 UNSUPPORTED_CLAIMS: [comma-separated list of claims you made that the corpus above doesn't support — be honest]`;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
-      max_completion_tokens: 1500,
+    const completion = await generateText({
+      tier: 'standard',
+      maxTokens: 1500,
       temperature: 0.5,
       messages: [
         { role: 'system', content: buildVoiceSystemPrompt(pack, { role: WRITER_ROLE, includeCanon: true }) },
@@ -109,7 +109,7 @@ UNSUPPORTED_CLAIMS: [comma-separated list of claims you made that the corpus abo
       ],
     });
 
-    const raw = completion.choices[0].message.content ?? '';
+    const raw = completion.text ?? '';
 
     // Parse out unsupported claims from the trailing marker
     const claimsMarker = raw.indexOf('\nUNSUPPORTED_CLAIMS:');

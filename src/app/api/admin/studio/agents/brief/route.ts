@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
@@ -106,10 +106,10 @@ OUTPUT FORMAT: Return JSON with exactly these keys:
   "corpus_gaps": ["topic the piece needs that isn't covered by the available corpus"]
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
-      response_format: { type: 'json_object' },
-      max_completion_tokens: 1200,
+    const completion = await generateText({
+      tier: 'standard',
+      json: true,
+      maxTokens: 1200,
       temperature: 0.4,
       messages: [
         { role: 'system', content: system },
@@ -134,7 +134,7 @@ Generate a brief that a writer could use to produce this piece without any furth
       ],
     });
 
-    const raw = completion.choices[0].message.content ?? '{}';
+    const raw = completion.text ?? '{}';
     let brief: Record<string, unknown>;
     try {
       brief = JSON.parse(raw);

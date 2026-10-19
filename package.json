@@ -55,6 +55,7 @@
     "backup:content": "tsx scripts/backup/backup-content.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
     "@netlify/functions": "^5.1.1",
@@ -72,6 +73,7 @@
     "@tiptap/react": "^3.17.1",
     "@tiptap/starter-kit": "^3.17.1",
     "@types/mdx": "^2.0.13",
+    "@vercel/oidc": "^4.0.1",
     "astronomy-engine": "^2.1.19",
     "framer-motion": "^12.23.24",
     "googleapis": "^169.0.0",

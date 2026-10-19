@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 
@@ -67,8 +67,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     const studioFormat = mapToStudioFormat(suggestion.format ?? 'ebook');
 
     // Use AI to infer a strong angle and audience from the suggestion rationale
-    const briefCompletion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
+    const briefCompletion = await generateText({
+      tier: 'light',
       messages: [{
         role: 'user',
         content: `You are a content strategist for Quantum Strategies, a mystical consciousness and transformation company.
@@ -91,14 +91,14 @@ Return JSON:
 }
 Return ONLY valid JSON.`,
       }],
-      response_format: { type: 'json_object' },
-      max_completion_tokens: 600,
+      json: true,
+      maxTokens: 600,
       temperature: 0.6,
     });
 
     let brief = { audience: '', goal: '', angle: '', corpus_query: '' };
     try {
-      brief = JSON.parse(briefCompletion.choices[0].message.content ?? '{}');
+      brief = JSON.parse(briefCompletion.text ?? '{}');
     } catch { /* use empty defaults */ }
 
     const { data: angle, error: insertError } = await supabaseAdmin
@@ -159,16 +159,16 @@ Return JSON:
 }
 Return ONLY valid JSON.`;
 
-  const completion = await openai.chat.completions.create({
-    model: DEFAULT_MODEL,
+  const completion = await generateText({
+    tier: 'standard',
     messages: [{ role: 'user', content: prompt }],
-    response_format: { type: 'json_object' },
-    max_completion_tokens: 4000,
+    json: true,
+    maxTokens: 4000,
     temperature: 0.7,
   });
 
-  const raw = completion.choices[0].message.content ?? '{}';
-  if (completion.choices[0].finish_reason === 'length') {
+  const raw = completion.text ?? '{}';
+  if (completion.finishReason === 'length') {
     return NextResponse.json({ error: 'Response truncated — reduce prompt size or try again.' }, { status: 500 });
   }
   const draft = JSON.parse(raw);

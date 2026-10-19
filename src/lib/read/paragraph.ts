@@ -1,7 +1,7 @@
 /**
  * The Perception Read: the mirror paragraph, the only AI block (spec v3 §8 block 3, §9; v1 §6.3).
  *
- * SERVER-ONLY. Imports the OpenAI client (API key) and keeps the system prompt on the server.
+ * SERVER-ONLY. Calls the AI layer (Claude via workload identity) and keeps the system prompt on the server.
  * Never import this from a client component; results.ts loads it lazily inside buildResult.
  *
  * Flow: pick the person's quotable phrases (free text below safety tier 2) → one model call that
@@ -13,7 +13,7 @@
  * words; no "?"; no em-dash; no banned word (Read list + voice-pack banned terms and AI-prose patterns).
  * Tier-1 and tier-2 text is never sent to the model.
  */
-import { openai } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { FALLBACK_VOICE_PACK, findAiProse, findBannedTerms, normaliseQuotes } from '@/lib/content/voice-pack';
 import { HOURS_BANDS, choiceOf, optionLabel, partString } from './questions';
 import { q7HoursTag, wantOrShouldOf } from './mirror';
@@ -354,20 +354,17 @@ function model(): string {
 }
 
 /** The reply shape: the paragraph and the exact spans it quotes, so code can check them before render. */
+/** Strict JSON schema: Claude structured outputs (OpenAI json_schema on the rollback path). */
 const MIRROR_RESPONSE_FORMAT = {
-  type: 'json_schema' as const,
-  json_schema: {
-    name: 'mirror_paragraph',
-    strict: true,
-    schema: {
-      type: 'object',
-      properties: {
-        paragraph: { type: 'string' },
-        quotes: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['paragraph', 'quotes'],
-      additionalProperties: false,
+  name: 'mirror_paragraph',
+  schema: {
+    type: 'object',
+    properties: {
+      paragraph: { type: 'string' },
+      quotes: { type: 'array', items: { type: 'string' } },
     },
+    required: ['paragraph', 'quotes'],
+    additionalProperties: false,
   },
 };
 
@@ -382,21 +379,20 @@ async function callModel(userMessage: string, timeoutMs: number): Promise<string
   });
   try {
     const completion = await Promise.race([
-      openai.chat.completions.create(
-        {
-          model: model(),
-          messages: [
-            { role: 'system', content: MIRROR_SYSTEM_PROMPT },
-            { role: 'user', content: userMessage },
-          ],
-          response_format: MIRROR_RESPONSE_FORMAT,
-          max_completion_tokens: 1000,
-        },
-        { signal: controller.signal, timeout: timeoutMs, maxRetries: 0 },
-      ),
+      generateText({
+        tier: 'standard',
+        openaiModel: model(),
+        system: MIRROR_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userMessage }],
+        json: MIRROR_RESPONSE_FORMAT,
+        maxTokens: 1000,
+        signal: controller.signal,
+        timeoutMs,
+        maxRetries: 0,
+      }),
       timeout,
     ]);
-    return completion.choices?.[0]?.message?.content?.trim() ?? '';
+    return completion.text?.trim() ?? '';
   } finally {
     if (timer) clearTimeout(timer);
   }

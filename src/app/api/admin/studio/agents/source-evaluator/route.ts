@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 
@@ -84,10 +84,10 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
-      response_format: { type: 'json_object' },
-      max_completion_tokens: 600,
+    const completion = await generateText({
+      tier: 'light',
+      json: true,
+      maxTokens: 600,
       temperature: 0.1,
       messages: [
         {
@@ -121,7 +121,7 @@ ${excerpt}`,
       ],
     });
 
-    result = JSON.parse(completion.choices[0].message.content ?? '{}');
+    result = JSON.parse(completion.text ?? '{}');
   } catch (err: any) {
     if (queue_id) {
       await supabaseAdmin

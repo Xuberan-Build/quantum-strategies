@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const effectiveTradition = (rawTradition && !rawTradition.includes(',')) ? rawTradition : null;
 
   // ── Step 1: Expand the query (~350 tokens, gpt-4o-mini) ────────────────────
-  const expansion = await expandQuery(openai, query.trim(), pillar);
+  const expansion = await expandQuery(query.trim(), pillar);
   const allQueries = [query.trim(), ...expansion.queries].slice(0, 4);
 
   // ── Step 2: Batch-embed all queries in ONE API call ─────────────────────────
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const similarityOf = (c: Hit) => (typeof c.similarity === 'number' ? c.similarity : null);
 
   if (candidates.length >= RERANK_THRESHOLD) {
-    const ranked = await rerankChunks(openai, pillar, candidates.map((c) => ({
+    const ranked = await rerankChunks(pillar, candidates.map((c) => ({
       id: c.id as string,
       tradition: (c.tradition as string) ?? '',
       text_name: (c.text_name as string) ?? '',

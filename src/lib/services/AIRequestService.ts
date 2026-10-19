@@ -1,20 +1,25 @@
 /**
  * AI Request Service
- * Centralized OpenAI API request handling with:
+ * Centralized AI request handling (Claude by default; see src/lib/ai/generate.ts) with:
  * - Retry logic
  * - Error handling
  * - Token management
  * - Consistent logging
  */
 
-import { openai } from '@/lib/openai/client';
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { activeModelLabel, generateText, type AIEffort, type AIMessage, type AITier } from '@/lib/ai/generate';
 
 export interface AIRequestOptions {
+  /** Required: Claude model tier (deep | standard | light). */
+  tier: AITier;
+  /** OpenAI model, used only when AI_PROVIDER=openai (rollback). Claude uses CLAUDE_MODEL. */
   model?: string;
-  messages: ChatCompletionMessageParam[];
+  messages: AIMessage[];
   maxTokens?: number;
+  /** Honoured on the OpenAI rollback path only; Claude rejects sampling params. */
   temperature?: number;
+  /** Claude effort override. Defaults to the tier's setting. */
+  effort?: AIEffort;
   systemPrompt?: string;
   retries?: number;
   context?: string; // For logging (e.g., 'step-insight', 'final-briefing')
@@ -41,19 +46,16 @@ export class AIRequestService {
    */
   static async request(options: AIRequestOptions): Promise<AIResponse> {
     const {
+      tier,
       model = this.DEFAULT_MODEL,
       messages,
       maxTokens = this.DEFAULT_MAX_TOKENS,
       temperature,
       systemPrompt,
+      effort,
       retries = this.DEFAULT_RETRIES,
       context = 'ai-request',
     } = options;
-
-    // Build full messages array with system prompt if provided
-    const fullMessages: ChatCompletionMessageParam[] = systemPrompt
-      ? [{ role: 'system', content: systemPrompt }, ...messages]
-      : messages;
 
     let lastError: Error | null = null;
 
@@ -61,30 +63,34 @@ export class AIRequestService {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         console.log(`[AIRequestService] ${context} - Attempt ${attempt + 1}/${retries + 1}`);
-        console.log(`[AIRequestService] Model: ${model}, Max tokens: ${maxTokens}`);
+        console.log(`[AIRequestService] Model: ${activeModelLabel(tier, model)}, Max tokens: ${maxTokens}`);
 
         const startTime = Date.now();
 
-        // Make the API call
-        const completion = await openai.chat.completions.create({
-          model,
-          messages: fullMessages,
-          max_completion_tokens: maxTokens,
-          ...(temperature !== undefined && { temperature }),
+        // Make the API call. The SDK's own retries are off: this loop is the retry policy.
+        const result = await generateText({
+          tier,
+          system: systemPrompt,
+          messages,
+          maxTokens,
+          temperature,
+          effort,
+          openaiModel: model,
+          maxRetries: 0,
         });
 
         const duration = Date.now() - startTime;
 
-        const content = completion.choices[0]?.message?.content || '';
-        const finishReason = completion.choices[0]?.finish_reason || 'unknown';
+        const content = result.text || '';
+        const finishReason = result.finishReason || 'unknown';
 
         // Log success
         console.log(`[AIRequestService] ${context} - Success in ${duration}ms`);
         console.log(`[AIRequestService] Finish reason: ${finishReason}`);
         console.log(
-          `[AIRequestService] Tokens: ${completion.usage?.prompt_tokens || 0} prompt, ` +
-            `${completion.usage?.completion_tokens || 0} completion, ` +
-            `${completion.usage?.total_tokens || 0} total`
+          `[AIRequestService] Tokens: ${result.usage.prompt} prompt, ` +
+            `${result.usage.completion} completion, ` +
+            `${result.usage.total} total`
         );
 
         // Check for empty content
@@ -101,9 +107,9 @@ export class AIRequestService {
           finishReason,
           generationMs: duration,
           tokensUsed: {
-            prompt: completion.usage?.prompt_tokens || 0,
-            completion: completion.usage?.completion_tokens || 0,
-            total: completion.usage?.total_tokens || 0,
+            prompt: result.usage.prompt,
+            completion: result.usage.completion,
+            total: result.usage.total,
           },
         };
       } catch (error: any) {
@@ -114,7 +120,7 @@ export class AIRequestService {
 
         // Don't retry on certain errors
         if (error?.status === 401 || error?.status === 403) {
-          throw new Error('Invalid API key. Check your OpenAI credentials.');
+          throw new Error('Invalid API key or AI credentials. Check the Claude workload identity federation settings (or ANTHROPIC_API_KEY locally).');
         }
 
         if (error?.status === 400) {
@@ -144,7 +150,7 @@ export class AIRequestService {
    */
   static async complete(
     prompt: string,
-    options: Partial<AIRequestOptions> = {}
+    options: Partial<AIRequestOptions> & { tier: AITier }
   ): Promise<string> {
     const response = await this.request({
       messages: [{ role: 'user', content: prompt }],
@@ -159,7 +165,7 @@ export class AIRequestService {
    */
   static async chat(
     messages: { role: 'user' | 'assistant'; content: string }[],
-    options: Partial<AIRequestOptions> = {}
+    options: Partial<AIRequestOptions> & { tier: AITier }
   ): Promise<string> {
     const response = await this.request({
       messages: messages.map((m) => ({ role: m.role, content: m.content })),

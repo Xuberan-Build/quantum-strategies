@@ -16,7 +16,7 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { openai } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import {
   ExtractionResultSchema,
   StoredSectionsSchema,
@@ -275,19 +275,18 @@ export async function processPortraitUpdate(queueId: string): Promise<void> {
 
     let rawContent: string;
     try {
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+      const completion = await generateText({
+        tier: 'light',
+        openaiModel: 'gpt-4o-mini',
         temperature: 0,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: PORTRAIT_EXTRACTION_SYSTEM_PROMPT },
-          { role: 'user', content: userMessage },
-        ],
+        json: true,
+        system: PORTRAIT_EXTRACTION_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userMessage }],
       });
-      rawContent = completion.choices[0]?.message?.content ?? '{}';
+      rawContent = completion.text || '{}';
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      throw new Error(`OpenAI call failed: ${message}`);
+      throw new Error(`AI call failed: ${message}`);
     }
 
     // ------------------------------------------------------------------

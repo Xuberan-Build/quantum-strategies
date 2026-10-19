@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 import { getVoicePack, findAiProse, findBannedTerms, findPatternMatches, type VoicePack } from '@/lib/content/voice-pack';
@@ -67,10 +67,11 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: FAST_MODEL,
-      response_format: { type: 'json_object' },
-      max_completion_tokens: 800,
+    const completion = await generateText({
+      tier: 'standard',
+      openaiModel: FAST_MODEL,
+      json: true,
+      maxTokens: 800,
       temperature: 0.1,
       messages: [
         { role: 'system', content: buildRubric(pack) },
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    modelResult = JSON.parse(completion.choices[0].message.content ?? '{}');
+    modelResult = JSON.parse(completion.text ?? '{}');
   } catch (err) {
     console.error('[voice-calibration agent]', err);
     return NextResponse.json(

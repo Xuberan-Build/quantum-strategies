@@ -337,6 +337,7 @@ Generate the complete deliverable per the instructions above. Include every sect
             : []),
         ],
         maxTokens: 15000,
+        tier: 'deep',
         context: 'final-briefing',
         retries: 2,
       });

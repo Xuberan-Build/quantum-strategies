@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 
@@ -82,16 +82,16 @@ Analyze the content-to-product coverage matrix for Quantum Strategies. Return JS
 
 Return exactly 5 top_suggestions ranked by PLG leverage. Return ONLY valid JSON.`;
 
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
+    const completion = await generateText({
+      tier: 'standard',
       messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
-      max_completion_tokens: 4000,
+      json: true,
+      maxTokens: 4000,
       temperature: 0.6,
     });
 
-    const raw = completion.choices[0].message.content ?? '{}';
-    const finishReason = completion.choices[0].finish_reason;
+    const raw = completion.text ?? '{}';
+    const finishReason = completion.finishReason;
     if (finishReason === 'length') {
       return NextResponse.json({ error: 'Response truncated — context too large. Try again or reduce content map size.' }, { status: 500 });
     }

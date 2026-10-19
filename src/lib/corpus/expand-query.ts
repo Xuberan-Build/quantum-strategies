@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import { generateText } from '@/lib/ai/generate';
 
 const FAST_MODEL = 'gpt-4o-mini';
 
@@ -22,12 +22,12 @@ export interface QueryExpansion {
 }
 
 export async function expandQuery(
-  openai: OpenAI,
   userQuery: string,
   brief: { title?: string | null; audience?: string | null; goal?: string | null; angle?: string | null; tradition_filter?: string | null }
 ): Promise<QueryExpansion> {
-  const completion = await openai.chat.completions.create({
-    model: FAST_MODEL,
+  const completion = await generateText({
+    tier: 'light',
+    openaiModel: FAST_MODEL,
     messages: [{
       role: 'user',
       content: `You are a semantic search expert for a sacred text corpus. Your job is to expand a research query into multiple precise search strings that will surface relevant passages across traditions — including passages that use completely different vocabulary to describe the same concept.
@@ -52,13 +52,13 @@ Generate:
 Return JSON: { "queries": [], "tradition_bridges": [], "raw_terms": [] }
 Return ONLY valid JSON.`,
     }],
-    response_format: { type: 'json_object' },
-    max_completion_tokens: 350,
+    json: true,
+    maxTokens: 350,
     temperature: 0.3,
   });
 
   try {
-    const parsed = JSON.parse(completion.choices[0].message.content ?? '{}');
+    const parsed = JSON.parse(completion.text || '{}');
     return {
       queries: (parsed.queries ?? []).slice(0, 4),
       tradition_bridges: (parsed.tradition_bridges ?? []).slice(0, 5),
@@ -77,7 +77,6 @@ export interface RankedChunk {
 }
 
 export async function rerankChunks(
-  openai: OpenAI,
   brief: { title?: string | null; angle?: string | null; goal?: string | null },
   chunks: Array<{ id: string; tradition: string; text_name: string; content: string }>,
   userQuery: string
@@ -89,8 +88,9 @@ export async function rerankChunks(
     .map((c, i) => `[${i}] id:${c.id} (${c.tradition} — ${c.text_name.replace(/_/g, ' ')})\n"${c.content.slice(0, 120).replace(/\n/g, ' ')}..."`)
     .join('\n\n');
 
-  const completion = await openai.chat.completions.create({
-    model: FAST_MODEL,
+  const completion = await generateText({
+    tier: 'light',
+    openaiModel: FAST_MODEL,
     messages: [{
       role: 'user',
       content: `You are ranking sacred text passages for relevance to a content piece.
@@ -113,13 +113,13 @@ Score each passage 0–10 for how useful it would be as source material for this
 Return JSON: { "rankings": [{ "id": "chunk_uuid", "score": 8, "reason": "one sentence why" }] }
 Only include passages with score >= 5. Return ONLY valid JSON.`,
     }],
-    response_format: { type: 'json_object' },
-    max_completion_tokens: 600,
+    json: true,
+    maxTokens: 600,
     temperature: 0.1,
   });
 
   try {
-    const parsed = JSON.parse(completion.choices[0].message.content ?? '{}');
+    const parsed = JSON.parse(completion.text || '{}');
     return (parsed.rankings ?? []) as RankedChunk[];
   } catch {
     return [];

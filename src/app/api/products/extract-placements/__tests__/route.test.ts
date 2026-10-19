@@ -5,15 +5,25 @@ vi.mock('pdf-parse', () => ({
   default: vi.fn(),
 }));
 
-// Mock OpenAI client before any imports
-vi.mock('@/lib/openai/client', () => ({
-  openai: {
-    chat: {
-      completions: {
-        create: vi.fn(),
-      },
-    },
-  },
+// Mock the provider-neutral AI layer. `completionsCreate` receives the generateText options
+// and returns OpenAI-shaped fixtures, which the adapter maps to the GenerateResult shape.
+const { completionsCreate } = vi.hoisted(() => ({ completionsCreate: vi.fn() }));
+vi.mock('@/lib/ai/generate', () => ({
+  generateText: vi.fn(async (opts: unknown) => {
+    const r = (await completionsCreate(opts)) as
+      | { choices?: Array<{ message?: { content?: string | null }; finish_reason?: string }>; usage?: Record<string, number> }
+      | undefined;
+    return {
+      text: r?.choices?.[0]?.message?.content ?? '',
+      finishReason: r?.choices?.[0]?.finish_reason ?? 'stop',
+      usage: { prompt: r?.usage?.prompt_tokens ?? 0, completion: r?.usage?.completion_tokens ?? 0, total: r?.usage?.total_tokens ?? 0 },
+      provider: 'anthropic',
+      model: 'claude-opus-5-5',
+    };
+  }),
+  activeModelLabel: (m?: string) => m ?? 'claude-opus-5-5',
+  parseJsonReply: (raw: string) => JSON.parse(raw),
+  extractJson: (raw: string) => raw,
 }));
 
 // Mock models
@@ -26,7 +36,6 @@ vi.mock('@/lib/supabase/server');
 
 import { POST } from '../route';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { openai } from '@/lib/openai/client';
 import pdfParse from 'pdf-parse';
 
 describe('POST /api/products/extract-placements', () => {
@@ -34,7 +43,7 @@ describe('POST /api/products/extract-placements', () => {
     vi.clearAllMocks();
 
     // Default mock for OpenAI
-    vi.mocked(openai.chat.completions.create).mockResolvedValue({
+    completionsCreate.mockResolvedValue({
       choices: [
         {
           message: {
@@ -86,7 +95,7 @@ describe('POST /api/products/extract-placements', () => {
     await POST(request);
 
     expect(supabaseAdmin.storage.from).toHaveBeenCalledWith('user-uploads');
-    expect(openai.chat.completions.create).toHaveBeenCalled();
+    expect(completionsCreate).toHaveBeenCalled();
   });
 
   it('should categorize files as astrology based on filename', async () => {
@@ -110,7 +119,7 @@ describe('POST /api/products/extract-placements', () => {
 
     await POST(request);
 
-    const callArgs = vi.mocked(openai.chat.completions.create).mock.calls;
+    const callArgs = completionsCreate.mock.calls;
     // Should call OpenAI for astrology
     expect(callArgs[0][0].messages[0].content).toContainEqual({
       type: 'image_url',
@@ -128,7 +137,7 @@ describe('POST /api/products/extract-placements', () => {
       }),
     } as any);
 
-    vi.mocked(openai.chat.completions.create)
+    completionsCreate
       .mockResolvedValueOnce({
         choices: [{ message: { content: JSON.stringify({ astrology: {} }) } }],
       } as any)
@@ -159,7 +168,7 @@ describe('POST /api/products/extract-placements', () => {
     await POST(request);
 
     // Should make 2 calls (astro + HD)
-    expect(openai.chat.completions.create).toHaveBeenCalledTimes(2);
+    expect(completionsCreate).toHaveBeenCalledTimes(2);
   });
 
   it('should process PDF files and extract text', async () => {
@@ -198,7 +207,7 @@ describe('POST /api/products/extract-placements', () => {
     await POST(request);
 
     expect(pdfParse).toHaveBeenCalled();
-    const callArgs = vi.mocked(openai.chat.completions.create).mock.calls[0][0];
+    const callArgs = completionsCreate.mock.calls[0][0];
     const pdfTextContent = callArgs.messages[0].content.find(
       (c: any) => c.type === 'text' && c.text.includes('PDF extracted text')
     );
@@ -247,7 +256,7 @@ describe('POST /api/products/extract-placements', () => {
       }),
     } as any);
 
-    vi.mocked(openai.chat.completions.create)
+    completionsCreate
       .mockResolvedValueOnce({
         choices: [
           {
@@ -305,7 +314,7 @@ describe('POST /api/products/extract-placements', () => {
     } as any);
 
     // Return empty results so fallback UNKNOWN values are used
-    vi.mocked(openai.chat.completions.create)
+    completionsCreate
       .mockResolvedValueOnce({
         choices: [
           {
@@ -398,7 +407,7 @@ describe('POST /api/products/extract-placements', () => {
       }),
     } as any);
 
-    vi.mocked(openai.chat.completions.create).mockRejectedValue(new Error('OpenAI rate limit'));
+    completionsCreate.mockRejectedValue(new Error('OpenAI rate limit'));
 
     const requestBody = {
       storagePaths: ['chart.png'],
@@ -435,9 +444,9 @@ describe('POST /api/products/extract-placements', () => {
 
     await POST(request);
 
-    expect(openai.chat.completions.create).toHaveBeenCalledWith(
+    expect(completionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        response_format: { type: 'json_object' },
+        json: true,
         temperature: 0,
       })
     );
@@ -462,7 +471,7 @@ describe('POST /api/products/extract-placements', () => {
 
     await POST(request);
 
-    const callArgs = vi.mocked(openai.chat.completions.create).mock.calls[0][0];
+    const callArgs = completionsCreate.mock.calls[0][0];
     const imageUrls = callArgs.messages[0].content.filter((c: any) => c.type === 'image_url');
     expect(imageUrls.length).toBeLessThanOrEqual(3);
   });
@@ -501,7 +510,7 @@ describe('POST /api/products/extract-placements', () => {
 
     await POST(request);
 
-    const callArgs = vi.mocked(openai.chat.completions.create).mock.calls[0][0];
+    const callArgs = completionsCreate.mock.calls[0][0];
     const pdfTextContent = callArgs.messages[0].content.find(
       (c: any) => c.type === 'text' && c.text.includes('PDF extracted text')
     );

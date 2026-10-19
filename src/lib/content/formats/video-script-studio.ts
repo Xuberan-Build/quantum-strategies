@@ -5,7 +5,7 @@
  * scripts: generate JSON → validate → one repair pass → piece rows ready to insert.
  * Rules and voice come from the voice pack at runtime; nothing brand-specific lives here.
  */
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { activeModelLabel, generateText } from '@/lib/ai/generate';
 import { getVoicePackResult, buildVoiceSystemPrompt } from '@/lib/content/voice-pack';
 import { renderVideoScript, VIDEO_SCRIPT_SCHEMA_VERSION, type VideoScriptRules, type VideoVariant } from './video-script';
 import { generateValidatedVideoScript, type CompleteFn } from './video-script-generate';
@@ -57,16 +57,16 @@ function metaString(meta: unknown, key: string): string | null {
 
 function openAiComplete(maxTokens: number): CompleteFn {
   return async (system, user) => {
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
+    const completion = await generateText({
+      tier: 'standard',
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
       ],
-      response_format: { type: 'json_object' },
-      max_completion_tokens: maxTokens,
+      json: true,
+      maxTokens: maxTokens,
     });
-    return completion.choices[0]?.message?.content ?? '';
+    return completion.text ?? '';
   };
 }
 
@@ -139,7 +139,7 @@ export async function buildVideoScriptPieces(args: {
           attempts: result.attempts,
           attempt_history: result.history,
           voice_pack: { source: voice.source, version: voice.pack.version },
-          model: DEFAULT_MODEL,
+          model: activeModelLabel('standard'),
         },
       };
       return row;

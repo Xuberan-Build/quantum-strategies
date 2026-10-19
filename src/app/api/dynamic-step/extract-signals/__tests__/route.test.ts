@@ -1,14 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock OpenAI before any imports
-vi.mock('@/lib/openai/client', () => ({
-  openai: {
-    chat: {
-      completions: {
-        create: vi.fn(),
-      },
-    },
-  },
+// Mock the provider-neutral AI layer. `completionsCreate` receives the generateText options
+// and returns OpenAI-shaped fixtures, which the adapter maps to the GenerateResult shape.
+const { completionsCreate } = vi.hoisted(() => ({ completionsCreate: vi.fn() }));
+vi.mock('@/lib/ai/generate', () => ({
+  generateText: vi.fn(async (opts: unknown) => {
+    const r = (await completionsCreate(opts)) as
+      | { choices?: Array<{ message?: { content?: string | null }; finish_reason?: string }>; usage?: Record<string, number> }
+      | undefined;
+    return {
+      text: r?.choices?.[0]?.message?.content ?? '',
+      finishReason: r?.choices?.[0]?.finish_reason ?? 'stop',
+      usage: { prompt: r?.usage?.prompt_tokens ?? 0, completion: r?.usage?.completion_tokens ?? 0, total: r?.usage?.total_tokens ?? 0 },
+      provider: 'anthropic',
+      model: 'claude-opus-5-5',
+    };
+  }),
+  activeModelLabel: (m?: string) => m ?? 'claude-opus-5-5',
+  parseJsonReply: (raw: string) => JSON.parse(raw),
+  extractJson: (raw: string) => raw,
 }));
 
 // Mock Supabase
@@ -28,7 +38,6 @@ vi.mock('@/lib/security/input-validation', () => ({
 
 import { POST } from '../route';
 import { supabaseAdmin, createServerSupabaseClient } from '@/lib/supabase/server';
-import { openai } from '@/lib/openai/client';
 import { checkRateLimit } from '@/lib/security/rate-limit';
 
 const SESSION_ROW = { user_id: 'user-abc' };
@@ -73,7 +82,7 @@ describe('POST /api/dynamic-step/extract-signals', () => {
     });
 
     // Default: OpenAI returns a valid signal JSON object
-    vi.mocked(openai.chat.completions.create).mockResolvedValue({
+    completionsCreate.mockResolvedValue({
       choices: [
         { message: { content: JSON.stringify(OPENAI_SIGNALS) } },
       ],
@@ -113,7 +122,7 @@ describe('POST /api/dynamic-step/extract-signals', () => {
 
     expect(res.status).toBe(401);
     expect(data.error).toBe('Unauthorized');
-    expect(openai.chat.completions.create).not.toHaveBeenCalled();
+    expect(completionsCreate).not.toHaveBeenCalled();
   });
 
   it('returns 400 when body is missing required fields', async () => {
@@ -127,7 +136,7 @@ describe('POST /api/dynamic-step/extract-signals', () => {
 
     expect(res.status).toBe(400);
     expect(data.error).toMatch(/required/);
-    expect(openai.chat.completions.create).not.toHaveBeenCalled();
+    expect(completionsCreate).not.toHaveBeenCalled();
   });
 
   it('returns 400 when signalsToExtract is an empty array', async () => {
@@ -158,7 +167,7 @@ describe('POST /api/dynamic-step/extract-signals', () => {
 
     expect(res.status).toBe(403);
     expect(data.error).toMatch(/Unauthorized/);
-    expect(openai.chat.completions.create).not.toHaveBeenCalled();
+    expect(completionsCreate).not.toHaveBeenCalled();
   });
 
   it('returns 429 when rate-limited', async () => {
@@ -174,11 +183,11 @@ describe('POST /api/dynamic-step/extract-signals', () => {
 
     expect(res.status).toBe(429);
     expect(data.error).toContain('Rate limit exceeded');
-    expect(openai.chat.completions.create).not.toHaveBeenCalled();
+    expect(completionsCreate).not.toHaveBeenCalled();
   });
 
   it('returns 502 when OpenAI call throws', async () => {
-    vi.mocked(openai.chat.completions.create).mockRejectedValueOnce(
+    completionsCreate.mockRejectedValueOnce(
       new Error('OpenAI rate limit exceeded')
     );
 
@@ -196,7 +205,7 @@ describe('POST /api/dynamic-step/extract-signals', () => {
   });
 
   it('returns 502 when OpenAI returns non-JSON content', async () => {
-    vi.mocked(openai.chat.completions.create).mockResolvedValueOnce({
+    completionsCreate.mockResolvedValueOnce({
       choices: [{ message: { content: 'not valid json {{{}' } }],
     } as any);
 
@@ -213,7 +222,7 @@ describe('POST /api/dynamic-step/extract-signals', () => {
   });
 
   it('drops signals not present in the allowed vocabulary', async () => {
-    vi.mocked(openai.chat.completions.create).mockResolvedValueOnce({
+    completionsCreate.mockResolvedValueOnce({
       choices: [
         {
           message: {
@@ -296,7 +305,7 @@ describe('POST /api/dynamic-step/extract-signals', () => {
   });
 
   it('returns empty extracted array when model finds no signals', async () => {
-    vi.mocked(openai.chat.completions.create).mockResolvedValueOnce({
+    completionsCreate.mockResolvedValueOnce({
       choices: [{ message: { content: JSON.stringify({ signals: [] }) } }],
     } as any);
 
@@ -320,11 +329,12 @@ describe('POST /api/dynamic-step/extract-signals', () => {
 
     await POST(req);
 
-    expect(openai.chat.completions.create).toHaveBeenCalledWith(
+    expect(completionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'gpt-4o-mini',
+        tier: 'light',
+        openaiModel: 'gpt-4o-mini',
         temperature: 0,
-        response_format: { type: 'json_object' },
+        json: true,
       })
     );
   });

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { openai } from '@/lib/openai/client'
+import { extractJson, generateText } from '@/lib/ai/generate'
 import { getRiteForProduct } from '@/lib/beta/constants'
 
 export interface AlignmentNudge {
@@ -14,25 +14,23 @@ async function extractActionItems(deliverable: string): Promise<string[]> {
   // Trim to avoid huge token counts — action plans are near the end
   const excerpt = deliverable.slice(-4000)
 
-  const res = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+  const res = await generateText({
+    tier: 'light',
+    openaiModel: 'gpt-4o-mini',
+    system:
+      'Extract action plan items from the document. Return ONLY a JSON array of strings, one string per action item. Return [] if none found. No explanation, no markdown, just the JSON array.',
     messages: [
-      {
-        role: 'system',
-        content:
-          'Extract action plan items from the document. Return ONLY a JSON array of strings, one string per action item. Return [] if none found. No explanation, no markdown, just the JSON array.',
-      },
       {
         role: 'user',
         content: excerpt,
       },
     ],
-    max_completion_tokens: 400,
+    maxTokens: 400,
     temperature: 0,
   })
 
   try {
-    const raw = res.choices[0]?.message?.content?.trim() ?? '[]'
+    const raw = extractJson(res.text) ?? res.text?.trim() ?? '[]'
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed) ? parsed.filter((s) => typeof s === 'string' && s.trim()) : []
   } catch {

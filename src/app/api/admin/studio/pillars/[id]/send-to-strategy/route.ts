@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openai, DEFAULT_MODEL } from '@/lib/openai/client';
+import { generateText } from '@/lib/ai/generate';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
 
@@ -103,11 +103,11 @@ Return JSON:
 }
 Return ONLY valid JSON.`;
 
-  const completion = await openai.chat.completions.create({
-    model: DEFAULT_MODEL,
+  const completion = await generateText({
+    tier: 'light',
     messages: [{ role: 'user', content: prompt }],
-    response_format: { type: 'json_object' },
-    max_completion_tokens: 600,
+    json: true,
+    maxTokens: 600,
     temperature: 0.6,
   });
 
@@ -117,7 +117,7 @@ Return ONLY valid JSON.`;
   };
 
   try {
-    suggestion = JSON.parse(completion.choices[0].message.content ?? '{}');
+    suggestion = JSON.parse(completion.text ?? '{}');
   } catch {
     return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });
   }
