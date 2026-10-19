@@ -296,14 +296,14 @@ Generate the blueprint now.`;
 
     const actionableNudgeInstruction = `CRITICAL: Your response must contain TWO parts in this exact order — no preamble, no checklist, no "Input Requirements" section.
 
-PART 1 — OPENING NUDGES (output this first):
+PART 1 — FULL DELIVERABLE (output this first):
+Generate the complete deliverable per the instructions above. Include every section in full. Do not skip or abbreviate any section.
+
+PART 2 — CLOSING NUDGES (output this immediately after Part 1, as the final section):
 Use this exact header on its own line:
-**OPENING: Your Actionable Nudges (This Week)**
+**CLOSING: Your Actionable Nudges (This Week)**
 
-Review all step insights and list the 5-7 MOST actionable nudges — numbered 1–7, one per line. Each 1–2 sentences: [specific action] — because [specific thing from their responses]. Distill; do not copy verbatim. Criteria: concrete, implementable this week, tied to something the user shared, framed as an action.
-
-PART 2 — FULL DELIVERABLE (output this immediately after Part 1):
-Generate the complete deliverable per the instructions above. Include every section in full. Do not skip or abbreviate any section.`;
+Review all step insights and list the 5-7 MOST actionable nudges — numbered 1–7, one per line. Each 1–2 sentences: [specific action] — because [specific thing from their responses]. Distill; do not copy verbatim. Criteria: concrete, implementable this week, tied to something the user shared, framed as an action.`;
 
     // Assemble user portrait context and prepend to system prompt
     let portraitContextBlock = '';

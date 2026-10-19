@@ -32,9 +32,9 @@ export function DeliverableView({ deliverable, productName, instructions, action
 
     for (const line of lines) {
       // Match various header patterns:
-      // "**OPENING: Title (subtitle)**" - special case without number
+      // "**CLOSING: Title (subtitle)**" (or legacy "**OPENING: ...**") - nudges, special case without number
       // "**SECTION 1: Title**" or "## 1. Title" or "**1. Title**" etc.
-      const openingMatch = line.match(/^\*\*OPENING:\s*([^*]+?)\*\*$/i);
+      const openingMatch = line.match(/^\*\*(?:OPENING|CLOSING):\s*([^*]+?)\*\*$/i);
       const sectionMatch = line.match(/^(?:#{1,3}\s*)?(?:\*\*)?(?:SECTION\s+)?(\d+)[.):\s]+([^*\n]+?)(?:\*\*)?$/i);
 
       if (openingMatch) {
@@ -87,7 +87,9 @@ export function DeliverableView({ deliverable, productName, instructions, action
       parsed.push(currentSection);
     }
 
-    return parsed;
+    // Nudges close the briefing: older briefings were generated with them first
+    const isNudges = (s: Section) => s.number === '✦' && /nudges/i.test(s.title);
+    return [...parsed.filter((s) => !isNudges(s)), ...parsed.filter(isNudges)];
   }, [deliverable]);
 
   const handleCopy = () => {
