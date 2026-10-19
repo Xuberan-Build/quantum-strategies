@@ -10,6 +10,7 @@ import { isPublicSlug } from "@/lib/seo/sitemap";
 import { extractFaq, faqJsonLd } from "@/lib/content/faq";
 import { getDbArticles } from "@/lib/content/article-list";
 import { relatedFor } from "@/lib/content/article-index";
+import ArticleCta from "@/components/content/ArticleCta";
 import styles from "./article.module.css";
 
 type PageProps = {
@@ -218,6 +219,7 @@ export default async function ArticlePage({ params }: PageProps) {
         <article className={`article-prose ${styles.prose}`}>
           {await renderDbBody(post.body ?? "")}
         </article>
+        <ArticleCta slug={slug} />
         {(related.series || related.more.length > 0) && (
           <nav className={styles.related} aria-label="Keep reading">
             {related.series && (related.series.prev || related.series.next) && (
@@ -313,6 +315,7 @@ export default async function ArticlePage({ params }: PageProps) {
       <article className={`article-prose ${styles.prose}`}>
         <MDXRemote source={content} components={proseComponents} />
       </article>
+      <ArticleCta slug={slug} />
     </div>
   );
 }
