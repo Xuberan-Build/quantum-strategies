@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useState, useMemo } from 'react';
+import Link from 'next/link';
 import jsPDF from 'jspdf';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -356,8 +357,8 @@ export function DeliverableView({ deliverable, productName, instructions, action
 
         {/* Next Steps */}
         <div className="mt-8 text-center">
-          <a
-            href="/dashboard"
+          <Link
+            href="/dashboard/products"
             className="inline-flex items-center space-x-2 text-[#F8F5FF]/70 hover:text-[#F8F5FF] transition-colors"
           >
             <svg
@@ -374,7 +375,7 @@ export function DeliverableView({ deliverable, productName, instructions, action
               />
             </svg>
             <span>Return to Dashboard</span>
-          </a>
+          </Link>
         </div>
       </div>
     </div>
