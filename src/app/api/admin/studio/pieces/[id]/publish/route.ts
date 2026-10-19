@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest } from '@/lib/admin/auth';
@@ -10,6 +10,7 @@ import {
   sanitizeMarkdownForMdx,
   slugify,
 } from '@/lib/content/publish';
+import { articleChangeUrls, notifyIndexNow } from '@/lib/seo/indexnow';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -136,6 +137,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   revalidatePath('/articles');
   revalidatePath(`/articles/${post.slug}`);
   revalidatePath('/sitemap.xml');
+
+  // Tell IndexNow engines (Bing, Yandex, ...) the article changed. Best effort, after the response:
+  // a failure here never blocks publishing. Drafts saved for review are not pinged.
+  if (publish && postType === 'blog') after(() => notifyIndexNow(articleChangeUrls(post.slug)));
 
   return NextResponse.json({ post, slug: post.slug });
 }

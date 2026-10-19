@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest, logAdminAction } from '@/lib/admin/auth';
+import { articleChangeUrls, notifyIndexNow } from '@/lib/seo/indexnow';
 
 const CreatePostSchema = z.object({
   slug: z.string().min(1).max(200).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase letters, numbers, and hyphens only'),
@@ -107,6 +108,9 @@ export async function POST(request: NextRequest) {
     previousValue: undefined,
     newValue: { slug: post.slug, type: post.type },
   });
+
+  // New live article: ping IndexNow after the response (best effort, never blocks the create).
+  if (data.is_published && post.type === 'blog') after(() => notifyIndexNow(articleChangeUrls(post.slug)));
 
   return NextResponse.json({ success: true, post }, { status: 201 });
 }

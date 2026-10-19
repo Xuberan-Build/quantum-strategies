@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateAdminApiRequest, logAdminAction } from '@/lib/admin/auth';
+import { articleChangeUrls, notifyIndexNow } from '@/lib/seo/indexnow';
 
 const UpdatePostSchema = z.object({
   title: z.string().min(1).max(500).optional(),
@@ -65,7 +66,7 @@ export async function PUT(
 
   const { data: current, error: fetchError } = await supabaseAdmin
     .from('content_posts')
-    .select('id, title, is_published')
+    .select('id, title, type, is_published')
     .eq('slug', slug)
     .single();
 
@@ -105,6 +106,11 @@ export async function PUT(
     previousValue: { is_published: current.is_published },
     newValue: Object.fromEntries(Object.keys(updates).map((k) => [k, updates[k as keyof typeof updates]])),
   });
+
+  // A live article changed, went live or came down: ping IndexNow after the response (best effort).
+  if (current.type === 'blog' && (current.is_published || updates.is_published === true)) {
+    after(() => notifyIndexNow(articleChangeUrls(slug)));
+  }
 
   return NextResponse.json({ success: true, slug });
 }
