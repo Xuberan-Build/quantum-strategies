@@ -1,7 +1,7 @@
 /* ── Page shell ── */
 .page {
   min-height: 100vh;
-  background: #04060d;
+  background: #090018;
   color: #F8F5FF;
   overflow-x: hidden;
 }
@@ -17,9 +17,9 @@
   position: absolute;
   inset: -45%;
   background:
-    radial-gradient(circle at 20% 20%, rgba(20,184,166,0.2), transparent 35%),
-    radial-gradient(circle at 80% 30%, rgba(59,130,246,0.18), transparent 30%),
-    radial-gradient(circle at 50% 75%, rgba(16,185,129,0.16), transparent 32%);
+    radial-gradient(circle at 20% 20%, rgba(147,51,234,0.2), transparent 35%),
+    radial-gradient(circle at 80% 30%, rgba(99,102,241,0.18), transparent 30%),
+    radial-gradient(circle at 50% 75%, rgba(192,132,252,0.16), transparent 32%);
   filter: blur(3px);
 }
 
@@ -45,12 +45,12 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.85rem;
-  color: rgba(204,251,241,0.5);
+  color: rgba(233,213,255,0.5);
   text-decoration: none;
   margin-bottom: 2rem;
   transition: color 0.2s;
 }
-.breadcrumb:hover { color: #2dd4bf; }
+.breadcrumb:hover { color: #c084fc; }
 
 /* ── Eyebrow badge ── */
 .eyebrow {
@@ -65,7 +65,7 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(204,251,241,0.8);
+  color: rgba(233,213,255,0.8);
   margin-bottom: 1.5rem;
 }
 
@@ -73,7 +73,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #2dd4bf;
+  background: #c084fc;
   animation: blink 2s ease-in-out infinite;
 }
 
@@ -90,7 +90,7 @@
   line-height: 1.08;
   letter-spacing: -0.02em;
   margin: 0 0 1.5rem;
-  background: linear-gradient(135deg, #ffffff 0%, #ccfbf1 55%, #2dd4bf 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #E9D5FF 55%, #c084fc 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -140,7 +140,7 @@
   font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
-  color: #2dd4bf;
+  color: #c084fc;
   margin: 0 0 0.5rem;
 }
 
@@ -174,14 +174,14 @@
 
 .articleCard:hover {
   transform: translateY(-4px);
-  border-color: rgba(45,212,191,0.35);
-  background: rgba(20,184,166,0.08);
-  box-shadow: 0 12px 40px rgba(20,184,166,0.12);
+  border-color: rgba(192,132,252,0.35);
+  background: rgba(147,51,234,0.08);
+  box-shadow: 0 12px 40px rgba(147,51,234,0.12);
 }
 
 .articleDate {
   font-size: 0.72rem;
-  color: #2dd4bf;
+  color: #c084fc;
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
@@ -203,7 +203,7 @@
 
 .articleArrow {
   font-size: 0.85rem;
-  color: #2dd4bf;
+  color: #c084fc;
   margin-top: 0.25rem;
 }
 
@@ -228,8 +228,8 @@
 
 .productCard:hover {
   transform: translateY(-4px);
-  border-color: rgba(59,130,246,0.4);
-  box-shadow: 0 12px 40px rgba(59,130,246,0.15);
+  border-color: rgba(99,102,241,0.4);
+  box-shadow: 0 12px 40px rgba(99,102,241,0.15);
 }
 
 .plgBadge {
@@ -237,7 +237,7 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #2dd4bf;
+  color: #c084fc;
 }
 
 .productName {
@@ -273,7 +273,7 @@
   padding: 1.25rem 1.5rem;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.07);
-  border-left: 3px solid rgba(20,184,166,0.55);
+  border-left: 3px solid rgba(147,51,234,0.55);
   border-radius: 0 10px 10px 0;
 }
 
@@ -299,7 +299,7 @@
 
 .tag {
   font-size: 0.6875rem;
-  color: rgba(204,251,241,0.4);
+  color: rgba(233,213,255,0.4);
   padding: 2px 8px;
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 4px;
@@ -325,9 +325,9 @@
 
 .pillarCard:hover {
   transform: translateY(-3px);
-  border-color: rgba(45,212,191,0.3);
-  background: rgba(20,184,166,0.07);
-  box-shadow: 0 16px 50px rgba(20,184,166,0.1);
+  border-color: rgba(192,132,252,0.3);
+  background: rgba(147,51,234,0.07);
+  box-shadow: 0 16px 50px rgba(147,51,234,0.1);
 }
 
 .pillarCardInner {
@@ -343,7 +343,7 @@
 .pillarNumber {
   font-family: var(--font-bodoni), 'Bodoni Moda', Georgia, serif;
   font-size: 0.875rem;
-  color: rgba(45,212,191,0.45);
+  color: rgba(192,132,252,0.45);
   letter-spacing: 0.15em;
   margin-bottom: 0.5rem;
 }
@@ -380,12 +380,12 @@
 
 .metaStatAccent {
   font-size: 0.8125rem;
-  color: #2dd4bf;
+  color: #c084fc;
 }
 
 .exploreLink {
   font-size: 0.875rem;
-  color: #2dd4bf;
+  color: #c084fc;
   margin-top: 0.5rem;
 }
 
