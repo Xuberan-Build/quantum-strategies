@@ -8,6 +8,9 @@ import { storeCustomerInsights } from '@/lib/google-sheets/customer-sync';
 import { enrollInCompletionCampaigns } from '@/lib/crm/auto-enroll';
 import { assembleUserContext } from '@/lib/portraits/assembler';
 
+// A deep-tier briefing streams for minutes; give it the plan's ceiling
+export const maxDuration = 300;
+
 export async function POST(req: Request) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -338,8 +341,10 @@ Review all step insights and list the 5-7 MOST actionable nudges â€” numbered 1â
         ],
         maxTokens: 15000,
         tier: 'deep',
+        // Low effort keeps a full Opus briefing well inside maxDuration
+        effort: 'low',
         context: 'final-briefing',
-        retries: 2,
+        retries: 1,
       });
 
       briefing = briefingResult.content;

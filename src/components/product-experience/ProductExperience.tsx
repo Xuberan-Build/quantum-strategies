@@ -169,7 +169,7 @@ export default function ProductExperience({
           Building your {product.name}...
         </h2>
         <p style={{ color: 'rgba(206, 190, 255, 0.7)', fontSize: '1rem', maxWidth: '400px', margin: 0 }}>
-          Synthesizing your chart data and responses. This takes about 20–30 seconds.
+          Synthesizing your chart data and responses. This takes 1–3 minutes.
         </p>
         <div style={{ width: '48px', height: '48px', border: '3px solid rgba(139, 92, 246, 0.3)', borderTopColor: '#8b5cf6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

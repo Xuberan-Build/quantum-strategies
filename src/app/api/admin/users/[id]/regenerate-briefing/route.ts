@@ -114,6 +114,7 @@ export async function POST(
       ],
       maxTokens: 15000,
       tier: 'deep',
+      effort: 'low',
       context: 'admin-regenerate-briefing',
       retries: 1,
     });
@@ -137,3 +138,4 @@ export async function POST(
 }
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
