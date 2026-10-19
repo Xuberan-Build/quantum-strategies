@@ -8,6 +8,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { proseComponents } from "@/components/content/proseComponents";
 import { isPublicSlug } from "@/lib/seo/sitemap";
 import { extractFaq, faqJsonLd } from "@/lib/content/faq";
+import { getDbArticles } from "@/lib/content/article-list";
+import { relatedFor } from "@/lib/content/article-index";
 import styles from "./article.module.css";
 
 type PageProps = {
@@ -181,6 +183,7 @@ export default async function ArticlePage({ params }: PageProps) {
     };
     const faqLd = faqJsonLd(extractFaq(post.body ?? ""));
     const author = post.author || "Austin Santos";
+    const related = relatedFor(slug, await getDbArticles());
 
     return (
       <div className={styles.page}>
@@ -215,6 +218,44 @@ export default async function ArticlePage({ params }: PageProps) {
         <article className={`article-prose ${styles.prose}`}>
           {await renderDbBody(post.body ?? "")}
         </article>
+        {(related.series || related.more.length > 0) && (
+          <nav className={styles.related} aria-label="Keep reading">
+            {related.series && (related.series.prev || related.series.next) && (
+              <div className={styles.seriesNav}>
+                <div className={styles.relatedLabel}>{related.series.title}</div>
+                <div className={styles.seriesLinks}>
+                  {related.series.prev ? (
+                    <Link href={`/articles/${related.series.prev.slug}/`} className={styles.seriesLink}>
+                      <span className={styles.seriesDir}>← Previous</span>
+                      {related.series.prev.title}
+                    </Link>
+                  ) : <span />}
+                  {related.series.next && (
+                    <Link href={`/articles/${related.series.next.slug}/`} className={`${styles.seriesLink} ${styles.seriesNext}`}>
+                      <span className={styles.seriesDir}>Next →</span>
+                      {related.series.next.title}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+            {related.more.length > 0 && (
+              <div>
+                <div className={styles.relatedLabel}>More on {pillar?.title ?? "this topic"}</div>
+                <ul className={styles.relatedList}>
+                  {related.more.map((a) => (
+                    <li key={a.slug}>
+                      <Link href={`/articles/${a.slug}/`} className={styles.relatedCard}>
+                        <span className={styles.relatedTitle}>{a.title}</span>
+                        <span className={styles.relatedMeta}>{a.readingMinutes} min read</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </nav>
+        )}
       </div>
     );
   }

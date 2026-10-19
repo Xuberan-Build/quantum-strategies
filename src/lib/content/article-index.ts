@@ -96,3 +96,25 @@ export function buildSeries(articles: IndexArticle[]): Series[] {
     return { id: def.id, title: def.title, description: def.description, articles: [...members].sort((a, b) => rank(a) - rank(b)) };
   }).filter((s) => s.articles.length > 0);
 }
+
+export type Related = {
+  series?: { title: string; prev?: IndexArticle; next?: IndexArticle };
+  more: IndexArticle[];
+};
+
+// End-of-article links: previous/next in the article's series, then up to
+// `count` more from the same topic (newest first), never repeating a link.
+export function relatedFor(slug: string, articles: IndexArticle[], count = 3): Related {
+  const self = articles.find((a) => a.slug === slug);
+  if (!self) return { more: [] };
+
+  const series = buildSeries(articles).find((s) => s.articles.some((a) => a.slug === slug));
+  const i = series ? series.articles.findIndex((a) => a.slug === slug) : -1;
+  const prev = series && i > 0 ? series.articles[i - 1] : undefined;
+  const next = series && i < series.articles.length - 1 ? series.articles[i + 1] : undefined;
+
+  const used = new Set([slug, prev?.slug, next?.slug]);
+  const more = articles.filter((a) => a.topic === self.topic && !used.has(a.slug)).slice(0, count);
+
+  return { series: series && { title: series.title, prev, next }, more };
+}

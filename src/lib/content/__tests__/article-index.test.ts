@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSeries, mergeArticles, readingMinutes, topicCounts, topicSlug, type IndexArticle } from '../article-index';
+import { buildSeries, mergeArticles, readingMinutes, relatedFor, topicCounts, topicSlug, type IndexArticle } from '../article-index';
 
 const a = (slug: string, over: Partial<IndexArticle> = {}): IndexArticle => ({
   slug,
@@ -49,5 +49,33 @@ describe('article index', () => {
     expect(series.map((s) => s.id)).toEqual(['attention-and-perception', 'waveforms']);
     expect(series[0].articles.map((x) => x.slug)).toEqual(['reticular-activating-system', 'self-image']);
     expect(series[1].articles.map((x) => x.slug)).toEqual(['episode-02-amplitude', 'episode-10-measurement']);
+  });
+});
+
+describe('relatedFor', () => {
+  const tag = ['series:attention-and-perception'];
+  const list = mergeArticles(
+    [
+      a('reticular-activating-system', { tags: tag, date: '2026-10-19' }),
+      a('selective-attention', { tags: tag, date: '2026-10-19' }),
+      a('baader-meinhof-phenomenon', { tags: tag, date: '2026-10-19' }),
+      a('older-mindset', { date: '2026-05-01' }),
+      a('other-topic', { topic: 'Business Strategy' }),
+    ],
+    [],
+  );
+
+  it('links previous and next in the series and fills from the same topic', () => {
+    const r = relatedFor('selective-attention', list);
+    expect(r.series?.prev?.slug).toBe('reticular-activating-system');
+    expect(r.series?.next?.slug).toBe('baader-meinhof-phenomenon');
+    expect(r.more.map((x) => x.slug)).toEqual(['older-mindset']);
+  });
+
+  it('works for an article outside any series and never links itself', () => {
+    const r = relatedFor('older-mindset', list);
+    expect(r.series).toBeUndefined();
+    expect(r.more.map((x) => x.slug)).not.toContain('older-mindset');
+    expect(r.more.map((x) => x.slug)).not.toContain('other-topic');
   });
 });

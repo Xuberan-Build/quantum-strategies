@@ -2,10 +2,61 @@ import Link from "next/link";
 import { navigationConfig } from "@/lib/constants/navigation";
 import styles from "./footer.module.css";
 
+type MenuLink = { label: string; href?: string; submenu?: MenuLink[] };
+
+// The mega menu builds its links on hover, so crawlers never see them.
+// The footer repeats the article structure as plain links on every page.
+function articleNav() {
+  const resources = navigationConfig.main.find((item) => item.label === "Resources") as
+    | { megaMenu?: { sections: { links: MenuLink[] }[] } }
+    | undefined;
+  const articles = resources?.megaMenu?.sections
+    .flatMap((section) => section.links)
+    .find((link) => link.label === "Articles");
+  const categories = (articles?.submenu ?? []).filter((c) => c.href && c.href !== "/articles/");
+  const featured = categories.find((c) => c.submenu?.length && c.label.startsWith("Start here"));
+  const topics = categories.filter((c) => c !== featured);
+  return { featured, topics };
+}
+
 export default function Footer() {
+  const { featured, topics } = articleNav();
+
   return (
     <footer className={styles.footer}>
       <div className={styles.container}>
+        <nav className={styles.readRow} aria-label="Articles">
+          {featured && (
+            <div>
+              <h4 className={styles.columnTitle}>
+                <Link href={featured.href!} className={styles.link}>{featured.label}</Link>
+              </h4>
+              <ul className={styles.readList}>
+                {featured.submenu!.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href!} className={styles.link}>{link.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div>
+            <h4 className={styles.columnTitle}>
+              <Link href="/articles/" className={styles.link}>Articles by topic</Link>
+            </h4>
+            <ul className={styles.readList}>
+              {topics.map((topic) => (
+                <li key={topic.href}>
+                  <Link href={topic.href!} className={styles.link}>{topic.label}</Link>
+                </li>
+              ))}
+              <li>
+                <Link href="/articles/waveforms/" className={styles.link}>The Waveforms series</Link>
+              </li>
+            </ul>
+          </div>
+        </nav>
+
         <div className={styles.grid}>
           {/* Brand Column */}
           <div className={styles.brandColumn}>

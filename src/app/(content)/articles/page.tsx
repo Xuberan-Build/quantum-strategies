@@ -2,9 +2,9 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import Link from "next/link";
-import { supabaseAdmin } from "@/lib/supabase/server";
 import { isPublicSlug } from "@/lib/seo/sitemap";
 import ArticleBrowser from "@/components/content/ArticleBrowser";
+import { getDbArticles } from "@/lib/content/article-list";
 import styles from "@/components/content/ArticleBrowser.module.css";
 import {
   MDX_FOLDER_TOPICS,
@@ -20,31 +20,6 @@ import {
 export const revalidate = 300;
 
 const BASE_URL = "https://quantumstrategies.online";
-
-async function getDbArticles(): Promise<IndexArticle[]> {
-  const { data } = await supabaseAdmin
-    .from("content_posts")
-    .select("slug, title, excerpt, body, tags, published_at, content_pillars(title, slug)")
-    .eq("is_published", true)
-    .eq("type", "blog")
-    .order("published_at", { ascending: false })
-    .limit(200);
-
-  return (data ?? []).filter((p) => isPublicSlug(p.slug)).map((p) => {
-    const pillar = (Array.isArray(p.content_pillars) ? p.content_pillars[0] : p.content_pillars) as { title: string; slug: string } | null;
-    const topic = pillar?.title ?? "More";
-    return {
-      slug: p.slug,
-      title: p.title,
-      description: p.excerpt ?? "",
-      date: p.published_at ?? "",
-      topic,
-      topicSlug: topicSlug(topic),
-      tags: p.tags ?? [],
-      readingMinutes: readingMinutes(p.body ?? ""),
-    };
-  });
-}
 
 function getMdxArticles(): IndexArticle[] {
   const articlesDir = path.join(process.cwd(), "src/content/articles");

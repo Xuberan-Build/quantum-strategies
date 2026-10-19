@@ -142,3 +142,79 @@
   .heroInner { padding: 0 1.25rem; }
   .prose { padding: 2.5rem 1.25rem 4rem; }
 }
+
+/* ── Keep reading ── */
+.related {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 1.5rem 6rem;
+  display: grid;
+  gap: 2.5rem;
+}
+
+.relatedLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #c084fc;
+  margin-bottom: 0.9rem;
+}
+
+.seriesLinks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.seriesLink,
+.relatedCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  color: #F8F5FF;
+  text-decoration: none;
+  transition: border-color 0.2s;
+}
+
+.seriesLink:hover,
+.relatedCard:hover {
+  border-color: rgba(192,132,252,0.5);
+}
+
+.seriesNext {
+  text-align: right;
+}
+
+.seriesDir,
+.relatedMeta {
+  font-size: 0.78rem;
+  color: rgba(226,232,240,0.6);
+}
+
+.relatedList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.relatedTitle {
+  font-size: 0.98rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .seriesLinks {
+    grid-template-columns: 1fr;
+  }
+  .seriesNext {
+    text-align: left;
+  }
+}
