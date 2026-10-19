@@ -101,6 +101,11 @@ export default function StackedMegaMenu({ isActive, onMouseLeave, menuData }: St
   const activeTypeData = contentTypes.find((t) => t.label === activeType);
   const activeCategoryData = activeTypeData?.categories?.find((c) => c.label === activeCategory);
   const hasDenseCategories = (activeTypeData?.categories?.length || 0) >= 5;
+  // Dense menus show categories as a column with a panel beside it; the panel
+  // falls back to the first category that has articles (the featured series).
+  const panelCategory =
+    activeCategoryData ??
+    (hasDenseCategories ? activeTypeData?.categories?.find((c) => c.articles.length > 0) : undefined);
 
   return (
     <div className={styles.stackedMenu} onMouseLeave={onMouseLeave}>
@@ -137,43 +142,65 @@ export default function StackedMegaMenu({ isActive, onMouseLeave, menuData }: St
         ))}
       </div>
 
-      {/* Row 2: Categories (Horizontal) - Shows when hovering a type with categories */}
+      {/* Row 2: Categories - horizontal, or a column beside the article panel when dense */}
       {activeTypeData?.categories && (
-        <div
-          className={`${styles.row} ${styles.categoriesRow} ${
-            hasDenseCategories ? styles.categoriesRowDense : ""
-          }`}
-        >
-          {activeTypeData.categories.map((category) => (
-            <div
-              key={category.label}
-              className={`${styles.categoryItem} ${
-                activeCategory === category.label ? styles.active : ""
-              }`}
-              onMouseEnter={() => handleCategoryHover(category.label)}
-            >
-              {category.href ? (
-                <Link href={category.href} className={styles.categoryLabel}>
-                  {category.label}
-                  {category.articles && category.articles.length > 0 && (
-                    <span className={styles.arrow}>▶</span>
-                  )}
+        <div className={hasDenseCategories ? styles.denseBody : undefined}>
+          <div
+            className={`${styles.row} ${styles.categoriesRow} ${
+              hasDenseCategories ? styles.categoriesRowDense : ""
+            }`}
+          >
+            {activeTypeData.categories.map((category) => (
+              <div
+                key={category.label}
+                className={`${styles.categoryItem} ${
+                  panelCategory?.label === category.label && hasDenseCategories
+                    ? styles.active
+                    : activeCategory === category.label
+                      ? styles.active
+                      : ""
+                }`}
+                onMouseEnter={() => handleCategoryHover(category.label)}
+              >
+                {category.href ? (
+                  <Link href={category.href} className={styles.categoryLabel}>
+                    {category.label}
+                    {category.articles && category.articles.length > 0 && (
+                      <span className={styles.arrow}>▶</span>
+                    )}
+                  </Link>
+                ) : (
+                  <span className={styles.categoryLabel}>
+                    {category.label}
+                    {category.articles && category.articles.length > 0 && (
+                      <span className={styles.arrow}>▶</span>
+                    )}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Article panel beside the dense column */}
+          {hasDenseCategories && panelCategory && (
+            <div className={styles.panel}>
+              <div className={styles.panelTitle}>{panelCategory.label}</div>
+              {panelCategory.articles.map((article, idx) => (
+                <Link
+                  key={`${article.label}-${idx}`}
+                  href={article.href}
+                  className={`${styles.panelLink} ${isActive(article.href) ? styles.active : ""}`}
+                >
+                  {article.label}
                 </Link>
-              ) : (
-                <span className={styles.categoryLabel}>
-                  {category.label}
-                  {category.articles && category.articles.length > 0 && (
-                    <span className={styles.arrow}>▶</span>
-                  )}
-                </span>
-              )}
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
 
-      {/* Row 3: Articles (Vertical List) - Shows when hovering a category */}
-      {activeCategoryData && (
+      {/* Row 3: Articles (Vertical List) - Shows when hovering a category in a horizontal menu */}
+      {!hasDenseCategories && activeCategoryData && (
         <div className={`${styles.articlesRow}`}>
           {activeCategoryData.articles.map((article, idx) => (
             <Link
