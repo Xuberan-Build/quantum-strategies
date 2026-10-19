@@ -157,6 +157,94 @@
   color: var(--jewel);
 }
 
+/* Reading workflow: read summary, read badges, note counts */
+.readSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.readSummaryCount {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.readSummaryCount strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.readTrack {
+  flex: 0 1 220px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.readTrackFill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--bronze), var(--jewel));
+}
+
+.readSummaryNote {
+  font-size: 0.78rem;
+  color: var(--bronze);
+}
+
+.readBadge {
+  border-radius: 999px;
+  padding: 0.08rem 0.5rem;
+  border: 1px solid var(--line);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+}
+
+.read_unread {
+  color: var(--ink);
+  border-color: var(--jewel);
+  background: var(--jewel-soft);
+}
+
+.read_unread::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.4em;
+  border-radius: 999px;
+  background: var(--jewel);
+  vertical-align: 1px;
+}
+
+.read_updated {
+  color: var(--bronze);
+  border-color: rgba(192, 122, 62, 0.55);
+  background: var(--bronze-soft);
+}
+
+.read_read {
+  color: #7fc8a9;
+  border-color: rgba(127, 200, 169, 0.4);
+}
+
+.noteCount {
+  color: var(--jewel);
+}
+
+.progressNote {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--bronze);
+  margin-right: 0.4rem;
+}
+
 @media (max-width: 700px) {
   .item {
     grid-template-columns: 1fr;

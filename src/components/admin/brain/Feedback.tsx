@@ -133,6 +133,23 @@ interface ThreadProps {
   /** Shown on doc comments whose anchor was re-found by quote or heading, not exactly. */
   driftNote?: (row: BrainFeedbackRow) => string | null;
   compact?: boolean;
+  /** Show whether each note has been pulled into the brain (synced_to_brain_at). */
+  showSync?: boolean;
+  /** Optional context line per note, e.g. "Slide 3 · Title" in an all-notes view. */
+  noteContext?: (row: BrainFeedbackRow) => React.ReactNode;
+}
+
+/** "Logged to brain" once pull-feedback.ts has written the note to brain/feedback/inbox and set synced_to_brain_at. */
+export function SyncStatus({ row }: { row: Pick<BrainFeedbackRow, 'synced_to_brain_at'> }) {
+  const synced = Boolean(row.synced_to_brain_at);
+  return (
+    <span
+      className={`${styles.syncChip} ${synced ? styles.sync_logged : styles.sync_waiting}`}
+      title={synced ? `Pulled into brain/feedback ${formatDateTime(row.synced_to_brain_at!)}` : 'Not pulled into the brain yet. It goes on the next brain tick.'}
+    >
+      {synced ? 'Logged to brain' : 'Waiting for sync'}
+    </span>
+  );
 }
 
 const CLOSED: FeedbackStatus[] = ['resolved', 'dismissed'];
@@ -220,17 +237,20 @@ function NoteActions({
   );
 }
 
-export function FeedbackThread({ rows, emptyText, driftNote, compact, onUpdated, onDeleted }: ThreadProps) {
+export function FeedbackThread({ rows, emptyText, driftNote, compact, onUpdated, onDeleted, showSync, noteContext }: ThreadProps) {
   if (!rows.length) return emptyText ? <p className={styles.empty}>{emptyText}</p> : null;
   return (
     <ul className={`${styles.thread} ${compact ? styles.threadCompact : ''}`}>
       {rows.map((row) => {
         const drift = driftNote?.(row);
+        const context = noteContext?.(row);
         return (
           <li key={row.id} className={`${styles.note} ${CLOSED.includes(row.status) ? styles.noteClosed : ''}`}>
+            {context && <div className={styles.noteContext}>{context}</div>}
             <div className={styles.noteHead}>
               <span className={`${styles.kindChip} ${styles[`kind_${row.kind}`]}`}>{KIND_LABEL[row.kind]}</span>
               <span className={`${styles.statusChip} ${styles[`status_${row.status}`]}`}>{STATUS_LABEL[row.status]}</span>
+              {showSync && <SyncStatus row={row} />}
               <time className={styles.time} dateTime={row.created_at}>
                 {formatDateTime(row.created_at)}
               </time>

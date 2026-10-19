@@ -12,7 +12,7 @@ export function parseSlideParam(value: string | string[] | null | undefined, cou
   return Number.isFinite(n) ? clampIndex(n - 1, count) : 0;
 }
 
-export type DeckAction = 'next' | 'prev' | 'first' | 'last' | 'fullscreen' | 'sources' | 'close';
+export type DeckAction = 'next' | 'prev' | 'first' | 'last' | 'fullscreen' | 'sources' | 'close' | 'nextUnread' | 'toggleRead' | 'review';
 
 const INTERACTIVE = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'SUMMARY']);
 
@@ -48,6 +48,15 @@ export function keyToAction(event: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'met
     case 's':
     case 'S':
       return 'sources';
+    case 'n':
+    case 'N':
+      return 'nextUnread';
+    case 'u':
+    case 'U':
+      return 'toggleRead';
+    case 'r':
+    case 'R':
+      return 'review';
     case 'Escape':
       return 'close';
     default:

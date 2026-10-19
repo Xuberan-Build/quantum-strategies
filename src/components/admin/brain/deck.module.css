@@ -21,6 +21,43 @@
   width: 100vw;
 }
 
+/* With the review sidebar: slides on the left, the sidebar spans everything below the topbar.
+   Explicit placement so the absolutely positioned drawers, scrims and live region never take
+   a grid cell. */
+.withReview {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.withReview > .topbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.withReview > .progress {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.withReview > .stage {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.withReview > .rail {
+  grid-column: 1;
+  grid-row: 4;
+}
+
+.toolButtonNext {
+  border-color: rgba(180, 140, 255, 0.55);
+  background: var(--jewel-soft);
+  color: var(--ink);
+}
+
+.toolButtonNext:hover {
+  border-color: var(--jewel);
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -699,6 +736,9 @@
   .presenter {
     height: auto;
     min-height: calc(100vh - 58px);
+  }
+  .withReview {
+    grid-template-columns: minmax(0, 1fr);
   }
   .stage {
     padding: 1rem 0.75rem 3.75rem;

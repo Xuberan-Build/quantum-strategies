@@ -113,15 +113,16 @@ describe('DeckPresenter feedback + sources', () => {
   };
   const titles = {} as Record<PillarSlug, string>;
 
-  it('hides the Feedback control without feedback data', () => {
+  it('hides the Review control without feedback data', () => {
     render(<DeckPresenter deck={deck} pillarTitles={titles} />);
-    expect(screen.queryByRole('button', { name: /^Feedback/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Review/ })).toBeNull();
+    expect(screen.queryByRole('complementary', { name: 'Review' })).toBeNull();
   });
 
   it('shows slide notes and renders http sources as external links', () => {
     const rows = [note({ target_type: 'slide', target_id: 'd1', deck_id: 'd1', slide_id: 'a', body: 'Sharper headline.', reply: null, status: 'open' })];
     render(<DeckPresenter deck={deck} pillarTitles={titles} feedback={{ rows }} externalUrl="https://claude.ai/artifact/deck" />);
-    expect(screen.getByRole('button', { name: 'Feedback (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Review \(1\)/ })).toBeInTheDocument();
     expect(screen.getByText('Sharper headline.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open original/ })).toHaveAttribute('href', 'https://claude.ai/artifact/deck');
     const external = screen.getByText('claude.ai/artifact/abc').closest('a');

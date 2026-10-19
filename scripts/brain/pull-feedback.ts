@@ -25,7 +25,7 @@ import {
   type BrainFeedbackRow,
   type InboxContext,
 } from '../../src/lib/brain/feedback';
-import { BRAIN_DOC_INDEX_PATH, DocIndexSchema } from '../../src/lib/brain/snapshot';
+import { BRAIN_DOC_INDEX_PATH, BRAIN_LATEST_PATH, BrainSnapshotSchema, DocIndexSchema, type BrainDeck } from '../../src/lib/brain/snapshot';
 import { readLocalDecks } from './lib/publish-decks';
 import { downloadText, serviceClient } from './lib/storage';
 
@@ -53,12 +53,28 @@ async function main() {
     return;
   }
 
-  // Titles for context (best effort).
-  const ctx: InboxContext = { deckTitles: {}, slideTitles: {}, docs: {} };
-  for (const { deck } of readLocalDecks(path.join(brainDir, 'decks')).decks) {
+  // Deck title, slide title and slide number for context (best effort): the briefing decks
+  // in the published snapshot first, then the archive in brain/decks/ (the presenter shows the
+  // snapshot version when a deck is in both, so the archive only fills gaps).
+  const ctx: InboxContext = { deckTitles: {}, slideTitles: {}, slideNumbers: {}, docs: {} };
+  const addDeck = (deck: Pick<BrainDeck, 'id' | 'title' | 'slides'>) => {
+    if (ctx.deckTitles![deck.id]) return;
     ctx.deckTitles![deck.id] = deck.title;
-    for (const s of deck.slides) ctx.slideTitles![`${deck.id}/${s.id}`] = s.title;
+    deck.slides.forEach((s, i) => {
+      ctx.slideTitles![`${deck.id}/${s.id}`] = s.title;
+      ctx.slideNumbers![`${deck.id}/${s.id}`] = { n: i + 1, of: deck.slides.length };
+    });
+  };
+  if (rows.some((r) => r.target_type === 'deck' || r.target_type === 'slide')) {
+    try {
+      const text = await downloadText(sb, BRAIN_LATEST_PATH);
+      const parsed = text ? BrainSnapshotSchema.safeParse(JSON.parse(text)) : null;
+      if (parsed?.success) for (const deck of parsed.data.decks) addDeck(deck);
+    } catch {
+      // snapshot titles are optional
+    }
   }
+  for (const { deck } of readLocalDecks(path.join(brainDir, 'decks')).decks) addDeck(deck);
   try {
     const text = await downloadText(sb, BRAIN_DOC_INDEX_PATH);
     const parsed = text ? DocIndexSchema.safeParse(JSON.parse(text)) : null;

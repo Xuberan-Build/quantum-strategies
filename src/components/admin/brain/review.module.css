@@ -1,0 +1,448 @@
+/* Review sidebar in the deck presenter, plus the brain sync hint. Same visual language as the
+   admin sidebar (collapsible to a slim rail) and the feedback drawer. Tokens come from .root
+   in brain.module.css. */
+
+.review {
+  grid-column: 2;
+  grid-row: 2 / -1;
+  width: 340px;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #120f0c;
+  border-left: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.reviewCollapsed {
+  width: 48px;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+}
+
+.railButton,
+.collapseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.railButton:hover,
+.collapseButton:hover {
+  color: var(--ink);
+  background: var(--surface-3);
+}
+
+.railLabel {
+  writing-mode: vertical-rl;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.railDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  border: 1px solid var(--axis);
+}
+
+.dot_unread {
+  background: var(--jewel);
+  border-color: var(--jewel);
+}
+
+.dot_updated {
+  background: var(--bronze);
+  border-color: var(--bronze);
+}
+
+.dot_read {
+  background: #7fc8a9;
+  border-color: #7fc8a9;
+}
+
+.railCount {
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--jewel-soft);
+  border: 1px solid rgba(180, 140, 255, 0.4);
+  color: var(--jewel);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  line-height: 1.2rem;
+  text-align: center;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.headText {
+  flex: 1;
+  min-width: 0;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.title {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.9rem 1rem 1.25rem 1.1rem;
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  scrollbar-width: thin;
+  scrollbar-color: var(--axis) transparent;
+}
+
+.kbd {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  padding: 0.02rem 0.32rem;
+  border-radius: 4px;
+  border: 1px solid var(--axis);
+  color: var(--ink-3);
+}
+
+/* Read status */
+.readCard {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.readCard_unread {
+  border-color: rgba(180, 140, 255, 0.35);
+}
+
+.readCard_updated {
+  border-color: rgba(192, 122, 62, 0.5);
+  background: linear-gradient(0deg, var(--bronze-soft), var(--bronze-soft)), var(--surface);
+}
+
+.readLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.readChip {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--line);
+}
+
+.chip_unread {
+  color: var(--ink);
+  border-color: var(--jewel);
+  background: var(--jewel-soft);
+}
+
+.chip_updated {
+  color: var(--bronze);
+  border-color: rgba(192, 122, 62, 0.55);
+}
+
+.chip_read {
+  color: #7fc8a9;
+  border-color: rgba(127, 200, 169, 0.4);
+}
+
+.readWhen {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--ink-3);
+}
+
+.readText {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.readActions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.readButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.readButton:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+
+.readButton[aria-pressed='false'] {
+  border-color: var(--jewel);
+}
+
+.readButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.resumed {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--ink-3);
+}
+
+.linkButton {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ink-2);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  color: var(--ink);
+}
+
+.error {
+  margin: 0;
+  color: var(--warning);
+  font-size: 0.78rem;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 0.78rem;
+}
+
+.muted a {
+  color: var(--ink-2);
+}
+
+/* Composer target */
+.composeBlock {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.targetRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.targetLabel {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-right: 0.15rem;
+}
+
+.target {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.target:hover {
+  color: var(--ink);
+}
+
+.targetActive {
+  border-color: var(--jewel);
+  background: var(--jewel-soft);
+  color: var(--ink);
+}
+
+/* Up next */
+.upNext {
+  padding-top: 0.25rem;
+}
+
+.nextLink {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(180, 140, 255, 0.45);
+  background: var(--jewel-soft);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.nextLink:hover {
+  border-color: var(--jewel);
+}
+
+.nextEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jewel);
+}
+
+.nextTitle {
+  font-family: var(--serif);
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Sync hint (also used on the deck list) */
+.syncHint {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  border: 1px dashed var(--axis);
+  background: var(--surface);
+}
+
+.syncHintCompact {
+  margin-bottom: 0;
+  padding: 0.65rem 0.75rem;
+}
+
+.syncHintHead {
+  font-size: 0.8rem;
+  color: var(--ink-2);
+}
+
+.syncHintHead strong {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.syncHintText {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.syncHintText code {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-2);
+}
+
+.syncCommand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.4rem 0.4rem 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: var(--plane);
+  border: 1px solid var(--line);
+}
+
+.syncCommand code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.copyButton {
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.copyButton:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 900px) {
+  .review {
+    grid-column: 1;
+    grid-row: auto;
+    width: auto;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .reviewCollapsed {
+    flex-direction: row;
+    padding: 0.5rem 1rem;
+  }
+  .railLabel {
+    writing-mode: horizontal-tb;
+  }
+  .body {
+    overflow: visible;
+  }
+}

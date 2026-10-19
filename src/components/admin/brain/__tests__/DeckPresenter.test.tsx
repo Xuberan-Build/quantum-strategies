@@ -1,12 +1,17 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { deckContentHash } from '@/lib/brain/deck-reads';
+import type { BrainFeedbackRow } from '@/lib/brain/feedback';
 import type { BrainDeck, BrainSlide, PillarSlug } from '@/lib/brain/snapshot';
 import { DeckSchema } from '@/lib/brain/snapshot';
 import { DeckPresenter } from '../DeckPresenter';
 import { SlideRenderer } from '../SlideRenderer';
 import { clampIndex, keyToAction, parseSlideParam } from '../deckNavigation';
+
+const push = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: ReactNode } & AnchorHTMLAttributes<HTMLAnchorElement>) => (
@@ -193,6 +198,10 @@ describe('deck navigation helpers', () => {
     expect(keyToAction(k('End'), div)).toBe('last');
     expect(keyToAction(k('f'), div)).toBe('fullscreen');
     expect(keyToAction(k('s'), div)).toBe('sources');
+    expect(keyToAction(k('n'), div)).toBe('nextUnread');
+    expect(keyToAction(k('u'), div)).toBe('toggleRead');
+    expect(keyToAction(k('r'), div)).toBe('review');
+    expect(keyToAction(k('u'), input)).toBeNull();
   });
 });
 
@@ -258,5 +267,152 @@ describe('DeckPresenter', () => {
     });
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Sources/ })).toHaveFocus();
+  });
+});
+
+describe('DeckPresenter reading workflow', () => {
+  const HASH = deckContentHash(deck);
+  const live = () => screen.getByText(/^Slide \d+ of 6:/);
+  const note = (extra: Partial<BrainFeedbackRow>): BrainFeedbackRow => ({
+    id: '0b8f1c1e-5d1a-4c1b-9a77-1f2e3d4c5b6a',
+    created_at: '2000-01-01T00:00:00Z',
+    updated_at: null,
+    author_id: null,
+    target_type: 'slide',
+    target_id: deck.id,
+    deck_id: deck.id,
+    slide_id: 'one',
+    anchor: null,
+    kind: 'change',
+    body: 'Synthetic note',
+    status: 'open',
+    resolved_note: null,
+    reply: null,
+    replied_at: null,
+    synced_to_brain_at: null,
+    ...extra,
+  });
+  const queue = [
+    { id: 'newer', title: 'Newer deck', status: 'read' as const },
+    { id: deck.id, title: deck.title, status: 'unread' as const },
+    { id: 'older', title: 'Older deck', status: 'unread' as const },
+  ];
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    push.mockReset();
+    fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+      const row = {
+        id: 'r1',
+        user_id: 'u1',
+        deck_id: body.deck_id,
+        content_hash: body.read === true ? body.content_hash : null,
+        read_at: body.read === true ? '2000-01-02T00:00:00Z' : null,
+        last_slide: typeof body.last_slide === 'number' ? body.last_slide : 0,
+      };
+      return new Response(JSON.stringify({ row }), { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const renderReading = (initial: { read_at: string | null; content_hash: string | null; last_slide: number } | null = null, extra = {}) =>
+    render(
+      <DeckPresenter
+        deck={deck}
+        pillarTitles={titles}
+        feedback={{ rows: [note({}), note({ id: '1b8f1c1e-5d1a-4c1b-9a77-1f2e3d4c5b6a', slide_id: null, target_type: 'deck', body: 'Deck note', synced_to_brain_at: '2000-01-01T05:00:00Z' })] }}
+        reading={{ contentHash: HASH, initial, queue }}
+        {...extra}
+      />,
+    );
+
+  const readCalls = () => fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)) as Record<string, unknown>).filter((b) => 'read' in b);
+
+  it('shows a collapsible review sidebar with notes and their brain sync status', () => {
+    renderReading();
+    const sidebar = screen.getByRole('complementary', { name: 'Review' });
+    expect(within(sidebar).getByText('Synthetic note')).toBeInTheDocument();
+    expect(within(sidebar).getByText('Waiting for sync')).toBeInTheDocument();
+    expect(within(sidebar).getByText('scripts/brain/tick.sh --only feedback')).toBeInTheDocument();
+
+    fireEvent.click(within(sidebar).getByRole('tab', { name: /All of deck/ }));
+    expect(within(sidebar).getByText('Deck note')).toBeInTheDocument();
+    expect(within(sidebar).getByText('Logged to brain')).toBeInTheDocument();
+    expect(within(sidebar).getByText('Deck note').closest('li')).toHaveTextContent(/^Whole deck/);
+
+    fireEvent.click(within(sidebar).getByRole('button', { name: 'Collapse review sidebar' }));
+    expect(screen.queryByText('Synthetic note')).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('qs-brain-review')).toBe('collapsed');
+    act(() => {
+      fireEvent.keyDown(document.body, { key: 'r' });
+    });
+    expect(screen.getByText('Synthetic note')).toBeInTheDocument();
+  });
+
+  it('marks the deck read on reaching the last slide, and U toggles it', async () => {
+    renderReading();
+    expect(screen.getByRole('button', { name: /Mark read/ })).toBeInTheDocument();
+    act(() => {
+      fireEvent.keyDown(document.body, { key: 'End' });
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: /Mark unread/ })).toBeEnabled());
+    expect(readCalls()[0]).toMatchObject({ deck_id: deck.id, read: true, content_hash: HASH, last_slide: 5 });
+
+    act(() => {
+      fireEvent.keyDown(document.body, { key: 'u' });
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: /Mark read/ })).toBeInTheDocument());
+    expect(readCalls()[1]).toMatchObject({ deck_id: deck.id, read: false });
+    // Staying on the last slide does not re-mark it read.
+    expect(readCalls()).toHaveLength(2);
+  });
+
+  it('shows "Updated since you read it" when the content hash changed', () => {
+    renderReading({ read_at: '2000-01-01T00:00:00Z', content_hash: 'c1-something-else', last_slide: 0 });
+    const sidebar = screen.getByRole('complementary', { name: 'Review' });
+    expect(within(sidebar).getByText('Updated since you read it')).toBeInTheDocument();
+  });
+
+  it('offers the next unread deck at the end and N goes there', () => {
+    renderReading({ read_at: '2000-01-01T00:00:00Z', content_hash: HASH, last_slide: 0 });
+    expect(screen.queryByRole('link', { name: /Next unread deck →/ })).not.toBeInTheDocument();
+    act(() => {
+      fireEvent.keyDown(document.body, { key: 'End' });
+    });
+    expect(screen.getByRole('link', { name: /Next unread deck →/ })).toHaveAttribute('href', '/admin/brain/deck/older?from=decks');
+    act(() => {
+      fireEvent.keyDown(document.body, { key: 'n' });
+    });
+    expect(push).toHaveBeenCalledWith('/admin/brain/deck/older?from=decks');
+  });
+
+  it('resumes where the reader stopped and can start over', () => {
+    renderReading({ read_at: null, content_hash: null, last_slide: 3 }, { initialIndex: 3, reading: { contentHash: HASH, initial: { read_at: null, content_hash: null, last_slide: 3 }, queue, resumedAt: 3 } });
+    expect(live()).toHaveTextContent('Slide 4 of 6');
+    fireEvent.click(screen.getByRole('button', { name: 'Start from the beginning' }));
+    expect(live()).toHaveTextContent('Slide 1 of 6');
+  });
+
+  it('saves progress for resume after slide changes', async () => {
+    vi.useFakeTimers();
+    try {
+      renderReading();
+      act(() => {
+        fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+      });
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+      expect(bodies).toContainEqual({ deck_id: deck.id, last_slide: 1 });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

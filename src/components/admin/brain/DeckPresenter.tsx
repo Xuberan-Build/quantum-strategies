@@ -2,14 +2,17 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { nextUnreadDeck, type DeckReadStatus } from '@/lib/brain/deck-reads';
 import type { BrainFeedbackRow } from '@/lib/brain/feedback';
 import type { BrainDeck, PillarSlug } from '@/lib/brain/snapshot';
 import { brainSourceUrl, formatDate } from '@/lib/brain/viz';
-import { FeedbackComposer, FeedbackThread } from './Feedback';
+import { ReviewSidebar } from './ReviewSidebar';
 import { SLIDE_KIND_LABEL, SlideRenderer } from './SlideRenderer';
 import { keyToAction } from './deckNavigation';
 import { useDeckNavigation } from './useDeckNavigation';
+import { useDeckReading, type DeckReadingProps } from './useDeckReading';
 import base from './brain.module.css';
 import styles from './deck.module.css';
 
@@ -23,9 +26,18 @@ interface DeckPresenterProps {
   backHref?: string;
   /** Where the deck also lives (e.g. a claude.ai artifact). */
   externalUrl?: string;
-  /** Existing notes for this deck. When omitted, the Feedback control is hidden. */
+  /** Existing notes for this deck. When omitted (and `reading` too), the review sidebar is hidden. */
   feedback?: { rows: BrainFeedbackRow[]; error?: string };
+  /** Read receipt for the signed-in admin. When omitted, read tracking is off. */
+  reading?: DeckReadingProps & {
+    /** Every deck in archive order with its read status, for "Next unread deck". */
+    queue?: { id: string; title: string; status: DeckReadStatus }[];
+    /** Set when the presenter opened on the saved last slide instead of slide 1. */
+    resumedAt?: number | null;
+  };
 }
+
+const REVIEW_STORAGE_KEY = 'qs-brain-review';
 
 const isExternal = (p: string) => /^https?:\/\//i.test(p);
 
@@ -38,19 +50,22 @@ export function DeckPresenter({
   backHref = '/admin/brain',
   externalUrl,
   feedback,
+  reading,
 }: DeckPresenterProps) {
   const total = deck.slides.length;
   const nav = useDeckNavigation({ count: total, initialIndex });
+  const router = useRouter();
+  const read = useDeckReading(deck.id, reading);
+  const hasReview = Boolean(feedback || reading);
+  const [reviewCollapsed, setReviewCollapsed] = useState(false);
+  const [resumedAt, setResumedAt] = useState<number | null>(reading?.resumedAt ?? null);
   const reduce = useReducedMotion() ?? false;
   const rootRef = useRef<HTMLDivElement>(null);
   const thumbRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const sourcesButtonRef = useRef<HTMLButtonElement>(null);
   const drawerCloseRef = useRef<HTMLButtonElement>(null);
-  const feedbackButtonRef = useRef<HTMLButtonElement>(null);
   const touchX = useRef<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackScope, setFeedbackScope] = useState<'slide' | 'deck'>('slide');
   const [notes, setNotes] = useState<BrainFeedbackRow[]>(feedback?.rows ?? []);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -64,11 +79,54 @@ export function DeckPresenter({
     return map;
   }, [notes]);
   const slideNotes = notesBySlide.get(slide.id) ?? [];
-  const deckNotes = notesBySlide.get('') ?? [];
-  const closeFeedback = useCallback(() => {
-    setFeedbackOpen(false);
-    feedbackButtonRef.current?.focus({ preventScroll: true });
+
+  const queue = reading?.queue;
+  const nextUnread = useMemo(() => {
+    const next = queue ? nextUnreadDeck(queue, deck.id) : null;
+    return next ? { href: `/admin/brain/deck/${encodeURIComponent(next.id)}?from=decks`, title: next.title } : null;
+  }, [queue, deck.id]);
+
+  const toggleRead = useCallback(() => {
+    if (!read.enabled || read.busy) return;
+    void read.setRead(read.status !== 'read');
+  }, [read]);
+
+  // Review sidebar open/collapsed, remembered per browser (like the admin sidebar).
+  useEffect(() => {
+    try {
+      // Read after mount (not in the initial state) so server and client render the same markup.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setReviewCollapsed(window.localStorage.getItem(REVIEW_STORAGE_KEY) === 'collapsed');
+    } catch {
+      /* storage unavailable: stay expanded */
+    }
   }, []);
+  const setCollapsed = useCallback((collapsed: boolean) => {
+    setReviewCollapsed(collapsed);
+    try {
+      window.localStorage.setItem(REVIEW_STORAGE_KEY, collapsed ? 'collapsed' : 'expanded');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Reaching the last slide marks the deck read (on arrival only, so "Mark unread" there sticks).
+  // Every slide change is saved, debounced, so the deck can resume where the reader stopped.
+  const readRef = useRef(read);
+  useEffect(() => {
+    readRef.current = read;
+  }, [read]);
+  const firstIndex = useRef(true);
+  useEffect(() => {
+    const r = readRef.current;
+    if (!r.enabled) return;
+    if (nav.index === total - 1 && r.status !== 'read' && !r.busy) void r.setRead(true, nav.index);
+    if (firstIndex.current) {
+      firstIndex.current = false;
+      return;
+    }
+    r.saveProgress(nav.index);
+  }, [nav.index, total]);
   const pillarTitle = useCallback((slug: PillarSlug) => pillarTitles[slug], [pillarTitles]);
 
   const toggleFullscreen = useCallback(() => {
@@ -98,6 +156,18 @@ export function DeckPresenter({
       if (!action) return;
       if (drawerOpen && action !== 'close' && action !== 'sources') return;
       switch (action) {
+        case 'nextUnread':
+          if (!nextUnread) return;
+          router.push(nextUnread.href);
+          break;
+        case 'toggleRead':
+          if (!read.enabled) return;
+          toggleRead();
+          break;
+        case 'review':
+          if (!hasReview) return;
+          setCollapsed(!reviewCollapsed);
+          break;
         case 'next':
           nav.next();
           break;
@@ -115,16 +185,9 @@ export function DeckPresenter({
           break;
         case 'sources':
           if (drawerOpen) closeDrawer();
-          else {
-            setFeedbackOpen(false);
-            setDrawerOpen(true);
-          }
+          else setDrawerOpen(true);
           break;
         case 'close':
-          if (feedbackOpen) {
-            closeFeedback();
-            break;
-          }
           if (!drawerOpen) return; // let the browser exit full screen
           closeDrawer();
           break;
@@ -133,7 +196,7 @@ export function DeckPresenter({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [nav, drawerOpen, feedbackOpen, toggleFullscreen, closeDrawer, closeFeedback]);
+  }, [nav, drawerOpen, toggleFullscreen, closeDrawer, nextUnread, router, read.enabled, toggleRead, hasReview, setCollapsed, reviewCollapsed]);
 
   useEffect(() => {
     // Scroll only the thumbnail rail. scrollIntoView would also scroll every
@@ -160,7 +223,7 @@ export function DeckPresenter({
   return (
     <div
       ref={rootRef}
-      className={styles.presenter}
+      className={`${styles.presenter} ${hasReview ? styles.withReview : ''}`}
       role="region"
       aria-roledescription="carousel"
       aria-label={`${deck.title} slides`}
@@ -183,22 +246,20 @@ export function DeckPresenter({
             Open original ↗
           </a>
         )}
-        {feedback && (
+        {nav.isLast && nextUnread && (
+          <Link href={nextUnread.href} className={`${styles.toolButton} ${styles.toolButtonNext}`} title={nextUnread.title}>
+            Next unread deck → <span className={`${styles.kbd} ${styles.kbdHint}`}>N</span>
+          </Link>
+        )}
+        {hasReview && (
           <button
-            ref={feedbackButtonRef}
             type="button"
-            className={`${styles.toolButton} ${feedbackOpen ? styles.toolButtonActive : ''}`}
-            onClick={() => {
-              if (feedbackOpen) closeFeedback();
-              else {
-                setDrawerOpen(false);
-                setFeedbackOpen(true);
-              }
-            }}
-            aria-expanded={feedbackOpen}
-            aria-controls="brain-feedback-drawer"
+            className={`${styles.toolButton} ${!reviewCollapsed ? styles.toolButtonActive : ''}`}
+            onClick={() => setCollapsed(!reviewCollapsed)}
+            aria-expanded={!reviewCollapsed}
+            aria-controls="brain-review-sidebar"
           >
-            Feedback{slideNotes.length ? ` (${slideNotes.length})` : ''}
+            Review{slideNotes.length ? ` (${slideNotes.length})` : ''} <span className={`${styles.kbd} ${styles.kbdHint}`}>R</span>
           </button>
         )}
         <button
@@ -207,10 +268,7 @@ export function DeckPresenter({
           className={`${styles.toolButton} ${drawerOpen ? styles.toolButtonActive : ''}`}
           onClick={() => {
             if (drawerOpen) closeDrawer();
-            else {
-              setFeedbackOpen(false);
-              setDrawerOpen(true);
-            }
+            else setDrawerOpen(true);
           }}
           aria-expanded={drawerOpen}
           aria-controls="brain-sources-drawer"
@@ -357,74 +415,31 @@ export function DeckPresenter({
               </div>
             </motion.aside>
 
-      {feedback && (
-        <>
-          {feedbackOpen && <button type="button" className={styles.scrim} aria-label="Close feedback" tabIndex={-1} onClick={closeFeedback} />}
-          <motion.aside
-            id="brain-feedback-drawer"
-            className={styles.drawer}
-            role="dialog"
-            aria-modal="false"
-            aria-label={feedbackScope === 'slide' ? `Feedback on slide ${nav.index + 1}` : 'Feedback on the deck'}
-            aria-hidden={!feedbackOpen}
-            inert={!feedbackOpen}
-            initial={false}
-            animate={feedbackOpen ? { x: 0, opacity: 1 } : reduce ? { x: 0, opacity: 0 } : { x: '125%', opacity: 1 }}
-            transition={{ duration: reduce ? 0.12 : 0.32, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className={styles.drawerHead}>
-              <div className={styles.drawerHeadText}>
-                <div className={styles.drawerEyebrow} title={feedbackScope === 'slide' ? slide.title : undefined}>
-                  {feedbackScope === 'slide' ? `Slide ${nav.index + 1} · ${slide.title}` : `Whole deck · ${deck.period}`}
-                </div>
-                <div className={styles.drawerTitle}>Feedback</div>
-              </div>
-              <button type="button" className={styles.toolButton} onClick={closeFeedback}>
-                Close <span className={styles.kbd}>Esc</span>
-              </button>
-            </div>
-            <div className={styles.drawerBody}>
-              <div className={base.segmented} role="tablist" aria-label="Feedback on">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={feedbackScope === 'slide'}
-                  className={`${base.segment} ${feedbackScope === 'slide' ? base.segmentActive : ''}`}
-                  onClick={() => setFeedbackScope('slide')}
-                >
-                  This slide{slideNotes.length ? ` · ${slideNotes.length}` : ''}
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={feedbackScope === 'deck'}
-                  className={`${base.segment} ${feedbackScope === 'deck' ? base.segmentActive : ''}`}
-                  onClick={() => setFeedbackScope('deck')}
-                >
-                  Whole deck{deckNotes.length ? ` · ${deckNotes.length}` : ''}
-                </button>
-              </div>
-              {feedback.error && (
-                <p style={{ color: 'var(--warning)', fontSize: '0.8rem', margin: 0 }}>Feedback could not be loaded ({feedback.error}).</p>
-              )}
-              <FeedbackComposer
-                key={feedbackScope === 'slide' ? `slide-${slide.id}` : 'deck'}
-                target={
-                  feedbackScope === 'slide'
-                    ? { target_type: 'slide', target_id: deck.id, slide_id: slide.id }
-                    : { target_type: 'deck', target_id: deck.id }
-                }
-                onSaved={(row) => setNotes((prev) => [...prev, row])}
-              />
-              <FeedbackThread
-                rows={feedbackScope === 'slide' ? slideNotes : deckNotes}
-                emptyText={feedbackScope === 'slide' ? 'No notes on this slide yet.' : 'No notes on the whole deck yet.'}
-                onUpdated={(row) => setNotes((prev) => prev.map((n) => (n.id === row.id ? row : n)))}
-                onDeleted={(id) => setNotes((prev) => prev.filter((n) => n.id !== id))}
-              />
-            </div>
-          </motion.aside>
-        </>
+      {hasReview && (
+        <ReviewSidebar
+          deck={deck}
+          index={nav.index}
+          collapsed={reviewCollapsed}
+          onCollapsedChange={setCollapsed}
+          notes={notes}
+          notesError={feedback?.error}
+          onNoteSaved={(row) => setNotes((prev) => [...prev, row])}
+          onNoteUpdated={(row) => setNotes((prev) => prev.map((n) => (n.id === row.id ? row : n)))}
+          onNoteDeleted={(id) => setNotes((prev) => prev.filter((n) => n.id !== id))}
+          onJump={nav.go}
+          reading={
+            read.enabled
+              ? { enabled: true, status: read.status, state: read.state, busy: read.busy, error: read.error, unavailable: reading?.error, onToggle: toggleRead }
+              : undefined
+          }
+          nextUnread={nextUnread}
+          decksHref={backHref === '/admin/brain' ? '/admin/brain/decks' : backHref}
+          resumedAt={resumedAt}
+          onStartOver={() => {
+            setResumedAt(null);
+            nav.first();
+          }}
+        />
       )}
     </div>
   );

@@ -132,6 +132,9 @@ export const DeckIndexEntrySchema = z.object({
   slideCount: z.number().int().nonnegative(),
   externalUrl: z.string().url().optional(),
   tags: z.array(z.string()),
+  // deckContentHash (deck-reads.ts) of the deck's title/period/summary/slides, for
+  // "Updated since you read it". Optional: indexes published before it existed lack it.
+  contentHash: z.string().optional(),
 });
 
 export const DeckIndexSchema = z.object({

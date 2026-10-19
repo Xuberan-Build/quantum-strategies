@@ -2,7 +2,10 @@ import { notFound } from 'next/navigation';
 import { DeckPresenter } from '@/components/admin/brain/DeckPresenter';
 import { BrainEmptyState } from '@/components/admin/brain/EmptyState';
 import { parseSlideParam } from '@/components/admin/brain/deckNavigation';
+import { deckContentHash } from '@/lib/brain/deck-hash';
+import { deckReadStatus, resumeIndex } from '@/lib/brain/deck-reads';
 import { getArchivedDeck, getBrainSnapshot, loadFeedback } from '@/lib/brain/load';
+import { loadDeckList, loadDeckReads, readingQueue } from '@/lib/brain/reading';
 import { PILLAR_ORDER, pillarTitles } from '@/lib/brain/viz';
 import type { PillarSlug } from '@/lib/brain/snapshot';
 
@@ -33,7 +36,14 @@ export default async function BrainDeckPage({ params, searchParams }: PageProps)
     notFound();
   }
 
-  const feedback = await loadFeedback('deck', deck.id);
+  const [feedback, { reads, error: readsError }, { decks }] = await Promise.all([loadFeedback('deck', deck.id), loadDeckReads(), loadDeckList()]);
+  const contentHash = deckContentHash(deck);
+  const myRead = reads[deck.id] ?? null;
+  const status = deckReadStatus(myRead, contentHash);
+  // ?s= wins; otherwise resume an unfinished read where it stopped.
+  const hasSlideParam = query.s !== undefined && query.s !== '';
+  const resumeAt = hasSlideParam ? null : resumeIndex(myRead, status, deck.slides.length);
+  const initialIndex = hasSlideParam ? parseSlideParam(query.s, deck.slides.length) : resumeAt ?? 0;
   const sourceDates = snapshot ? Object.fromEntries(snapshot.sources.map((s) => [s.path, s.updatedAt])) : {};
 
   return (
@@ -42,10 +52,17 @@ export default async function BrainDeckPage({ params, searchParams }: PageProps)
       pillarTitles={snapshot ? pillarTitles(snapshot) : fallbackPillarTitles()}
       sourceDates={sourceDates}
       brainCommit={snapshot?.brainCommit}
-      initialIndex={parseSlideParam(query.s, deck.slides.length)}
+      initialIndex={initialIndex}
       backHref={archived || query.from === 'decks' ? '/admin/brain/decks' : '/admin/brain'}
       externalUrl={archived?.externalUrl}
       feedback={feedback}
+      reading={{
+        contentHash,
+        initial: myRead,
+        error: readsError,
+        queue: readingQueue(decks, reads),
+        resumedAt: resumeAt,
+      }}
     />
   );
 }

@@ -280,3 +280,45 @@
 .noteClosed {
   opacity: 0.6;
 }
+
+/* Brain sync status (synced_to_brain_at, set by scripts/brain/pull-feedback.ts) */
+.syncChip {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  border: 1px dashed var(--line);
+}
+
+.sync_logged {
+  color: #7fc8a9;
+  border-style: solid;
+  border-color: rgba(127, 200, 169, 0.35);
+}
+
+.sync_waiting {
+  color: var(--warning);
+  border-color: rgba(250, 178, 25, 0.4);
+}
+
+.noteContext {
+  margin-bottom: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.noteContext button {
+  all: unset;
+  cursor: pointer;
+  color: var(--ink-2);
+}
+
+.noteContext button:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}

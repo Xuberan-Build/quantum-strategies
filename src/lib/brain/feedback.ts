@@ -141,6 +141,7 @@ export function feedbackPatch(update: FeedbackUpdate, now: string = new Date().t
 export interface InboxContext {
   deckTitles?: Record<string, string>;
   slideTitles?: Record<string, string>; // key: `${deckId}/${slideId}`
+  slideNumbers?: Record<string, { n: number; of: number }>; // key: `${deckId}/${slideId}`, n is 1-based
   docs?: Record<string, { title: string; path: string }>; // key: doc slug
   nodes?: Record<string, { label: string; type: string; sourcePath?: string | null }>; // key: node id
 }
@@ -176,8 +177,10 @@ export function formatInboxEntry(row: BrainFeedbackRow, ctx: InboxContext = {}):
     lines.push(`- id: \`${row.id}\``);
     lines.push(`- deck: \`${row.target_id}\`${deckTitle ? ` (${deckTitle})` : ''}`);
     if (row.slide_id) {
-      const slideTitle = ctx.slideTitles?.[`${row.target_id}/${row.slide_id}`];
-      lines.push(`- slide: \`${row.slide_id}\`${slideTitle ? ` (${slideTitle})` : ''}`);
+      const key = `${row.target_id}/${row.slide_id}`;
+      const slideTitle = ctx.slideTitles?.[key];
+      const num = ctx.slideNumbers?.[key];
+      lines.push(`- slide: ${num ? `${num.n} of ${num.of} · ` : ''}\`${row.slide_id}\`${slideTitle ? ` (${slideTitle})` : ''}`);
     } else {
       lines.push('- slide: whole deck');
     }

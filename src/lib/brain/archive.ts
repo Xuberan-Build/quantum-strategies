@@ -3,6 +3,7 @@
  * Shared by the publish scripts (scripts/brain/publish-decks.ts, publish-docs.ts)
  * and the admin pages. No I/O here, so it is safe to import anywhere and easy to test.
  */
+import { deckContentHash } from './deck-hash';
 import type { ArchivedDeck, DeckIndex, DeckIndexEntry, DocIndex, DocIndexEntry } from './snapshot';
 
 /** Storage-safe id: letters, digits, dot, dash, underscore; no leading dot. */
@@ -36,6 +37,7 @@ export function buildDeckIndexEntry(deck: ArchivedDeck, fileName?: string, fallb
     slideCount: deck.slides.length,
     ...(deck.externalUrl ? { externalUrl: deck.externalUrl } : {}),
     tags: deck.tags ?? [],
+    contentHash: deckContentHash(deck),
   };
 }
 
