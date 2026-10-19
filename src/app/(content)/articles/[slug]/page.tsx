@@ -7,6 +7,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { proseComponents } from "@/components/content/proseComponents";
 import { isPublicSlug } from "@/lib/seo/sitemap";
+import { extractFaq, faqJsonLd } from "@/lib/content/faq";
 import styles from "./article.module.css";
 
 type PageProps = {
@@ -56,6 +57,9 @@ async function renderDbBody(source: string) {
 }
 
 // ── Static params (MDX slugs; DB slugs render dynamically) ────────────────
+
+// DB posts (including a slug that 404'd before it was published) refresh within five minutes.
+export const revalidate = 300;
 
 export async function generateStaticParams() {
   return getAllMdxArticles().map((a) => ({ slug: a.slug }));
@@ -161,6 +165,10 @@ export default async function ArticlePage({ params }: PageProps) {
       author: { "@type": "Person", name: post.author || "Austin Santos", url: `${BASE_URL}/meet/` },
       publisher: { "@type": "Organization", name: "Quantum Strategies", url: BASE_URL },
       mainEntityOfPage: articleUrl,
+      url: articleUrl,
+      // Taxonomy tags ("pillar:p2") are internal; only plain keyword tags are public.
+      keywords: (post.tags as string[] | null)?.filter((t) => !t.includes(":")).join(", ") || undefined,
+      articleSection: pillar?.title,
     };
     const breadcrumbLd = {
       "@context": "https://schema.org",
@@ -171,11 +179,16 @@ export default async function ArticlePage({ params }: PageProps) {
         { "@type": "ListItem", position: 3, name: post.title, item: articleUrl },
       ],
     };
+    const faqLd = faqJsonLd(extractFaq(post.body ?? ""));
+    const author = post.author || "Austin Santos";
 
     return (
       <div className={styles.page}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+        {faqLd && (
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+        )}
         <section className={styles.hero}>
           <div className={styles.heroBg} />
           <div className={styles.gridOverlay} />
@@ -188,8 +201,9 @@ export default async function ArticlePage({ params }: PageProps) {
             )}
             <h1 className={styles.title}>{post.title}</h1>
             {post.excerpt && <p className={styles.description}>{post.excerpt}</p>}
+            <Link href="/meet/" className={styles.byline} rel="author">By {author}</Link>
             {post.published_at && (
-              <time className={styles.date}>
+              <time className={styles.date} dateTime={post.published_at}>
                 {new Date(post.published_at).toLocaleDateString("en-US", {
                   year: "numeric", month: "long", day: "numeric",
                 })}

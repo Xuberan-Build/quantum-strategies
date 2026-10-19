@@ -100,6 +100,19 @@
   margin: 0 0 1.5rem;
 }
 
+/* ── Byline ── */
+.byline {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: rgba(226,232,240,0.85);
+  text-decoration: none;
+  margin: 0 0 0.5rem;
+}
+
+.byline:hover {
+  color: #2dd4bf;
+}
+
 /* ── Date ── */
 .date {
   display: block;

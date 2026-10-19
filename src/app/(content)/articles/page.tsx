@@ -4,169 +4,138 @@ import matter from "gray-matter";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { isPublicSlug } from "@/lib/seo/sitemap";
+import ArticleBrowser from "@/components/content/ArticleBrowser";
+import styles from "@/components/content/ArticleBrowser.module.css";
+import {
+  MDX_FOLDER_TOPICS,
+  buildSeries,
+  mergeArticles,
+  readingMinutes,
+  topicCounts,
+  topicSlug,
+  type IndexArticle,
+} from "@/lib/content/article-index";
 
-interface Article {
-  slug: string;
-  title: string;
-  description: string;
-  date: string;
-  pillarTitle?: string;
-  pillarSlug?: string;
-  source: "db" | "mdx";
-}
+// New DB posts appear within five minutes without a redeploy.
+export const revalidate = 300;
 
-async function getDbArticles(): Promise<Article[]> {
+const BASE_URL = "https://quantumstrategies.online";
+
+async function getDbArticles(): Promise<IndexArticle[]> {
   const { data } = await supabaseAdmin
     .from("content_posts")
-    .select("slug, title, excerpt, published_at, content_pillars(title, slug)")
+    .select("slug, title, excerpt, body, tags, published_at, content_pillars(title, slug)")
     .eq("is_published", true)
     .eq("type", "blog")
     .order("published_at", { ascending: false })
-    .limit(50);
+    .limit(200);
 
   return (data ?? []).filter((p) => isPublicSlug(p.slug)).map((p) => {
     const pillar = (Array.isArray(p.content_pillars) ? p.content_pillars[0] : p.content_pillars) as { title: string; slug: string } | null;
+    const topic = pillar?.title ?? "More";
     return {
       slug: p.slug,
       title: p.title,
       description: p.excerpt ?? "",
       date: p.published_at ?? "",
-      pillarTitle: pillar?.title,
-      pillarSlug: pillar?.slug,
-      source: "db" as const,
+      topic,
+      topicSlug: topicSlug(topic),
+      tags: p.tags ?? [],
+      readingMinutes: readingMinutes(p.body ?? ""),
     };
   });
 }
 
-function getMdxArticles(): Article[] {
+function getMdxArticles(): IndexArticle[] {
   const articlesDir = path.join(process.cwd(), "src/content/articles");
-  const categories = ["customer-acquisition", "operations", "product-development", "waveforms"];
-  const articles: Article[] = [];
+  const articles: IndexArticle[] = [];
 
-  categories.forEach((category) => {
-    const categoryDir = path.join(articlesDir, category);
-    if (!fs.existsSync(categoryDir)) return;
-    fs.readdirSync(categoryDir)
+  Object.entries(MDX_FOLDER_TOPICS).forEach(([folder, topic]) => {
+    const folderDir = path.join(articlesDir, folder);
+    if (!fs.existsSync(folderDir)) return;
+    fs.readdirSync(folderDir)
       .filter((f) => f.endsWith(".mdx") && isPublicSlug(f.replace(".mdx", "")))
       .forEach((file) => {
-        const content = fs.readFileSync(path.join(categoryDir, file), "utf-8");
-        const { data } = matter(content);
+        const { data, content } = matter(fs.readFileSync(path.join(folderDir, file), "utf-8"));
         articles.push({
           slug: file.replace(".mdx", ""),
           title: data.title || file.replace(".mdx", ""),
           description: data.description || "",
-          date: data.date || "",
-          source: "mdx",
+          date: data.date ? new Date(data.date).toISOString() : "",
+          topic,
+          topicSlug: topicSlug(topic),
+          tags: [],
+          readingMinutes: readingMinutes(content),
         });
       });
   });
 
-  return articles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return articles;
 }
 
 export const metadata = {
   title: "Articles | Quantum Strategies",
-  description: "Strategic insights on consciousness, business, and the quantum architecture of growth.",
+  description:
+    "Articles on attention, self-image, perception and aligned business strategy. Browse by topic or start with a series.",
   alternates: {
-    canonical: "https://quantumstrategies.online/articles/",
+    canonical: `${BASE_URL}/articles/`,
   },
 };
 
 export default async function ArticlesPage() {
-  const [dbArticles, mdxArticles] = await Promise.all([
-    getDbArticles(),
-    Promise.resolve(getMdxArticles()),
-  ]);
+  const articles = mergeArticles(await getDbArticles(), getMdxArticles());
+  const series = buildSeries(articles);
+  const topics = topicCounts(articles);
+
+  const collectionLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Articles",
+    url: `${BASE_URL}/articles/`,
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: articles.slice(0, 50).map((a, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        url: `${BASE_URL}/articles/${a.slug}/`,
+        name: a.title,
+      })),
+    },
+  };
 
   return (
     <div className="container" style={{ maxWidth: "1200px", margin: "0 auto", padding: "4rem 1rem" }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }} />
       <header style={{ marginBottom: "3rem", textAlign: "center" }}>
         <h1 style={{ fontSize: "3rem", marginBottom: "1rem", color: "#fff" }}>Articles</h1>
-        <p style={{ fontSize: "1.25rem", color: "var(--ink-soft)", maxWidth: "600px", margin: "0 auto" }}>
-          Frameworks for consciousness, strategy, and aligned growth
+        <p style={{ fontSize: "1.25rem", color: "var(--ink-soft)", maxWidth: "640px", margin: "0 auto" }}>
+          What you notice, who you think you are, and how that shapes the way you build. Start with a series or browse by topic.
         </p>
       </header>
 
-      {/* DB-sourced articles */}
-      {dbArticles.length > 0 && (
-        <section style={{ marginBottom: "4rem" }}>
-          <h2 style={{
-            fontSize: "1.5rem", marginBottom: "2rem", color: "#fff",
-            borderBottom: "2px solid var(--accent)", paddingBottom: "0.5rem",
-          }}>
-            Latest
-          </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "2rem" }}>
-            {dbArticles.map((article) => (
-              <Link
-                key={article.slug}
-                href={`/articles/${article.slug}/`}
-                style={{
-                  display: "block", padding: "1.5rem",
-                  backgroundColor: "rgba(255,255,255,0.05)",
-                  borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)",
-                  transition: "all 0.2s", textDecoration: "none",
-                }}
-                className="article-card"
-              >
-                {article.pillarTitle && (
-                  <div style={{ fontSize: "0.75rem", color: "var(--accent)", fontWeight: 600, marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    {article.pillarTitle}
-                  </div>
-                )}
-                <h3 style={{ fontSize: "1.25rem", marginBottom: "0.75rem", color: "#fff" }}>{article.title}</h3>
-                {article.description && (
-                  <p style={{ color: "var(--ink-soft)", fontSize: "0.95rem", lineHeight: "1.6" }}>{article.description}</p>
-                )}
-                {article.date && (
-                  <time style={{ display: "block", marginTop: "1rem", color: "var(--accent)", fontSize: "0.875rem" }}>
-                    {new Date(article.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
-                  </time>
-                )}
-              </Link>
-            ))}
+      {series.map((s) => (
+        <section key={s.id} className={styles.series} aria-labelledby={`series-${s.id}`}>
+          <div className={styles.seriesHeader}>
+            <h2 id={`series-${s.id}`} className={styles.seriesTitle}>{s.title}</h2>
+            <p className={styles.seriesDescription}>{s.description}</p>
           </div>
-        </section>
-      )}
-
-      {/* MDX archive */}
-      {mdxArticles.length > 0 && (
-        <section>
-          <h2 style={{
-            fontSize: "1.5rem", marginBottom: "2rem", color: "#fff",
-            borderBottom: "2px solid var(--accent)", paddingBottom: "0.5rem",
-          }}>
-            Archive
-          </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "2rem" }}>
-            {mdxArticles.map((article) => (
-              <Link
-                key={article.slug}
-                href={`/articles/${article.slug}/`}
-                style={{
-                  display: "block", padding: "1.5rem",
-                  backgroundColor: "rgba(255,255,255,0.03)",
-                  borderRadius: "8px", border: "1px solid rgba(255,255,255,0.07)",
-                  transition: "all 0.2s", textDecoration: "none",
-                }}
-                className="article-card"
-              >
-                <h3 style={{ fontSize: "1.125rem", marginBottom: "0.75rem", color: "#fff" }}>{article.title}</h3>
-                {article.description && (
-                  <p style={{ color: "var(--ink-soft)", fontSize: "0.9rem", lineHeight: "1.6" }}>{article.description}</p>
-                )}
-                {article.date && (
-                  <time style={{ display: "block", marginTop: "1rem", color: "var(--ink-soft)", fontSize: "0.8rem" }}>
-                    {new Date(article.date).getFullYear()}
-                  </time>
-                )}
-              </Link>
+          <ol className={styles.seriesRow}>
+            {s.articles.map((a, i) => (
+              <li key={a.slug}>
+                <Link href={`/articles/${a.slug}/`} className={styles.card}>
+                  <span className={styles.step}>{i === 0 ? "Start here" : `Part ${i + 1}`} · {a.readingMinutes} min</span>
+                  <h3 className={styles.title}>{a.title}</h3>
+                  {a.description && <p className={styles.description}>{a.description}</p>}
+                </Link>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
-      )}
+      ))}
 
-      {dbArticles.length === 0 && mdxArticles.length === 0 && (
+      {articles.length > 0 ? (
+        <ArticleBrowser articles={articles} topics={topics} />
+      ) : (
         <p style={{ textAlign: "center", color: "var(--ink-soft)" }}>Articles coming soon.</p>
       )}
     </div>
