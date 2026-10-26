@@ -9,6 +9,7 @@ export const BRAIN_SECTIONS = [
   { href: '/admin/brain/decks', label: 'Decks' },
   { href: '/admin/brain/docs', label: 'Docs' },
   { href: '/admin/brain/map', label: 'Map' },
+  { href: '/admin/brain/search', label: 'Search' },
   { href: '/admin/brain/graph', label: 'Graph' },
   { href: '/admin/brain/market', label: 'Market voice' },
   { href: '/admin/brain/creators', label: 'Creators' },

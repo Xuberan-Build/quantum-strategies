@@ -37,6 +37,7 @@ import {
   type TopicPayload,
 } from '@/lib/brain/topical-map-view';
 import { FeedbackComposer, FeedbackThread } from '../Feedback';
+import { TopicSearchBlock } from '../search/TopicSearchBlock';
 import styles from './map.module.css';
 
 const isHttp = (u: string | null | undefined): u is string => !!u && /^https?:\/\//i.test(u);
@@ -237,6 +238,8 @@ export function TopicPanel({ id, lite, onClose }: Props) {
           )}
         </section>
       )}
+
+      <TopicSearchBlock id={id} />
 
       {detail && detail.queries.length > 0 && (
         <section className={styles.section}>

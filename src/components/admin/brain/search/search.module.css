@@ -1,0 +1,149 @@
+/* /admin/brain/search. Tokens (--ink, --jewel, --bronze, ...) come from brain.module.css .root. */
+
+.why {
+  margin: 1rem 0 1.25rem;
+  max-width: 62rem;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.whyTag {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--jewel);
+  margin-right: 0.6rem;
+}
+
+.hint,
+.lede {
+  color: var(--ink-3);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0.75rem 0;
+  max-width: 62rem;
+}
+
+.trend {
+  width: 100%;
+  height: 120px;
+  display: block;
+}
+
+.lineImpressions,
+.lineClicks {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.lineImpressions {
+  stroke: var(--bronze);
+}
+
+.lineClicks {
+  stroke: var(--jewel);
+}
+
+.keyImpressions {
+  color: var(--bronze);
+}
+
+.keyClicks {
+  color: var(--jewel);
+}
+
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.select {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  color: var(--ink);
+  font-size: 0.8rem;
+  max-width: 16rem;
+}
+
+.link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--axis);
+  text-underline-offset: 3px;
+}
+
+.link:hover {
+  text-decoration-color: var(--jewel);
+}
+
+.up {
+  color: #7fd19b;
+  white-space: nowrap;
+}
+
+.down {
+  color: #f08a7a;
+  white-space: nowrap;
+}
+
+.chip {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.chipPass {
+  color: #7fd19b;
+  border-color: rgba(127, 209, 155, 0.35);
+}
+
+.chipNeutral {
+  color: var(--warning);
+  border-color: rgba(250, 178, 25, 0.35);
+}
+
+.chipFail {
+  color: #f08a7a;
+  border-color: rgba(240, 138, 122, 0.35);
+}
+
+.chipNone {
+  color: var(--ink-3);
+}
+
+/* topic panel block on the map */
+.perfGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.perfCell {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.5rem 0.6rem;
+}
+
+.perfLabel {
+  font-size: 0.7rem;
+  color: var(--ink-3);
+}
+
+.perfValue {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ink);
+}
