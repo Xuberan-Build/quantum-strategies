@@ -27,7 +27,7 @@ export const PARAGRAPH_MAX_WORDS = 130;
 const RETRY_MIN_REMAINING_MS = 4_000;
 
 /** Free-text fields the paragraph may quote (spec v1 §6.3 rule 1, widened to Q2 other and Q7 thing). */
-const QUOTABLE_PREFIXES = ['q2.text', 'q6.text', 'q7.thing', 'q8.', 'q9.text'];
+const QUOTABLE_PREFIXES = ['q2.text', 'q5.text', 'q6.text', 'q7.thing', 'q8.', 'q9.text'];
 
 /**
  * Words the paragraph may not contain (spec v3 §8.2 validator + §3.6 + naming N5/N6 + "no type labels").
@@ -103,6 +103,7 @@ export function quotablePhrases(answers: ReadAnswers): Record<string, string> {
 
 const FIELD_LABELS: Record<string, string> = {
   'q2.text': 'Something they say',
+  'q5.text': 'How they described their work to someone new',
   'q6.text': 'A skill people come to them for',
   'q7.thing': 'The thing they keep meaning to get to',
   'q8.line1': "I'm the one who… (about work and plans this month)",
@@ -125,7 +126,7 @@ function tappedLines(answers: ReadAnswers): [string, string[]][] {
     ['Things they have said in the last month', labels(choiceOf(answers, 'q2').filter((t) => t !== 'say:other'))],
     ['When asked a favour on a full day', labels(choiceOf(answers, 'q3'))],
     ['Why their last plan stalled', labels(choiceOf(answers, 'q4'))],
-    ['How they described their work', labels(choiceOf(answers, 'q5'))],
+    ['How they described their work', labels(choiceOf(answers, 'q5').filter((t) => t !== 'desc:other'))],
     ['What people come to them for', labels(choiceOf(answers, 'q6').filter((t) => t !== 'come:skill'))],
     ['Hours the thing got last week', hours ? [HOURS_BANDS[hours].label] : []],
     ['What got the hours instead', labels([partString(answers, 'q7', 'instead') ?? ''].filter(Boolean))],

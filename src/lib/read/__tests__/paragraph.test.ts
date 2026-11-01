@@ -185,6 +185,14 @@ describe('what reaches the model', () => {
     expect(staticMirrorParagraph('ON_EMPTY', answers)).not.toMatch(/trauma/i);
   });
 
+  it('treats Q5 "Something else" text as their words, and never sends the "Something else" label', () => {
+    const answers: ReadAnswers = { ...ON_EMPTY_ANSWERS, q5: { questionId: 'q5', choice: ['desc:other'], text: 'I run a bakery' } };
+    const q = quotablePhrases(answers);
+    expect(q['q5.text']).toBe('I run a bakery');
+    expect(tappedLabels(answers)).not.toContain('Something else');
+    expect(buildUserMessage({ answers, pattern: 'ON_EMPTY', safety: screenAnswers(answers) }, q)).toContain('I run a bakery');
+  });
+
   it('sends their words and the tapped labels, never a chart', () => {
     const msg = buildUserMessage(input, quotablePhrases(ON_EMPTY_ANSWERS));
     expect(msg).toContain('always says yes to my friends');

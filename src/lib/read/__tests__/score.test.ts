@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { READ_SCORING_CONFIG, decidingRule, fallbackPattern, scorePerceptionRead, secondaryPattern } from '../score';
+import { Q3_POINTS, Q4_POINTS, Q5_POINTS, READ_SCORING_CONFIG, decidingRule, fallbackPattern, scorePerceptionRead, secondaryPattern } from '../score';
 import type { ReadAnswers } from '../types';
 import { NOT_CAUGHT_UP_ANSWERS, NO_THREAD_ANSWERS, ON_EMPTY_ANSWERS, SHOULDS_ANSWERS, SMALLER_ANSWERS } from './fixtures';
 
@@ -149,6 +149,23 @@ describe('Q7 hours-gap rule', () => {
   it('accepts a number of hours and a bare want-or-should', () => {
     const r = scorePerceptionRead({ q7: { questionId: 'q7', parts: { hours: 0, wantOrShould: 'should' } } });
     expect(r.scores.SHOULDS).toBe(4);
+  });
+});
+
+describe('plain answers carry no signal', () => {
+  it('scores the honest Q3, Q4 and Q5 options at zero, and never scores Q5 "something else" text', () => {
+    for (const [qid, tag] of [['q3', 'fav:later'], ['q4', 'stall:outside'], ['q5', 'desc:plain'], ['q5', 'desc:other']]) {
+      const r = scorePerceptionRead({ [qid]: { questionId: qid, choice: [tag], text: qid === 'q5' ? "I'm just never enough, a failure" : undefined } });
+      expect(Object.values(r.scores).every((n) => n === 0), tag).toBe(true);
+    }
+  });
+
+  it('has a points entry for every single-choice option in Q3, Q4 and Q5', async () => {
+    const { READ_QUESTIONS } = await import('../questions');
+    const tables: Record<string, Record<string, unknown>> = { q3: Q3_POINTS, q4: Q4_POINTS, q5: Q5_POINTS };
+    for (const [qid, table] of Object.entries(tables)) {
+      for (const o of READ_QUESTIONS.find((x) => x.id === qid)!.options!) expect(table, o.value).toHaveProperty([o.value]);
+    }
   });
 });
 

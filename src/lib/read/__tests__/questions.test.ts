@@ -51,6 +51,15 @@ describe('READ_QUESTIONS shape', () => {
     expect(q9.kind).toBe('text');
   });
 
+  it('gives Q3, Q4 and Q5 a plain, honest option, with every original option value kept', () => {
+    const vals = (id: string) => READ_QUESTIONS.find((x) => x.id === id)!.options!.map((o) => o.value);
+    expect(vals('q3')).toEqual(['fav:yes_late', 'fav:yes_resent', 'fav:no_guilt', 'fav:avoid', 'fav:no_clean', 'fav:later']);
+    expect(vals('q4')).toEqual(expect.arrayContaining(['stall:verdict', 'stall:novelty', 'stall:should', 'stall:others', 'stall:seen', 'stall:switch', 'stall:none', 'stall:outside']));
+    expect(vals('q5')).toEqual(['desc:just', 'desc:list', 'desc:result', 'desc:deflect', 'desc:joke', 'desc:plain', 'desc:none', 'desc:other']);
+    expect(optionLabel('desc:plain')).toBe('I said what I do in a sentence, plainly');
+    expect(optionLabel('desc:other')).toBe('Something else');
+  });
+
   it('keeps banned words out of question copy', () => {
     const copy = JSON.stringify(READ_QUESTIONS) + JSON.stringify(READ_START_SCREEN);
     expect(copy).not.toMatch(/quantum|frequency|vibration|archetype|initiation/i);

@@ -206,7 +206,11 @@ export function checkAnswer(answer: ReadAnswer): string | null {
       if (def.kind === 'single') {
         if (typeof value !== 'string') return 'invalid_part';
         if (def.fromPicked && !mainPicked.includes(value)) return 'part_not_picked';
-        if (def.options && !def.options.some((o) => o.value === value)) return 'unknown_option';
+        // The week-mirror screen stores Q7 wantOrShould as the tag body ('want', not 'own:want'),
+        // and the readers (mirror.wantOrShouldOf) accept both, so both pass here.
+        if (def.options && !def.options.some((o) => o.value === value || o.value.slice(o.value.indexOf(':') + 1) === value)) {
+          return 'unknown_option';
+        }
       }
     }
   }

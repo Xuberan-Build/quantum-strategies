@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReadAnswer, ReadQuestion } from '@/lib/read/types';
 import { normaliseAnswer } from '../answers';
 import { QuestionScreen } from '../QuestionScreen';
+import { READ_QUESTIONS } from '@/lib/read/questions';
 
 const Q11: ReadQuestion = {
   id: 'q11',
@@ -52,7 +53,20 @@ function Harness({ question, onNext = vi.fn() }: { question: ReadQuestion; onNex
 
 const current = () => JSON.parse(screen.getByTestId('answer').textContent!);
 
+const Q5: ReadQuestion = READ_QUESTIONS.find((x) => x.id === 'q5')!;
+
 describe('QuestionScreen', () => {
+  it('Q5: the plain option and "Something else" with its own words', async () => {
+    const user = userEvent.setup();
+    render(<Harness question={Q5} />);
+    await user.click(screen.getByLabelText('I said what I do in a sentence, plainly'));
+    expect(current()).toEqual({ questionId: 'q5', choice: ['desc:plain'] });
+    expect(screen.queryByLabelText('In your words')).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText('Something else'));
+    await user.type(screen.getByLabelText('In your words'), 'I said I am a nurse');
+    expect(current()).toEqual({ questionId: 'q5', choice: ['desc:other'], text: 'I said I am a nurse' });
+  });
+
   it('shows "3 of 12" and focuses the question', () => {
     render(<Harness question={Q8} />);
     expect(screen.getByText('3 of 12')).toBeInTheDocument();

@@ -9,6 +9,7 @@
  *   q2  multi_then_pick  choice: up to 3 'say:*' tags · parts.loudest: one of those tags ·
  *       text: the "Something else" text when 'say:other' is picked
  *   q3, q4, q5, q12  single  choice: [tag]
+ *       q5 also: text = their own words when 'desc:other' is picked
  *   q6  multi (max 2)  choice: 'come:*' tags · text: the named skill when 'come:skill' is picked
  *   q7  week_mirror  parts: { thing: string, hours: 'hours:*', instead: 'instead:*' | null, wantOrShould: 'own:*' }
  *   q8  text ×3  parts: { line1, line2, line3 } (or `text` with one line per row)
@@ -211,6 +212,8 @@ export const READ_QUESTIONS: ReadQuestionDef[] = [
       { value: 'fav:no_guilt', label: 'I say no, and then feel guilty' },
       { value: 'fav:avoid', label: 'I say "maybe" and hope it goes away' },
       { value: 'fav:no_clean', label: "I say no and don't think about it again" },
+      // Added 2026-11-01: a plain, honest answer that isn't a flaw. Scores nothing.
+      { value: 'fav:later', label: 'I tell them when I can do it instead' },
     ],
   },
   {
@@ -227,6 +230,8 @@ export const READ_QUESTIONS: ReadQuestionDef[] = [
       { value: 'stall:others', label: '"Other people\'s stuff took the time first."' },
       { value: 'stall:seen', label: '"The part where people would see it is the part I avoided."' },
       { value: 'stall:switch', label: '"I kept switching to a new method before the last one had a chance."' },
+      // Added 2026-11-01: an honest outside cause. Scores nothing.
+      { value: 'stall:outside', label: '"Something outside my control changed the plan."' },
       { value: 'stall:none', label: '"Nothing much stalls for me."' },
     ],
   },
@@ -243,7 +248,10 @@ export const READ_QUESTIONS: ReadQuestionDef[] = [
       { value: 'desc:result', label: 'I named the result people get from working with me' },
       { value: 'desc:deflect', label: 'I changed the subject, or played it down' },
       { value: 'desc:joke', label: 'I made a joke about myself' },
+      // Added 2026-11-01 (Austin: no honest answer for a plain one-line reply). Both score nothing.
+      { value: 'desc:plain', label: 'I said what I do in a sentence, plainly' },
       { value: 'desc:none', label: "It hasn't come up" },
+      { value: 'desc:other', label: 'Something else' },
     ],
   },
   {

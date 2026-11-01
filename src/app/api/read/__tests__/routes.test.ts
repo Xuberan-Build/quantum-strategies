@@ -254,6 +254,28 @@ describe('POST /api/read/answer', () => {
     expect((await post({ sessionId: SID, answer: q7Tag })).status).toBe(200);
   });
 
+  // Regression (2026-11-01): the week-mirror screen stores wantOrShould as the bare body ('want'),
+  // and the validator only knew 'own:want', so every Q7 answer from the real UI came back 400.
+  it('accepts the exact Q7 payload the week-mirror screen sends (bare wantOrShould)', async () => {
+    const { normaliseAnswer } = await import('@/components/read/answers');
+    const { READ_QUESTIONS } = await import('@/lib/read/questions');
+    const q7Def = READ_QUESTIONS.find((q) => q.id === 'q7')!;
+    for (const own of ['want', 'should', 'unsure']) {
+      authAs(baseRow());
+      const ui = {
+        questionId: 'q7',
+        text: 'writing again',
+        number: 1,
+        parts: { thing: 'writing again', hours: 'hours:1_2', instead: 'instead:scroll', wantOrShould: own },
+      };
+      const res = await post({ sessionId: SID, answer: normaliseAnswer(q7Def, ui) });
+      expect(res.status, own).toBe(200);
+    }
+    authAs(baseRow());
+    const bad = { questionId: 'q7', parts: { thing: 'x', hours: 'hours:0', wantOrShould: 'maybe' } };
+    expect((await post({ sessionId: SID, answer: bad })).status).toBe(400);
+  });
+
   it('allows skipping an optional question', async () => {
     authAs(baseRow());
     const res = await post({ sessionId: SID, answer: { questionId: 'q12' } });

@@ -62,6 +62,7 @@ export const Q3_POINTS: Record<string, Points> = {
   'fav:no_guilt': { ON_EMPTY: 1 },
   'fav:avoid': { NOT_CAUGHT_UP: 1, ON_EMPTY: 1 },
   'fav:no_clean': {},
+  'fav:later': {},
 };
 
 export const Q4_POINTS: Record<string, Points> = {
@@ -72,6 +73,7 @@ export const Q4_POINTS: Record<string, Points> = {
   'stall:seen': { SMALLER: 3 },
   'stall:switch': { NOT_CAUGHT_UP: 2, NO_THREAD: 1 },
   'stall:none': {},
+  'stall:outside': {},
 };
 
 export const Q5_POINTS: Record<string, Points> = {
@@ -81,6 +83,9 @@ export const Q5_POINTS: Record<string, Points> = {
   'desc:joke': { NOT_CAUGHT_UP: 1, SMALLER: 1 },
   'desc:result': {},
   'desc:none': {},
+  // Plain answers carry no signal. 'desc:other' text is never scored (only Q8/Q9 text is).
+  'desc:plain': {},
+  'desc:other': {},
 };
 
 export const Q7_OWN_POINTS: Record<string, Points> = {
