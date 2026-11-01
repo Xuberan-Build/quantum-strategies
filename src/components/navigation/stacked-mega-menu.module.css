@@ -103,16 +103,19 @@
 .headerRow {
   background: linear-gradient(135deg, rgba(147, 51, 234, 0.2) 0%, rgba(147, 51, 234, 0.05) 100%);
   border-bottom: 2px solid rgba(192, 132, 252, 0.3);
-  padding: 1rem 1.5rem;
+  padding: 1rem 1rem;
+  /* Five long labels (Resources) overflowed the 800px panel; fit them, wrap as a last resort */
+  flex-wrap: wrap;
+  row-gap: 0.25rem;
 }
 
 .headerRow .typeLink,
 .headerRow .typeLabel {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 0.75rem 1.75rem;
+  padding: 0.75rem 1rem;
 }
 
 /* Rows */
