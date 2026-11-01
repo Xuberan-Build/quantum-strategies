@@ -7,6 +7,7 @@ interface ProfileSettingsProps {
   initialEmail: string;
   initialCompanyName: string | null;
   initialIgHandle: string | null;
+  initialPhone: string | null;
 }
 
 export default function ProfileSettings({
@@ -14,11 +15,13 @@ export default function ProfileSettings({
   initialEmail,
   initialCompanyName,
   initialIgHandle,
+  initialPhone,
 }: ProfileSettingsProps) {
   const [name, setName] = useState(initialName || '');
   const [email, setEmail] = useState(initialEmail);
   const [companyName, setCompanyName] = useState(initialCompanyName || '');
   const [igHandle, setIgHandle] = useState(initialIgHandle || '');
+  const [phone, setPhone] = useState(initialPhone || '');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -36,6 +39,7 @@ export default function ProfileSettings({
           email: email.trim(),
           company_name: companyName.trim() || null,
           ig_handle: igHandle.trim() || null,
+          phone: phone.trim() || null,
         }),
       });
 
@@ -150,6 +154,18 @@ export default function ProfileSettings({
               value={igHandle}
               onChange={(e) => setIgHandle(e.target.value)}
               placeholder="@yourhandle"
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Phone (optional)" htmlFor="phone">
+            <input
+              id="phone"
+              type="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="So Austin can check in if you get stuck"
               style={inputStyle}
             />
           </Field>

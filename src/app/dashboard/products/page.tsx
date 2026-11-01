@@ -191,7 +191,7 @@ export default async function ProductsDashboardPage() {
     return null;
   })();
 
-  // Founding Members have paid for the cohort; don't ask them to pay per product.
+  // Initiates (internally: founding members) have paid for the cohort; don't ask them to pay per product.
   const unpaidBetaCompletion = isBetaParticipant && !isFoundingMember
     ? await getLatestUnpaidBetaCompletion(session.user.id)
     : null;
@@ -262,17 +262,18 @@ export default async function ProductsDashboardPage() {
           </div>
         </section>
 
+        {/* Initiation offer for the beta cohort. Internal name: founding-member (slug, route, env flag). */}
         {(showFoundingOffer || isFoundingMember) && (
           <section className={styles.section}>
             <div className={styles.nextActionCard}>
               <div>
                 <h2 className={styles.nextActionTitle}>
-                  {isFoundingMember ? 'You\'re a Founding Member' : 'Become a Founding Member'}
+                  {isFoundingMember ? 'You\'re an Initiate' : 'Your Initiation is open'}
                 </h2>
                 <p className={styles.nextActionSubtitle}>
                   {isFoundingMember
                     ? 'Book your debrief call with Austin.'
-                    : 'The offer from when you joined the beta: $60, minus anything you\'ve already paid.'}
+                    : 'You\'ve been working through the Rites. This is the offer from when you joined: $60, minus anything you\'ve already paid.'}
                 </p>
               </div>
               <Link href="/dashboard/founding" className={styles.nextActionButton}>

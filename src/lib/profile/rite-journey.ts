@@ -1,6 +1,16 @@
 import { THREE_RITES_PRODUCTS } from '@/lib/beta/constants'
 
-export type RiteStage = 'orientation' | 'perception' | 'declaration'
+export type RiteStage = 'perception' | 'orientation' | 'declaration'
+
+/**
+ * The Three Rites in canon order: Rite I Perception, Rite II Orientation,
+ * Rite III Declaration. The one place that order is defined.
+ */
+export const RITE_STAGES: readonly { key: RiteStage; roman: string; label: string; products: readonly string[] }[] = [
+  { key: 'perception', roman: 'I', label: 'Perception', products: THREE_RITES_PRODUCTS.PERCEPTION },
+  { key: 'orientation', roman: 'II', label: 'Orientation', products: THREE_RITES_PRODUCTS.ORIENTATION },
+  { key: 'declaration', roman: 'III', label: 'Declaration', products: THREE_RITES_PRODUCTS.DECLARATION },
+]
 
 export interface RiteStatus {
   completed: string[]
@@ -9,10 +19,7 @@ export interface RiteStatus {
   hasAny: boolean
 }
 
-export interface RiteJourney {
-  orientation: RiteStatus
-  perception: RiteStatus
-  declaration: RiteStatus
+export type RiteJourney = Record<RiteStage, RiteStatus> & {
   currentStage: RiteStage | 'complete' | 'none'
 }
 
@@ -20,12 +27,10 @@ export function computeRiteJourney(
   accessRows: { product_slug: string; completed_at: string | null }[]
 ): RiteJourney {
   const completedSlugs = new Set(
-    accessRows
-      .filter((r) => r.completed_at != null)
-      .map((r) => r.product_slug)
+    accessRows.filter((r) => r.completed_at != null).map((r) => r.product_slug)
   )
 
-  const build = (slugs: readonly string[]): RiteStatus => {
+  const status = (slugs: readonly string[]): RiteStatus => {
     const completed = slugs.filter((s) => completedSlugs.has(s))
     return {
       completed,
@@ -35,30 +40,22 @@ export function computeRiteJourney(
     }
   }
 
-  const orientation = build(THREE_RITES_PRODUCTS.ORIENTATION)
-  const perception = build(THREE_RITES_PRODUCTS.PERCEPTION)
-  const declaration = build(THREE_RITES_PRODUCTS.DECLARATION)
+  const statuses = Object.fromEntries(RITE_STAGES.map((r) => [r.key, status(r.products)])) as Record<RiteStage, RiteStatus>
 
+  // The current stage is the latest Rite that's started, or the one after the
+  // last Rite completed. 'none' until anything is done.
   let currentStage: RiteJourney['currentStage'] = 'none'
-  if (declaration.isComplete) {
-    currentStage = 'complete'
-  } else if (declaration.hasAny || perception.isComplete) {
-    currentStage = 'declaration'
-  } else if (perception.hasAny || orientation.isComplete) {
-    currentStage = 'perception'
-  } else if (orientation.hasAny) {
-    currentStage = 'orientation'
-  }
+  RITE_STAGES.forEach(({ key }, i) => {
+    const next = RITE_STAGES[i + 1]?.key
+    if (statuses[key].hasAny) currentStage = key
+    if (statuses[key].isComplete) currentStage = next ?? 'complete'
+  })
 
-  return { orientation, perception, declaration, currentStage }
+  return { ...statuses, currentStage }
 }
 
-export function riteStageLocked(
-  stage: RiteStage,
-  journey: RiteJourney
-): boolean {
-  if (stage === 'orientation') return false
-  if (stage === 'perception') return !journey.orientation.hasAny
-  if (stage === 'declaration') return !journey.perception.hasAny
-  return false
+/** A Rite opens once the Rite before it has been started. Rite I is always open. */
+export function riteStageLocked(stage: RiteStage, journey: RiteJourney): boolean {
+  const i = RITE_STAGES.findIndex((r) => r.key === stage)
+  return i > 0 && !journey[RITE_STAGES[i - 1].key].hasAny
 }

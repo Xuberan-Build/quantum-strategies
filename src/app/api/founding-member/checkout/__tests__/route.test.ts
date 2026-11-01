@@ -70,6 +70,7 @@ describe('POST /api/founding-member/checkout', () => {
     expect(res.status).toBe(200);
     const args = sessionsCreate.mock.calls[0][0];
     expect(args.line_items[0].price_data.unit_amount).toBe(4300);
+    expect(args.line_items[0].price_data.product_data.name).toBe('Quantum Strategies Initiation');
     expect(args.metadata).toMatchObject({ product_slug: 'founding-member', founding_credit: '17', beta_participant_id: 'p1' });
     expect(args.client_reference_id).toBe('u1');
     expect(args.allow_promotion_codes).toBe(false);

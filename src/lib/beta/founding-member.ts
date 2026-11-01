@@ -1,5 +1,7 @@
 /**
  * Founding Member offer for the beta cohort (pure logic, safe on client and server).
+ * Display name: "Initiation", and the person becomes "an Initiate" (renamed 2026-10-17).
+ * Internal identifiers keep "founding" so no migration is needed.
  *
  * The beta page promised: "Founding Member access offered at $60 (minus any à la
  * carte purchases you made)". Beta users already own all 11 products, so this file

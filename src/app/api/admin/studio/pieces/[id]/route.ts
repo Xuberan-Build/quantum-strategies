@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .single();
 
   const updates: Record<string, unknown> = {};
-  const allowed = ['title', 'status', 'platform_meta'];
+  const allowed = ['title', 'status', 'platform_meta', 'scheduled_for', 'notes'];
   for (const key of allowed) {
     if (key in body) updates[key] = body[key];
   }

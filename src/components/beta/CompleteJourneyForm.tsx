@@ -117,7 +117,7 @@ export default function CompleteJourneyForm({ onSubmitted }: CompleteJourneyForm
   return (
     <BaseFeedbackForm
       title="Complete Journey Feedback"
-      description="This is the deep reflection that powers the beta. Your answers guide the final Founding Member offer."
+      description="This is the deep reflection that powers the beta. Your answers guide the Initiation offer at the end."
       submitLabel="Submit Journey Feedback"
       isSubmitting={isSubmitting}
       error={error}
@@ -396,7 +396,7 @@ export default function CompleteJourneyForm({ onSubmitted }: CompleteJourneyForm
       <div className={styles.gridTwo}>
         <div className={styles.fieldGroup}>
           <label className={styles.label} htmlFor="foundingMemberInterest">
-            Founding member interest
+            Interest in the Initiation offer
           </label>
           <select
             id="foundingMemberInterest"

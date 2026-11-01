@@ -4,12 +4,11 @@
  * A token is base64url(JSON payload) + "." + base64url(HMAC-SHA256). No DB lookup is
  * needed to trust it. Server-only (node:crypto).
  *
- * Secret: READ_LINK_SECRET. If it isn't set, a key is derived from
- * SUPABASE_SERVICE_ROLE_KEY (always present on the server) so links still work, and
- * rotating that key invalidates old links. Set READ_LINK_SECRET in production.
+ * Signing and the secret live in @/lib/email/signed-token (no purpose, so links
+ * already sent keep verifying).
  */
 
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { decodeSignedToken, encodeSignedToken } from '@/lib/email/signed-token';
 
 export type ReadLinkKind = 'unsubscribe' | 'answer';
 
@@ -47,26 +46,6 @@ export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && UUID_RE.test(value);
 }
 
-function getSecret(): Buffer {
-  const explicit = process.env.READ_LINK_SECRET?.trim();
-  if (explicit) return Buffer.from(explicit, 'utf8');
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (service) return createHash('sha256').update(`qs-read-links:${service}`).digest();
-  throw new Error('READ_LINK_SECRET (or SUPABASE_SERVICE_ROLE_KEY) is not configured');
-}
-
-function b64url(buf: Buffer): string {
-  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function fromB64url(s: string): Buffer {
-  return Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
-}
-
-function sign(body: string): string {
-  return b64url(createHmac('sha256', getSecret()).update(body).digest());
-}
-
 /** Compact wire format so links stay short. */
 interface Wire {
   k: 'u' | 'a';
@@ -81,32 +60,12 @@ export function signReadLink(payload: ReadLinkPayload): string {
     payload.kind === 'unsubscribe'
       ? { k: 'u', l: payload.leadId }
       : { k: 'a', l: payload.leadId, q: payload.question, v: payload.value, x: payload.expiresAt };
-  const body = b64url(Buffer.from(JSON.stringify(wire), 'utf8'));
-  return `${body}.${sign(body)}`;
+  return encodeSignedToken(wire);
 }
 
 /** Returns the payload when the token is authentic, well-formed and unexpired. Never throws. */
 export function verifyReadLink(token: unknown, now: number = Date.now()): ReadLinkPayload | null {
-  if (typeof token !== 'string' || token.length > 1024) return null;
-  const parts = token.split('.');
-  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
-  const [body, sig] = parts;
-  let expected: string;
-  try {
-    expected = sign(body);
-  } catch {
-    return null;
-  }
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-
-  let wire: Wire;
-  try {
-    wire = JSON.parse(fromB64url(body).toString('utf8'));
-  } catch {
-    return null;
-  }
+  const wire = decodeSignedToken(token) as Wire | null;
   if (!wire || !isUuid(wire.l)) return null;
 
   if (wire.k === 'u') return { kind: 'unsubscribe', leadId: wire.l };

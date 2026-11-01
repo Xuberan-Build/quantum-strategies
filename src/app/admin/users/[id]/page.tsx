@@ -4,6 +4,9 @@ import Link from 'next/link';
 import styles from '../../admin-layout.module.css';
 import { RegenerateBriefingButton } from './UserSessionActions';
 import { ActivityTimeline, type TimelineEvent } from './ActivityTimeline';
+import { UserPhone } from './UserPhone';
+import { UserEmailPreferences } from './UserEmailPreferences';
+import { getEmailPreferences } from '@/lib/progress-emails/preferences';
 import { UserNotes } from './UserNotes';
 
 export default async function UserDetailPage({
@@ -75,6 +78,7 @@ export default async function UserDetailPage({
   if (userResult.error || !userResult.data) notFound();
 
   const user = userResult.data;
+  const emailPreferences = await getEmailPreferences(id);
   const sessions = sessionsResult.data || [];
   const access = accessResult.data || [];
   const emailSeqs = emailSeqResult.data || [];
@@ -248,6 +252,14 @@ export default async function UserDetailPage({
                   <div style={{ fontSize: '0.875rem', wordBreak: 'break-all' }}>{value ?? <span style={{ color: 'var(--admin-text-muted)' }}>—</span>}</div>
                 </div>
               ))}
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Phone</div>
+                <UserPhone userId={user.id} initialPhone={user.phone ?? null} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Email</div>
+                <UserEmailPreferences userId={user.id} initial={emailPreferences} />
+              </div>
             </div>
           </div>
 

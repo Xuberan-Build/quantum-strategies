@@ -36,6 +36,8 @@ async function check(file: string) {
   if (excerpt.length < 120 || excerpt.length > 160) problems.push(`excerpt should be 120-160 chars (${excerpt.length})`);
   if (/[—]| – /.test(title + excerpt + body)) problems.push('em dash or spaced en dash left');
   if (/^---\s*$/m.test(body) && /^title:/m.test(body)) problems.push('stray frontmatter block inside the body');
+  const unfilled = body.replace(/<!--[\s\S]*?-->/g, '').match(/\[AUSTIN[^\]]*\]/g);
+  if (unfilled) problems.push(`${unfilled.length} unfilled [AUSTIN: ...] placeholder(s) in the body`);
   try {
     const { compile } = await import('@mdx-js/mdx'); // ESM-only
     await compile(body.replace(/<!--[\s\S]*?-->/g, ''));

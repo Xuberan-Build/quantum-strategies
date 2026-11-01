@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unknown product' }, { status: 400 });
   }
 
-  // Founding Member (beta cohort): a status, not a product. Record it and stop, so no
+  // Founding Member, shown to users as "Initiation" (beta cohort): a status, not a product. Record it and stop, so no
   // product_access row, welcome email, affiliate commission or campaign is triggered.
   if (productSlug === FOUNDING_MEMBER_SLUG) {
     const userId = session.client_reference_id;
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Founding Member record failed' }, { status: 500 });
     }
     try {
-      await sendAdminNotification({ customerEmail, customerName, productName: recorded ? 'Founding Member' : 'Founding Member (NOT RECORDED, check beta_participants)', amount, sessionId: session.id });
+      await sendAdminNotification({ customerEmail, customerName, productName: recorded ? 'Initiation (beta cohort)' : 'Initiation (beta cohort, NOT RECORDED, check beta_participants)', amount, sessionId: session.id });
     } catch (err: any) {
       console.error('⚠️ Admin notification failed (non-fatal):', err.message);
     }

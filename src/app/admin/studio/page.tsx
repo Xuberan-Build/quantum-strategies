@@ -58,12 +58,12 @@ const STUDIOS: StudioDef[] = [
   },
   {
     format: 'social-calendar',
-    label: 'Social Calendar',
-    description: 'Social content planning across Twitter, LinkedIn, and Instagram — scheduled from distributed pieces.',
-    color: '#6b7280',
+    label: 'Content Calendar',
+    description: 'Shorts, carousels, X, Reddit and email distilled from the long-form articles. Click a day to edit a piece beside its source.',
+    color: '#ec4899',
     href: '/admin/studio/social-calendar',
     newHref: null,
-    placeholder: true,
+    placeholder: false,
   },
 ];
 

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { streamText } from '@/lib/ai/generate'
 import { checkRateLimit } from '@/lib/security/rate-limit'
+import { RITE_STAGES } from '@/lib/profile/rite-journey'
 
 export async function POST(req: Request) {
   try {
@@ -37,9 +38,7 @@ export async function POST(req: Request) {
       .map((r) => r.product_slug)
 
     const journeyContext = journey
-      ? `Orientation: ${journey.orientation.completed.length}/${journey.orientation.total} complete
-Perception: ${journey.perception.completed.length}/${journey.perception.total} complete
-Declaration: ${journey.declaration.completed.length}/${journey.declaration.total} complete`
+      ? RITE_STAGES.map(({ key, label }) => `${label}: ${journey[key]?.completed?.length ?? 0}/${journey[key]?.total ?? 0} complete`).join('\n')
       : `Completed products: ${completedProducts.join(', ') || 'none yet'}`
 
     const existingGoalsList = existingGoals.length > 0

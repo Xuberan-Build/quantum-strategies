@@ -2,6 +2,9 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import ProfileSettings from '@/components/profile/ProfileSettings'
+import EmailPreferencesSettings from '@/components/profile/EmailPreferencesSettings'
+import { getEmailPreferences } from '@/lib/progress-emails/preferences'
+import { DEFAULT_PREFERENCES } from '@/lib/progress-emails/topics'
 import GoalsList from '@/components/profile/goals/GoalsList'
 import JourneyProgress from '@/components/profile/goals/JourneyProgress'
 import ChartDataSection from '@/components/profile/chart/ChartDataSection'
@@ -31,7 +34,7 @@ export default async function ProfilePage({ searchParams }: Props) {
   const [{ data: userData }, { data: accessRows }, { data: goalsData }] = await Promise.all([
     supabase
       .from('users')
-      .select('name, email, company_name, ig_handle, placements, placements_confirmed, placements_updated_at, birth_data')
+      .select('name, email, company_name, ig_handle, phone, placements, placements_confirmed, placements_updated_at, birth_data')
       .eq('id', session.user.id)
       .single(),
     supabase
@@ -46,6 +49,7 @@ export default async function ProfilePage({ searchParams }: Props) {
   ])
 
   const journey = computeRiteJourney(accessRows ?? [])
+  const emailPreferences = tab === 'settings' ? await getEmailPreferences(session.user.id) : DEFAULT_PREFERENCES
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'settings', label: 'Settings' },
@@ -80,12 +84,16 @@ export default async function ProfilePage({ searchParams }: Props) {
 
       <div className={styles.main}>
         {tab === 'settings' && (
+          <>
           <ProfileSettings
             initialName={userData?.name || null}
             initialEmail={userData?.email || session.user.email || ''}
             initialCompanyName={userData?.company_name || null}
             initialIgHandle={userData?.ig_handle || null}
+            initialPhone={userData?.phone || null}
           />
+          <EmailPreferencesSettings initial={emailPreferences} />
+          </>
         )}
 
         {tab === 'goals' && (

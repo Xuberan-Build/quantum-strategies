@@ -49,6 +49,16 @@ describe('founding member emails', () => {
     expect(e.text).toContain("You've finished Rite I");
   });
 
+  it('uses the Initiation language and never the old Founding Member name', () => {
+    const [invite, value, deadline] = all(base);
+    expect(invite.subject).toBe('Your Initiation is open');
+    expect(deadline.subject).toBe('Initiation closes Sunday, November 15');
+    expect(invite.text).toContain('Initiation is the step where you commit');
+    for (const e of [invite, value, deadline]) expect(e.text.split(base.offerUrl).join('')).not.toMatch(/founding/i);
+    for (const e of all(base)) expect(e.subject).not.toMatch(/founding/i);
+    expect(deadline.text).toContain('Become an Initiate: ' + base.offerUrl);
+  });
+
   it('falls back to "there" with no name', () => {
     expect(getFoundingDeadlineEmail({ ...base, name: null }).text).toContain('Hi there,');
   });

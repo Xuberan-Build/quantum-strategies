@@ -112,11 +112,10 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
           muted: true,
         },
         {
-          label: 'Social Calendar',
+          label: 'Content Calendar',
           href: '/admin/studio/social-calendar',
           icon: CalendarIcon,
           active: pathname?.startsWith('/admin/studio/social-calendar'),
-          muted: true,
         },
       ],
     },

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { parsePhoneInput } from '@/lib/profile/phone';
 
 export async function PATCH(req: Request) {
   try {
@@ -11,13 +12,18 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { name, email, company_name, ig_handle } = body;
+    const { name, email, company_name, ig_handle, phone } = body;
 
     // Update users table fields
     const updates: Record<string, string | null> = {};
     if (name !== undefined) updates.name = name || null;
     if (company_name !== undefined) updates.company_name = company_name || null;
     if (ig_handle !== undefined) updates.ig_handle = ig_handle || null;
+    if (phone !== undefined) {
+      const parsed = parsePhoneInput(phone);
+      if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+      updates.phone = parsed.value;
+    }
 
     if (Object.keys(updates).length > 0) {
       const { error } = await supabase

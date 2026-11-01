@@ -6,7 +6,7 @@ import styles from "./beta.module.css";
 export const metadata: Metadata = {
   title: "Beta Program - Quantum Strategies Three Rites",
   description:
-    "Join the Founding Circle for the Three Rites journey. Get free access to all 11 products, shape the future of Quantum Strategies, and become a Founding Member for just $60.",
+    "Join the Three Rites beta. Get free access to all 11 products, shape the future of Quantum Strategies, and take your Initiation for $60 when you finish.",
   robots: { index: false, follow: false },
 };
 
@@ -23,7 +23,7 @@ export default function BetaPage() {
         </div>
 
         <div className={styles.heroContent}>
-          <div className={styles.badge}>Founding Circle - Beta Program</div>
+          <div className={styles.badge}>Three Rites Beta Program</div>
 
           <h1 className={styles.heroTitle}>
             Shape the Future of Quantum Strategies
@@ -31,7 +31,7 @@ export default function BetaPage() {
           </h1>
 
           <p className={styles.heroDescription}>
-            Experience all 11 products free. Share your insights. Become a Founding Member.
+            Experience all 11 products free. Share your insights. Then take your Initiation.
             <br />
             6-week journey through Perception, Orientation, and Declaration.
           </p>
@@ -52,7 +52,7 @@ export default function BetaPage() {
               <span className={styles.indicatorText}>6-Week Journey</span>
             </div>
             <div className={styles.indicator}>
-              <span className={styles.indicatorText}>Founding Member Access</span>
+              <span className={styles.indicatorText}>Initiation at the End</span>
             </div>
           </div>
         </div>
@@ -108,9 +108,9 @@ export default function BetaPage() {
             </div>
 
             <div className={styles.featureCard}>
-              <h3 className={styles.featureTitle}>Founding Member Priority</h3>
+              <h3 className={styles.featureTitle}>Initiate Priority</h3>
               <p className={styles.featureDescription}>
-                First access to new features, priority support, and exclusive Founding Member community access.
+                First access to new features, priority support, and the Initiate role in our Discord.
               </p>
             </div>
           </div>
@@ -169,9 +169,9 @@ export default function BetaPage() {
             <div className={styles.timelineItem}>
               <div className={styles.timelineNumber}>5</div>
               <div className={styles.timelineContent}>
-                <h3 className={styles.timelineTitle}>Completion: Founding Member Invitation</h3>
+                <h3 className={styles.timelineTitle}>Completion: Your Initiation</h3>
                 <p className={styles.timelineDescription}>
-                  Receive your compiled journey summary (PDF). Founding Member access offered at $60 (minus any à la carte purchases you made).
+                  Receive your compiled journey summary (PDF). Initiation offered at $60 (minus any à la carte purchases you made).
                   Optional 1-on-1 call to discuss your journey.
                 </p>
               </div>
@@ -225,7 +225,7 @@ export default function BetaPage() {
       <section id="enroll" className={styles.enrollment}>
         <div className={styles.container}>
           <div className={styles.enrollmentHeader}>
-            <h2 className={styles.sectionTitle}>Join the Founding Circle</h2>
+            <h2 className={styles.sectionTitle}>Join the Beta</h2>
             <p className={styles.enrollmentSubtitle}>
               No payment required. Instant access to all 11 products upon approval.
             </p>
@@ -259,7 +259,7 @@ export default function BetaPage() {
             <div className={styles.faqItem}>
               <h3 className={styles.faqQuestion}>What happens after the beta?</h3>
               <p className={styles.faqAnswer}>
-                You'll receive a Founding Member offer: lifetime access to all products for $60 (minus any à la carte purchases).
+                You'll receive the Initiation offer: every current and future self-serve Rite for $60 (minus any à la carte purchases).
                 No obligation to purchase.
               </p>
             </div>
@@ -267,7 +267,7 @@ export default function BetaPage() {
             <div className={styles.faqItem}>
               <h3 className={styles.faqQuestion}>Can I purchase products à la carte during the beta?</h3>
               <p className={styles.faqAnswer}>
-                Yes! If you want to purchase individual products during your journey, those purchases count toward your $60 Founding Member total.
+                Yes! If you want to purchase individual products during your journey, those purchases count toward your $60 Initiation price.
                 Example: Buy $15 worth → final offer is $45.
               </p>
             </div>

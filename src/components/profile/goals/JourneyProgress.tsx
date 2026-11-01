@@ -1,23 +1,16 @@
 'use client'
 
-import type { RiteJourney } from '@/lib/profile/rite-journey'
-import { riteStageLocked } from '@/lib/profile/rite-journey'
+import { RITE_STAGES, riteStageLocked, type RiteJourney } from '@/lib/profile/rite-journey'
 import styles from './goals.module.css'
 
 interface Props {
   journey: RiteJourney
 }
 
-const RITES: { key: keyof Pick<RiteJourney, 'orientation' | 'perception' | 'declaration'>; roman: string; label: string }[] = [
-  { key: 'orientation', roman: 'I',   label: 'Orientation' },
-  { key: 'perception',  roman: 'II',  label: 'Perception' },
-  { key: 'declaration', roman: 'III', label: 'Declaration' },
-]
-
 export default function JourneyProgress({ journey }: Props) {
   return (
     <div className={styles.journey}>
-      {RITES.map(({ key, roman, label }, i) => {
+      {RITE_STAGES.map(({ key, roman, label }, i) => {
         const status = journey[key]
         const locked = riteStageLocked(key, journey)
         const complete = status.isComplete
@@ -58,7 +51,7 @@ export default function JourneyProgress({ journey }: Props) {
                 </div>
               </div>
             </div>
-            {i < RITES.length - 1 && <div className={styles.riteDivider} />}
+            {i < RITE_STAGES.length - 1 && <div className={styles.riteDivider} />}
           </div>
         )
       })}

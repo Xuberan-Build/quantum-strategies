@@ -1,5 +1,6 @@
 /**
- * Founding Member conversion emails for the beta cohort (DRAFTS, NOT WIRED TO ANY SENDER).
+ * Initiation emails for the beta cohort (DRAFTS, NOT WIRED TO ANY SENDER).
+ * Internal name: the founding-member offer. Users see "Initiation" and "Initiate".
  *
  * Three emails: invitation, value + Rite I nudge, deadline reminder.
  * Austin sends these himself after approving the copy. Nothing in the app imports
@@ -53,7 +54,7 @@ function priceLine(d: FoundingEmailData): string {
 const BENEFITS = [
   'Every new Rite and app product I release from here, included.',
   'A 45-minute debrief call with me on what your scans showed and what to do next.',
-  'The Founding Member role in Discord, and your name on the founding circle list if you want it there.',
+  'The Initiate role in Discord, and your name on the list of the first Initiates if you want it there.',
   'First access to new products before they go public, and priority when you message me.',
 ];
 
@@ -93,16 +94,17 @@ ${htmlParts.join('\n')}
 export function getFoundingInviteEmail(d: FoundingEmailData): EmailContent {
   const { html, text } = render([
     `Hi ${firstName(d.name)},`,
-    "When you joined the beta I said that at the end you'd get the chance to become a Founding Member for $60, minus anything you'd already bought. That offer is open now, and I want to keep the promise as I made it.",
+    "When you joined the beta I said that at the end you'd get an offer: $60, minus anything you'd already bought. That offer is open now, and I want to keep the promise as I made it.",
+    "You've been working through the Rites. Initiation is the step where you commit to the work that comes next and join the circle doing it.",
     priceLine(d),
-    'Here is what Founding Members get:',
+    'Here is what Initiates get:',
     { list: BENEFITS },
     "You don't have to pay to keep what you have. All 11 products stay yours with no end date, whatever you decide.",
-    `The offer is open until ${d.closesLabel}. After that the founding price and the call close, and I put my time into building the next Rite with the people who joined.`,
-    { link: d.offerUrl, label: 'See your Founding Member offer' },
+    `Initiation is open until ${d.closesLabel}. After that the $60 price and the call close, and I put my time into building the next Rite with the people who joined.`,
+    { link: d.offerUrl, label: 'See your Initiation' },
     "If something stopped you partway through, reply and tell me what it was. I read every reply, and it's the most useful thing you can send me right now.",
   ]);
-  return { subject: 'The Founding Member offer I promised you', html, text };
+  return { subject: 'Your Initiation is open', html, text };
 }
 
 /** Email 2: value plus the Rite I nudge. Send day 7 to anyone who hasn't joined. */
@@ -124,9 +126,9 @@ export function getFoundingValueEmail(d: FoundingEmailData): EmailContent {
     `Hi ${firstName(d.name)},`,
     "The note that came up most in the beta feedback was some version of \"my values don't match what I'm actually doing\". Three of you wrote it. That's the pattern the Rites are built to find, and once you can see it you can start changing it.",
     ...progress,
-    'The one thing a beta user asked for directly was accountability. That is why the founding offer includes a 45-minute call with me. We look at what your scans showed and pick one move for the next two weeks.',
+    'The one thing a beta user asked for directly was accountability. That is why Initiation includes a 45-minute call with me. We look at what your scans showed and pick one move for the next two weeks.',
     `${priceLine(d)} It's open until ${d.closesLabel}.`,
-    { link: d.offerUrl, label: 'See your Founding Member offer' },
+    { link: d.offerUrl, label: 'See your Initiation' },
     "If you'd rather just finish the scans, that's fine too. Reply and I'll help you get unstuck either way.",
   ]);
   return {
@@ -140,11 +142,11 @@ export function getFoundingValueEmail(d: FoundingEmailData): EmailContent {
 export function getFoundingDeadlineEmail(d: FoundingEmailData): EmailContent {
   const { html, text } = render([
     `Hi ${firstName(d.name)},`,
-    `The Founding Member offer closes on ${d.closesLabel} at 11:59pm Pacific. ${priceLine(d)}`,
-    'It includes every new Rite and app product I release, a 45-minute call with me, the Founding Member role in Discord and first access to what I build next.',
-    "After it closes your beta access stays as it is. You keep all 11 products. What goes away is the founding price and the call.",
-    { link: d.offerUrl, label: 'Become a Founding Member' },
+    `Initiation closes on ${d.closesLabel} at 11:59pm Pacific. ${priceLine(d)}`,
+    'It includes every new Rite and app product I release, a 45-minute call with me, the Initiate role in Discord and first access to what I build next.',
+    "After it closes your beta access stays as it is. You keep all 11 products. What goes away is the $60 price and the call.",
+    { link: d.offerUrl, label: 'Become an Initiate' },
     "If you've decided it's not for you, reply with one line on why. That helps me more than you'd think.",
   ]);
-  return { subject: `Founding Member closes ${d.closesLabel}`, html, text };
+  return { subject: `Initiation closes ${d.closesLabel}`, html, text };
 }

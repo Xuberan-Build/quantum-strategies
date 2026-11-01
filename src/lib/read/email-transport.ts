@@ -158,9 +158,12 @@ async function sendViaResend(msg: OutgoingReadEmail, from: { email: string; name
   return data?.id || 'sent';
 }
 
-/** Delivers or previews one email. Logs and returns failures; never throws. */
-export async function deliverReadEmail(msg: OutgoingReadEmail): Promise<ReadEmailOutcome> {
-  const mode = getReadEmailMode();
+/**
+ * Delivers or previews one email. Logs and returns failures; never throws.
+ * `mode` overrides READ_EMAIL_MODE for callers with their own switch (progress emails).
+ */
+export async function deliverReadEmail(msg: OutgoingReadEmail, opts: { mode?: ReadEmailMode } = {}): Promise<ReadEmailOutcome> {
+  const mode = opts.mode ?? getReadEmailMode();
   if (mode === 'off') return { ok: false, mode, error: 'READ_EMAIL_MODE=off' };
 
   if (mode === 'preview') {

@@ -21,6 +21,9 @@ function money(n: number): string {
   return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
 }
 
+// Display name: "Initiation" (the person becomes "an Initiate"). Internal names keep
+// "founding" (route, slug, env flag, DB values) to avoid migrations. See
+// brain/gtm/beta-conversion-offer.md, "Naming".
 export default async function FoundingMemberPage({
   searchParams,
 }: {
@@ -56,14 +59,14 @@ export default async function FoundingMemberPage({
   return (
     <div className={dashboardStyles.container}>
       <header className={dashboardStyles.header}>
-        <h1>Founding Member</h1>
+        <h1>Initiation</h1>
         <p className={dashboardStyles.subtitle}>For the 12 people in the first beta cohort.</p>
       </header>
 
       <main className={styles.main}>
         {isMember && (
           <section className={styles.card}>
-            <h2>You&apos;re a Founding Member. Thank you.</h2>
+            <h2>You&apos;re an Initiate. Thank you.</h2>
             <p>
               Book your debrief call with me here. Pick any open slot that works for you.
             </p>
@@ -71,7 +74,7 @@ export default async function FoundingMemberPage({
               Book the debrief call
             </a>
             <p className={styles.small}>
-              I&apos;ll add your Founding Member role in Discord myself. Reply to any of my emails
+              I&apos;ll add your Initiate role in Discord myself. Reply to any of my emails
               with your Discord name if I don&apos;t have it.
             </p>
           </section>
@@ -85,7 +88,7 @@ export default async function FoundingMemberPage({
 
         {isClosed && !isMember && (
           <section className={styles.card}>
-            <h2>The founding offer closed on {closesLabel}.</h2>
+            <h2>Initiation closed on {closesLabel}.</h2>
             <p>
               Your beta access hasn&apos;t changed. All 11 products are still yours, with no end date.
             </p>
@@ -102,27 +105,31 @@ export default async function FoundingMemberPage({
                   : `Your price: ${money(pricing.price)}`}
               </h2>
               <p>
-                When you joined the beta I said you&apos;d get the chance to become a Founding Member
-                for {money(FOUNDING_MEMBER_PRICE)}, minus anything you&apos;d already bought.
+                When you joined the beta I said you&apos;d get an offer at the end:{' '}
+                {money(FOUNDING_MEMBER_PRICE)}, minus anything you&apos;d already bought.
                 {pricing.credit > 0
                   ? ` You've paid ${money(pricing.credit)} so far, so that comes off.`
                   : ''}
               </p>
               <p>
+                You&apos;ve been working through the Rites. Initiation is the step where you commit to
+                the work that comes next and join the circle doing it.
+              </p>
+              <p>
                 You don&apos;t have to pay to keep what you have. All 11 products stay yours either way,
-                with no end date. Founding Member is for the people who want to back this early and
-                get the things below.
+                with no end date. Initiation is for the people who want to keep going with me and get
+                the things below.
               </p>
               {pricing.covered ? (
-                <p>Reply to my email and I&apos;ll mark you as a Founding Member myself.</p>
+                <p>Reply to my email and I&apos;ll mark you as an Initiate myself.</p>
               ) : (
-                <FoundingCheckoutButton label={`Become a Founding Member for ${money(pricing.price)}`} />
+                <FoundingCheckoutButton label={`Become an Initiate for ${money(pricing.price)}`} />
               )}
               <p className={styles.small}>Open until {closesLabel}, 11:59pm Pacific. One payment, nothing recurring.</p>
             </section>
 
             <section className={styles.card}>
-              <h2>What Founding Members get</h2>
+              <h2>What Initiates get</h2>
               <ul className={styles.list}>
                 <li>
                   <strong>Every new Rite and app product I release, included.</strong> The three Rites are
@@ -133,8 +140,8 @@ export default async function FoundingMemberPage({
                   and pick the next move for your business. You book it after you join.
                 </li>
                 <li>
-                  <strong>The Founding Member role in Discord</strong>, and your name on the founding circle
-                  list if you want it there. I&apos;ll ask before I list anyone.
+                  <strong>The Initiate role in Discord</strong>, and your name on the list of the first
+                  Initiates if you want it there. I&apos;ll ask before I list anyone.
                 </li>
                 <li>
                   <strong>First access and priority support.</strong> You see new products before they go

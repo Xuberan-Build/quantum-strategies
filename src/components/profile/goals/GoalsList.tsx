@@ -2,19 +2,11 @@
 
 import { useState } from 'react'
 import type { UserGoal } from '@/lib/profile/types'
-import type { RiteJourney } from '@/lib/profile/rite-journey'
-import { riteStageLocked } from '@/lib/profile/rite-journey'
+import { RITE_STAGES, riteStageLocked, type RiteJourney, type RiteStage } from '@/lib/profile/rite-journey'
 import GoalCard from './GoalCard'
 import GoalAIAssistant from './GoalAIAssistant'
 import styles from './goals.module.css'
 
-type RiteKey = 'orientation' | 'perception' | 'declaration'
-
-const SECTIONS: { key: RiteKey; roman: string; label: string }[] = [
-  { key: 'orientation', roman: 'I',   label: 'Orientation' },
-  { key: 'perception',  roman: 'II',  label: 'Perception' },
-  { key: 'declaration', roman: 'III', label: 'Declaration' },
-]
 
 interface Props {
   initialGoals: UserGoal[]
@@ -77,7 +69,7 @@ export default function GoalsList({ initialGoals, journey }: Props) {
         />
       )}
 
-      {SECTIONS.map(({ key, roman, label }) => {
+      {RITE_STAGES.map(({ key, roman, label }) => {
         const locked = riteStageLocked(key, journey)
         const stageGoals = goals.filter((g) => g.rite_stage === key)
 

@@ -1,5 +1,6 @@
 /**
- * Founding Member checkout (beta cohort only).
+ * Founding Member checkout (beta cohort only). Shown to users as "Initiation"; the
+ * internal names (route, slug, metadata) keep "founding-member" to avoid churn.
  *
  * Separate from /api/checkout so normal products are untouched. Eligibility is checked
  * against beta_participants and the price is computed here ($60 minus what the user
@@ -18,10 +19,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY?.trim() || '', {
 });
 
 const INELIGIBLE_MESSAGES: Record<string, { status: number; error: string }> = {
-  not_beta: { status: 403, error: 'The Founding Member offer is only open to beta participants.' },
-  withdrawn: { status: 403, error: 'The Founding Member offer is only open to active beta participants.' },
-  already_member: { status: 409, error: 'You are already a Founding Member.' },
-  closed: { status: 410, error: 'The Founding Member offer has closed.' },
+  not_beta: { status: 403, error: 'Initiation is only open to beta participants.' },
+  withdrawn: { status: 403, error: 'Initiation is only open to active beta participants.' },
+  already_member: { status: 409, error: 'You are already an Initiate.' },
+  closed: { status: 410, error: 'Initiation has closed.' },
 };
 
 export async function POST(req: NextRequest) {
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
     if (pricing.covered) {
       return NextResponse.json(
         {
-          error: 'What you have already paid covers the Founding Member price. Reply to Austin and he will mark you as a Founding Member.',
+          error: 'What you have already paid covers your Initiation. Reply to Austin and he will mark you as an Initiate.',
           reason: 'covered',
         },
         { status: 409 }
@@ -58,11 +59,12 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'Quantum Strategies Founding Member',
+              // Display name only. The slug in metadata stays 'founding-member'.
+              name: 'Quantum Strategies Initiation',
               description:
                 pricing.credit > 0
                   ? `$60 minus the $${pricing.credit} you have already paid`
-                  : 'Founding Member of the Three Rites beta cohort',
+                  : 'Initiation for the first Three Rites beta cohort',
             },
             unit_amount: Math.round(pricing.price * 100),
           },
