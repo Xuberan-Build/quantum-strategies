@@ -122,7 +122,7 @@ export function notAloneLine(share: string): string {
 // ── Safety copy ─────────────────────────────────────────────────────────────
 
 /** Date every crisis line below was checked on the line's own site. Re-check before launch and quarterly. */
-export const VERIFIED_ON = '2026-10-18';
+export const VERIFIED_ON = '2026-11-01';
 
 export interface CrisisLine {
   region: string;
