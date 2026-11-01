@@ -67,9 +67,9 @@ export function ReadFlow({ utm, variant: variantProp }: ReadFlowProps) {
       const first = visibleQuestions(qs, seg, v)[0];
       setCurrentId(saved?.currentId && qs.some((q) => q.id === saved.currentId) ? saved.currentId : first?.id);
       setPhase('question');
-    } catch {
+    } catch (err) {
       setPhase('error');
-      setError(FLOW.startError);
+      setError(err instanceof ReadApiError && err.status === 503 ? FLOW.notOpenYet : FLOW.startError);
     }
   }, [api, utm, variantProp]);
 

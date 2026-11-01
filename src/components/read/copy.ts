@@ -57,6 +57,8 @@ export const FLOW = {
   completing: 'Reading your answers',
   saveError: "That didn't save. Check your connection and try again.",
   startError: "We couldn't start the Read just now. Try again in a minute.",
+  /** The launch switch is off (503 read_unavailable). */
+  notOpenYet: "The Read isn't open yet. It opens soon.",
   required: 'Pick an answer to keep going.',
   requiredText: 'Write a few words to keep going. Short is fine.',
   pickLoudest: 'Pick the one that is loudest.',
