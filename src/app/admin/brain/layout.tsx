@@ -1,25 +1,10 @@
-import { Cormorant_Garamond, JetBrains_Mono } from 'next/font/google';
+import { brainSerif as serif, brainMono as mono } from '@/app/fonts';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BrainSubNav } from '@/components/admin/brain/BrainSubNav';
 import styles from '@/components/admin/brain/brain.module.css';
 import { getBrainSnapshot } from '@/lib/brain/load';
 import { relativeAge } from '@/lib/brain/viz';
-
-const serif = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  style: ['normal', 'italic'],
-  variable: '--font-brain-serif',
-  display: 'swap',
-});
-
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-brain-mono',
-  display: 'swap',
-});
 
 export const metadata = {
   title: 'Brain - Quantum Strategies Admin',

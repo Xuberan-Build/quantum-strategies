@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, JetBrains_Mono } from "next/font/google";
+import { ioaSerif as cormorantGaramond, ioaMono as jetbrainsMono } from "@/app/fonts";
 import Navbar from "@/components/navigation/Navbar";
 import DossierShell from "@/components/inner-outer-alignment/DossierShell";
 import Hero from "@/components/inner-outer-alignment/Hero";
@@ -11,21 +11,6 @@ import TAOTableSection from "@/components/inner-outer-alignment/TAOTableSection"
 import ProofPhase from "@/components/inner-outer-alignment/ProofPhase";
 import { getActiveSituations } from "@/lib/tao/fetch";
 import styles from "./inner-outer-alignment.module.css";
-
-const cormorantGaramond = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-ioa-serif",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: "--font-ioa-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title:

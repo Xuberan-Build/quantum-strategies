@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Bodoni_Moda } from "next/font/google";
+import { inter, bodoniModa } from "./fonts";
 import Script from "next/script";
 import Navbar from "@/components/navigation/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -17,13 +17,6 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const bodoniModa = Bodoni_Moda({
-  subsets: ["latin"],
-  variable: "--font-bodoni",
-  style: ["normal", "italic"],
-  weight: ["400", "500", "600", "700"],
-});
 const baseUrl = new URL("https://quantumstrategies.online");
 
 export const metadata: Metadata = {
