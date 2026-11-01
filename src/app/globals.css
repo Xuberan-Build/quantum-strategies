@@ -24,7 +24,12 @@
 
 /* ===== Reset (safe) ===== */
 *,*::before,*::after{ box-sizing:border-box }
-html,body{ height:100%; margin:0; overflow-x:hidden; }
+/* overflow-x on both html and body with height:100% made <body> its own scroll container:
+   window never scrolled and pages opened at the previous scroll position (e.g. at the footer).
+   clip hides sideways overflow without creating a scroll container. */
+html,body{ margin:0; overflow-x:hidden; }
+@supports (overflow:clip){ html,body{ overflow-x:clip; } }
+body{ min-height:100%; }
 body{ background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif; line-height:1.6; -webkit-font-smoothing:antialiased; }
 img,svg,video{ max-width:100%; height:auto; display:block }
 
