@@ -11,6 +11,9 @@ import { extractFaq, faqJsonLd } from "@/lib/content/faq";
 import { getDbArticles } from "@/lib/content/article-list";
 import { relatedFor } from "@/lib/content/article-index";
 import ArticleCta from "@/components/content/ArticleCta";
+import { splitAfterSection } from "@/lib/content/split-sections";
+import { ReadSidebarCard } from "@/components/read/cta/ReadPlacements";
+import { isReadLive } from "@/lib/read/live";
 import styles from "./article.module.css";
 
 type PageProps = {
@@ -57,6 +60,69 @@ async function renderDbBody(source: string) {
       </>
     );
   }
+}
+
+// ── Split body (Perception Read card between sections on small screens) ──
+// Splits after the second section and compiles each half. If anything about the split
+// is doubtful (see splitAfterSection) or a half doesn't compile, returns null and the
+// page renders the body whole, as before.
+async function renderSplitBody(source: string) {
+  const split = splitAfterSection(source, 2);
+  if (!split) return null;
+  try {
+    const [before, after] = await Promise.all([
+      compileMDX({ source: split.before, components: proseComponents }),
+      compileMDX({ source: split.after, components: proseComponents }),
+    ]);
+    return { before: before.content, after: after.content };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Article body with the Perception Read card around it (renders only when the Read is
+ * live): sticky in a sidebar on desktop, between sections on smaller screens. The one
+ * CTA after the article is ArticleCta, rendered by the page below this.
+ */
+async function ArticleBody({
+  slug,
+  tags,
+  source,
+  renderWhole,
+}: {
+  slug: string;
+  tags: (string | null | undefined)[];
+  source: string;
+  renderWhole: () => Promise<React.ReactNode> | React.ReactNode;
+}) {
+  // Before launch the page renders exactly as it did: one column, body compiled whole.
+  if (!(await isReadLive())) {
+    return <article className={`article-prose ${styles.prose}`}>{await renderWhole()}</article>;
+  }
+  const split = await renderSplitBody(source);
+  return (
+    <div className={styles.layout}>
+      <div className={styles.column}>
+        <article className={`article-prose ${styles.prose}`}>
+          {split ? (
+            <>
+              {split.before}
+              <div className={styles.inlineCard}>
+                <ReadSidebarCard slug={slug} tags={tags} variant="inline" />
+              </div>
+              {split.after}
+            </>
+          ) : (
+            await renderWhole()
+          )}
+        </article>
+      </div>
+      <div className={styles.sidebar}>
+        <ReadSidebarCard slug={slug} tags={tags} variant="sidebar" />
+      </div>
+    </div>
+  );
 }
 
 // ── Static params (MDX slugs; DB slugs render dynamically) ────────────────
@@ -216,9 +282,12 @@ export default async function ArticlePage({ params }: PageProps) {
           </div>
         </section>
         <div className={styles.divider} />
-        <article className={`article-prose ${styles.prose}`}>
-          {await renderDbBody(post.body ?? "")}
-        </article>
+        <ArticleBody
+          slug={slug}
+          tags={[pillar?.slug, ...((post.tags as string[] | null) ?? [])]}
+          source={post.body ?? ""}
+          renderWhole={() => renderDbBody(post.body ?? "")}
+        />
         <ArticleCta slug={slug} />
         {(related.series || related.more.length > 0) && (
           <nav className={styles.related} aria-label="Keep reading">
@@ -312,9 +381,12 @@ export default async function ArticlePage({ params }: PageProps) {
         </div>
       </section>
       <div className={styles.divider} />
-      <article className={`article-prose ${styles.prose}`}>
-        <MDXRemote source={content} components={proseComponents} />
-      </article>
+      <ArticleBody
+        slug={slug}
+        tags={[(data.category as string | undefined) ?? path.basename(path.dirname(article.filePath))]}
+        source={content}
+        renderWhole={() => <MDXRemote source={content} components={proseComponents} />}
+      />
       <ArticleCta slug={slug} />
     </div>
   );

@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { navigationConfig } from "@/lib/constants/navigation";
+import { navigationConfig, READ_NAV_HREF, READ_NAV_LABEL } from "@/lib/constants/navigation";
 import styles from "./mobile-menu.module.css";
 import DropdownPortal from "./DropdownPortal"; // reuse the portal
+import { useReadLive } from "./useReadLive";
 
 export default function MobileMenu() {
   const pathname = usePathname();
+  const readLive = useReadLive();
   const [isOpen, setIsOpen] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
@@ -40,7 +42,8 @@ export default function MobileMenu() {
   };
 
   const renderSubmenu = (links: any[], path: string[], depth = 0) => {
-    return links.map((link) => {
+    // The drawer already leads with the Read button, so gated menu entries are skipped here.
+    return links.filter((link) => !link.requiresReadLive).map((link) => {
       const nodeId = [...path, link.label].join(">");
       const hasSubmenu = Array.isArray(link.submenu) && link.submenu.length > 0;
       const isExpanded = Boolean(expandedNodes[nodeId]);
@@ -129,6 +132,13 @@ export default function MobileMenu() {
               </div>
 
               <nav className={styles.drawerNav}>
+                {readLive && (
+                  <div className={styles.readCtaWrap}>
+                    <Link href={READ_NAV_HREF} className={styles.readCta} onClick={closeMenu}>
+                      {READ_NAV_LABEL}
+                    </Link>
+                  </div>
+                )}
                 {navigationConfig.main.map((item) => {
                   // Simple link
                   if (item.href && !("dropdown" in item) && !("megaMenu" in item)) {

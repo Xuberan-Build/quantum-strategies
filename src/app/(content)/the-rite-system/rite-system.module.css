@@ -603,3 +603,13 @@
     padding: 2rem;
   }
 }
+
+/* Free Perception Read CTAs (ReadCta renders nothing while the Read is off) */
+.readCtaTop {
+  margin: 2.5rem auto 0;
+  max-width: 560px;
+}
+
+.readCtaEnd {
+  margin: 0 auto 3rem;
+}

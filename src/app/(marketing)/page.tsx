@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import HomeClient from "@/components/home/HomeClient";
 import HomeReading from "@/components/home/HomeReading";
+import { ReadHomeCta } from "@/components/read/cta/ReadPlacements";
 
 const BASE_URL = "https://quantumstrategies.online";
 
@@ -31,7 +32,8 @@ export const revalidate = 300;
 export default function Home() {
   return (
     <>
-      <HomeClient />
+      {/* The Perception Read line in the hero renders only once the Read is live (src/lib/read/live.ts). */}
+      <HomeClient readCta={<ReadHomeCta />} />
       <HomeReading />
     </>
   );

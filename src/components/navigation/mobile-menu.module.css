@@ -285,3 +285,28 @@
 @media (max-width: 1024px) {
   .hamburger { display: flex; }
 }
+
+/* Free Perception Read - primary CTA colour, leads the drawer */
+.readCtaWrap {
+  padding: 1rem 1.5rem 0.75rem;
+}
+
+.readCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.9rem 1.25rem;
+  border-radius: 9999px;
+  background: var(--cta-primary);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.readCta:hover,
+.readCta:focus-visible {
+  background: var(--cta-primary-hover);
+}

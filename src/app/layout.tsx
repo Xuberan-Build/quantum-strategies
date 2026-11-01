@@ -6,6 +6,7 @@ import Footer from "@/components/layout/Footer";
 import FlashOverlay from "@/components/layout/FlashOverlay";
 import CookieConsent from "@/components/legal/CookieConsent";
 import AuthRefreshHandler from "@/components/auth/AuthRefreshHandler";
+import { BANNER_PREPAINT_SCRIPT } from "@/lib/read/cta";
 import "./globals.css";
 
 const GTM_ID = "GTM-P79CLN9J";
@@ -83,8 +84,11 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Hides the Perception Read banner before paint for 14 days after it is dismissed
+            (no layout shift). suppressHydrationWarning on <html> covers the attribute it sets. */}
+        <script id="read-banner-prepaint" dangerouslySetInnerHTML={{ __html: BANNER_PREPAINT_SCRIPT }} />
         <Script
           id="gtm-consent-default"
           strategy="beforeInteractive"

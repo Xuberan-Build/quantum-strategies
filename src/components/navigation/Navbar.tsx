@@ -2,11 +2,12 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { navigationConfig } from "@/lib/constants/navigation";
+import { navigationConfig, READ_NAV_HREF, READ_NAV_LABEL, type NavLink } from "@/lib/constants/navigation";
 import DropdownPortal from "./DropdownPortal";
 import MobileMenu from "./MobileMenu";
 import StackedMegaMenu from "./StackedMegaMenu";
 import styles from "./navbar.module.css";
+import { useReadLive } from "./useReadLive";
 
 interface NavbarProps {
   showProductCTA?: boolean;
@@ -16,6 +17,7 @@ interface NavbarProps {
 
 export default function Navbar({ showProductCTA = false, productCTAText = "Get Your Blueprint", productCTAHref = "#purchase" }: NavbarProps) {
   const pathname = usePathname();
+  const readLive = useReadLive();
 
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -153,10 +155,13 @@ export default function Navbar({ showProductCTA = false, productCTAText = "Get Y
               if ("megaMenu" in item && item.megaMenu) {
                 // Convert megaMenu data to StackedMegaMenu format
                 const menuData = item.megaMenu.sections.flatMap(section =>
-                  section.links.map(link => ({
+                  section.links
+                    .filter(link => readLive || !(link as NavLink).requiresReadLive)
+                    .map(link => ({
                     label: link.label,
                     href: link.href,
                     description: (link as any).description, // Pass through description (type-safe cast)
+                    variant: (link as NavLink).variant,
                     categories: (link as any).submenu?.map((sub: any) => ({
                       label: sub.label,
                       href: sub.href, // Pass through href for clickable categories
@@ -235,6 +240,15 @@ export default function Navbar({ showProductCTA = false, productCTAText = "Get Y
                 </li>
               );
             })}
+
+            {/* Free Perception Read: only while the Read is live, and not beside a product CTA */}
+            {readLive && !showProductCTA && (
+              <li className={styles.navItem}>
+                <Link href={READ_NAV_HREF} className={styles.readButton}>
+                  {READ_NAV_LABEL}
+                </Link>
+              </li>
+            )}
           </ul>
         )}
 

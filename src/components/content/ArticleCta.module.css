@@ -44,6 +44,15 @@
   background: #a855f7;
 }
 
+/* The free Read uses the site-wide blue primary CTA colour. */
+.readButton {
+  background: var(--cta-primary);
+}
+
+.readButton:hover {
+  background: var(--cta-primary-hover);
+}
+
 @media (max-width: 640px) {
   .cta {
     margin: 0 1rem 3rem;

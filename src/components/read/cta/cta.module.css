@@ -1,0 +1,215 @@
+/*
+ * Perception Read placements. Every button uses the primary CTA blue
+ * (var(--cta-primary) / var(--cta-primary-hover), globals.css); cards are tinted with
+ * the same blue (rgb 93 63 211) on the site ink (#F8F5FF).
+ * Selectors that sit inside .article-prose use two classes so the prose link and
+ * paragraph rules in globals.css don't restyle them.
+ */
+
+/* ── Site banner ─────────────────────────────────────────── */
+.banner {
+  /* main has side padding (globals.css); pull the strip to the edges. The top stays
+     put: main's 80px top padding is what clears the fixed navbar. */
+  margin: 0 calc(-1 * clamp(1rem, 2vw, 2rem));
+  background: linear-gradient(90deg, rgba(93, 63, 211, 0.32), rgba(93, 63, 211, 0.18));
+  border-bottom: 1px solid rgba(206, 190, 255, 0.18);
+  color: #f8f5ff;
+}
+
+:global(html[data-read-banner='off']) .banner {
+  display: none;
+}
+
+.bannerInner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0.55rem 3rem 0.55rem 1rem;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem 1rem;
+  min-height: 44px;
+}
+
+.banner .bannerLine {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #f8f5ff;
+  text-align: center;
+}
+
+.banner .bannerButton {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.85rem;
+  border-radius: 9999px;
+  background: var(--cta-primary);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.banner .bannerButton:hover {
+  background: var(--cta-primary-hover);
+  color: #fff;
+}
+
+.bannerClose {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: rgba(248, 245, 255, 0.8);
+  cursor: pointer;
+}
+
+.bannerClose:hover {
+  background: rgba(248, 245, 255, 0.1);
+  color: #f8f5ff;
+}
+
+.banner .bannerButton:focus-visible,
+.bannerClose:focus-visible,
+.homeLink:focus-visible {
+  outline: 2px solid #f8f5ff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .banner .bannerLine {
+    font-size: 0.85rem;
+    text-align: left;
+  }
+  .bannerInner {
+    justify-content: flex-start;
+  }
+}
+
+/* ── Article cards (shared) ──────────────────────────────── */
+.sideCard {
+  background: linear-gradient(135deg, rgba(93, 63, 211, 0.24) 0%, rgba(93, 63, 211, 0.08) 100%);
+  border: 1px solid rgba(93, 63, 211, 0.5);
+  border-radius: 16px;
+  color: #f8f5ff;
+}
+
+.sideCard .kicker {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #b3a4ff;
+}
+
+.sideCard .cardTitle {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-bodoni), 'Bodoni Moda', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #f8f5ff;
+}
+
+.sideCard .cardLine {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.sideCard .cardButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.1rem;
+  border-radius: 9999px;
+  background: var(--cta-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  border: 0;
+  transition: background 0.2s ease;
+}
+
+.sideCard .cardButton:hover {
+  background: var(--cta-primary-hover);
+  color: #fff;
+}
+
+.sideCard .cardButton:focus-visible {
+  outline: 2px solid #f8f5ff;
+  outline-offset: 3px;
+}
+
+.sideCard .cardNote {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(206, 190, 254, 0.75);
+}
+
+/* Sidebar: sticky on desktop only (the article grid shows it from 1100px). */
+.sideCard {
+  padding: 1.5rem;
+  position: sticky;
+  top: 104px; /* fixed navbar (~80px) plus a gap */
+}
+
+.sideCard .cardButton {
+  width: 100%;
+}
+
+/* The same card inside the body on smaller screens: no sticking. */
+.sideCardInline {
+  position: static;
+  margin: 2rem 0;
+}
+
+/* ── Homepage hero line ──────────────────────────────────── */
+.home {
+  margin: 1.25rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
+.homeLink {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.7rem 1.2rem;
+  border-radius: 9999px;
+  background: var(--cta-primary);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 18px rgba(93, 63, 211, 0.35);
+  transition: background 0.2s ease;
+}
+
+.homeLink:hover {
+  background: var(--cta-primary-hover);
+  color: #fff;
+}
+
+.homeLine {
+  color: var(--ink-soft);
+}

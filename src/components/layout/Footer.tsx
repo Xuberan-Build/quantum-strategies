@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { navigationConfig } from "@/lib/constants/navigation";
 import styles from "./footer.module.css";
+import { ReadFooterLink } from "@/components/read/cta/ReadPlacements";
 
 type MenuLink = { label: string; href?: string; submenu?: MenuLink[] };
 
@@ -97,6 +98,7 @@ export default function Footer() {
           <div className={styles.column}>
             <h4 className={styles.columnTitle}>Resources</h4>
             <ul className={styles.linkList}>
+              <ReadFooterLink className={styles.link} />
               {navigationConfig.footer.resources.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className={styles.link}>

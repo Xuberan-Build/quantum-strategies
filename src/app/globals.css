@@ -7,6 +7,9 @@
   --ink: #B399FF;
   --ink-soft: #cebefe;
   --brand: #5D3FD3;
+  /* Primary CTA blue (the free Perception Read and other primary CTAs) */
+  --cta-primary: #5D3FD3;
+  --cta-primary-hover: #6F55DC;
   --accent: #cebeff;
   --radius: 20px;
   --shadow-1: 0 4px 8px rgba(0,0,0,.3);

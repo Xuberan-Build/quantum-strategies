@@ -707,3 +707,9 @@
     font-size: 3rem;
   }
 }
+
+/* Free Perception Read CTA (ReadCta renders nothing while the Read is off) */
+.readCta {
+  margin: 0 auto 2rem;
+  max-width: 560px;
+}

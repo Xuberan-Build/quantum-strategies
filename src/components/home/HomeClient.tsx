@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Hero from "@/components/hero/Hero";
 import FlashOverlay from "@/components/layout/FlashOverlay";
@@ -12,7 +12,8 @@ const ContactSection = dynamic(() => import("@/components/contact/ContactSection
 const Modal = dynamic(() => import("@/components/modals/Modal"), { ssr: false });
 const PortfolioModal = dynamic(() => import("@/components/modals/PortfolioModal"), { ssr: false });
 
-export default function HomeClient() {
+/** `readCta`: server-rendered Perception Read line for the hero (renders only when live). */
+export default function HomeClient({ readCta }: { readCta?: ReactNode } = {}) {
   const [resumeOpen, setResumeOpen] = useState(false);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
   const [flash, setFlash] = useState(false);
@@ -57,6 +58,7 @@ export default function HomeClient() {
       <FlashOverlay active={flash} />
 
       <Hero
+        readCta={readCta}
         onOpenResume={() => setResumeOpen(true)}
         onOpenPortfolio={() => setPortfolioOpen(true)}
       />

@@ -3,7 +3,15 @@ export interface NavLink {
   href?: string;
   description?: string;
   submenu?: NavLink[];
+  /** "overview" renders as the intro strip of a mega menu; "cta" uses the primary CTA colour. */
+  variant?: "overview" | "cta";
+  /** Only shown while the Perception Read is live (GET /api/read/live). */
+  requiresReadLive?: boolean;
 }
+
+/** The free Perception Read, linked from the navbar and the Products menu. */
+export const READ_NAV_HREF = "/read/?utm_source=nav&utm_campaign=nav-cta&utm_content=read";
+export const READ_NAV_LABEL = "Free Perception Read";
 
 export interface NavSection {
   title: string;
@@ -116,7 +124,6 @@ export const navigationConfig = {
               { label: "Courses", href: "/courses/" },
               { label: "White Papers", href: "/whitepapers/" },
               { label: "Case Studies", href: "/portfolio/" },
-              { label: "The Rite System", href: "/the-rite-system/" },
               { label: "Quantum Glossary", href: "/quantum-glossary/" },
             ],
           },
@@ -131,8 +138,15 @@ export const navigationConfig = {
             title: "",
             links: [
               {
+                label: "The Rite System",
+                href: "/the-rite-system/",
+                description: "How the three Rites fit together",
+                variant: "overview",
+              },
+              {
                 label: "Rite I: Perception",
                 href: "/products/perception/",
+                description: "Ignorance to awareness",
                 submenu: [
                   {
                     label: "Signal Awareness",
@@ -159,6 +173,7 @@ export const navigationConfig = {
               {
                 label: "Rite II: Orientation",
                 href: "/products/orientation/",
+                description: "Confusion to clarity",
                 submenu: [
                   {
                     label: "Personal Alignment",
@@ -177,6 +192,7 @@ export const navigationConfig = {
               {
                 label: "Rite III: Declaration",
                 href: "/products/declaration/",
+                description: "Possibility to commitment",
                 submenu: [
                   {
                     label: "Life Vision Declaration",
@@ -191,6 +207,13 @@ export const navigationConfig = {
                     href: "/products/declaration-rite-strategic-path/",
                   },
                 ],
+              },
+              {
+                label: READ_NAV_LABEL,
+                href: "/read/?utm_source=nav&utm_campaign=nav-cta&utm_content=products-menu",
+                description: "Not sure where to start? Begin here",
+                variant: "cta",
+                requiresReadLive: true,
               },
             ],
           },

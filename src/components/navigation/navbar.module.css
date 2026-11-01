@@ -147,6 +147,45 @@
   opacity: 1;
 }
 
+/* Free Perception Read - primary CTA colour */
+.readButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  background: var(--cta-primary);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.readButton:hover,
+.readButton:focus-visible {
+  background: var(--cta-primary-hover);
+  transform: scale(1.02);
+}
+
+/* Tighter spacing on narrow desktops so the Read button fits on one line */
+@media (min-width: 1025px) and (max-width: 1200px) {
+  .navList {
+    gap: 0.25rem;
+  }
+
+  .navLink {
+    padding: 0.75rem 0.9rem;
+  }
+
+  .portalButton,
+  .readButton {
+    padding: 0.7rem 1.2rem;
+  }
+}
+
 /* Product CTA Button - Same as Portal but can have different text */
 .productCTA {
   display: inline-flex;

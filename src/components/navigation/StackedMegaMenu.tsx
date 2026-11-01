@@ -19,6 +19,8 @@ interface ContentType {
   href?: string;
   description?: string;
   categories?: Category[];
+  /** "overview" and "cta" items render in the intro strip above the header row. */
+  variant?: "overview" | "cta";
 }
 
 interface StackedMegaMenuProps {
@@ -87,7 +89,10 @@ export default function StackedMegaMenu({ isActive, onMouseLeave, menuData }: St
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   // Use provided menuData or fall back to default (Resources)
-  const contentTypes = menuData || defaultContentTypes;
+  const allTypes = menuData || defaultContentTypes;
+  const overviewItems = allTypes.filter((t) => t.variant === "overview" && t.href);
+  const ctaItems = allTypes.filter((t) => t.variant === "cta" && t.href);
+  const contentTypes = allTypes.filter((t) => !t.variant);
 
   const handleTypeHover = (label: string) => {
     setActiveType(label);
@@ -109,6 +114,39 @@ export default function StackedMegaMenu({ isActive, onMouseLeave, menuData }: St
 
   return (
     <div className={styles.stackedMenu} onMouseLeave={onMouseLeave}>
+      {/* Intro strip: the overview page (e.g. The Rite System) and any CTA */}
+      {(overviewItems.length > 0 || ctaItems.length > 0) && (
+        <div className={styles.introRow}>
+          {overviewItems.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href!}
+              className={`${styles.overviewLink} ${isActive(item.href!) ? styles.active : ""}`}
+            >
+              <span className={styles.overviewEyebrow}>Overview</span>
+              <span className={styles.overviewLabel}>
+                {item.label} <span aria-hidden="true">→</span>
+              </span>
+              {item.description && (
+                <span className={styles.overviewDescription}>{item.description}</span>
+              )}
+            </Link>
+          ))}
+          {ctaItems.length > 0 && (
+            <div className={styles.introCtas}>
+              {ctaItems.map((item) => (
+                <Link key={item.label} href={item.href!} className={styles.ctaLink}>
+                  <span className={styles.ctaLabel}>{item.label}</span>
+                  {item.description && (
+                    <span className={styles.ctaDescription}>{item.description}</span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Row 1: Content Types (Horizontal) - This IS the header */}
       <div className={`${styles.row} ${styles.headerRow}`}>
         {contentTypes.map((type) => (

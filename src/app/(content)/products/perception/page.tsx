@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import Navbar from "@/components/navigation/Navbar";
+import ReadCta from "@/components/read/ReadCta";
 import StripeCheckout from "@/components/products/StripeCheckout";
 import { PRODUCTS } from "@/lib/constants/products";
 import styles from "./perception.module.css";
@@ -13,6 +14,9 @@ export const metadata: Metadata = {
     canonical: "https://quantumstrategies.online/products/perception/",
   },
 };
+
+// The free Read CTA follows product_definitions.is_active; re-check it every minute.
+export const revalidate = 60;
 
 export default function RiteIPerceptionPage() {
   const bundle = PRODUCTS['perception-rite-bundle'];
@@ -53,6 +57,8 @@ export default function RiteIPerceptionPage() {
               <span>Get All 5 Scans</span>
             </a>
           </div>
+
+          <ReadCta utmSource="perception" utmTerm="hero" compact className={styles.readCta} />
 
           <div className={styles.trustIndicators}>
             <div className={styles.indicator}>

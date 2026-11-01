@@ -1,17 +1,11 @@
 import Link from "next/link";
-import { supabaseAdmin } from "@/lib/supabase/server";
-import { READ_PRODUCT_SLUG } from "@/lib/read/types";
+import { isReadLive } from "@/lib/read/live";
 import styles from "./ArticleCta.module.css";
 
 // One call to action after every article: the free Perception Read once it's
 // switched on, the free beta until then. Flipping is_active is the only switch.
 export default async function ArticleCta({ slug }: { slug: string }) {
-  const { data } = await supabaseAdmin
-    .from("product_definitions")
-    .select("is_active")
-    .eq("product_slug", READ_PRODUCT_SLUG)
-    .maybeSingle();
-  const readLive = Boolean(data?.is_active);
+  const readLive = await isReadLive();
 
   const utm = new URLSearchParams({
     utm_source: "article",
@@ -28,7 +22,7 @@ export default async function ArticleCta({ slug }: { slug: string }) {
         Twelve questions about what you did and said this month. The Perception Read shows the pattern your answers
         keep repeating. It's a reflection tool, not a diagnosis.
       </p>
-      <Link href={`/read/?${utm}`} className={styles.button}>
+      <Link href={`/read/?${utm}`} className={`${styles.button} ${styles.readButton}`}>
         Take the free Read →
       </Link>
     </aside>

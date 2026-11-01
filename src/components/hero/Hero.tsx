@@ -7,9 +7,11 @@ import styles from "./hero.module.css";
 type Props = {
   onOpenResume: () => void;
   onOpenPortfolio: () => void;
+  /** Secondary line under the buttons (the Perception Read, when live). Server-rendered. */
+  readCta?: React.ReactNode;
 };
 
-export default function Hero({ onOpenResume, onOpenPortfolio }: Props) {
+export default function Hero({ onOpenResume, onOpenPortfolio, readCta }: Props) {
   const [navH, setNavH] = useState(0);
   const rafId = useRef<number | null>(null);
   const t0 = useRef<number | null>(null);
@@ -94,6 +96,7 @@ export default function Hero({ onOpenResume, onOpenPortfolio }: Props) {
               See Experience
             </button>
           </div>
+          {readCta}
         </div>
       </div>
 

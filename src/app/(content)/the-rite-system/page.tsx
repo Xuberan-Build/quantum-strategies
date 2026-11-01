@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import Navbar from "@/components/navigation/Navbar";
+import ReadCta from "@/components/read/ReadCta";
 import styles from "./rite-system.module.css";
 
 export const metadata: Metadata = {
@@ -11,6 +12,9 @@ export const metadata: Metadata = {
     canonical: "https://quantumstrategies.online/the-rite-system/",
   },
 };
+
+// The free Read CTAs follow product_definitions.is_active; re-check it every minute.
+export const revalidate = 60;
 
 export default function RiteSystemPage() {
   return (
@@ -41,6 +45,8 @@ export default function RiteSystemPage() {
           <a href="#rites" className={styles.heroCta}>
             <span>Explore the Rites</span>
           </a>
+
+          <ReadCta utmSource="rite-system" utmTerm="top" compact className={styles.readCtaTop} />
         </div>
       </section>
 
@@ -286,6 +292,7 @@ export default function RiteSystemPage() {
       {/* CTA */}
       <section className={styles.cta}>
         <div className={styles.container}>
+          <ReadCta utmSource="rite-system" utmTerm="end" className={styles.readCtaEnd} />
           <div className={styles.ctaCard}>
             <h2 className={styles.ctaTitle}>Ready to Begin?</h2>
             <p className={styles.ctaDescription}>
