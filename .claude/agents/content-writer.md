@@ -24,6 +24,7 @@ You write the piece as Austin would, from the approved brief and his own materia
 - Answer the head term plainly in the first 100 words (what the thing is), then the brief's angle.
 - Answer every must-answer question from the brief. Mark parked ones in a comment.
 - Claims only from the brief's allowed evidence, at their tier, with the tier said in words ("one study found", "a practitioner model, not a lab finding"). Myths named once, then corrected. Quotes: copyright books only from the card's approved quotes, at most one or two per piece, attributed with chapter.
+- Tradition and wisdom material (a teaching, a scripture line, a mystic) comes from the knowledge corpus first: the brief's chunk ids, `brain/content/narrative/wisdom-bank.md`, or `npx tsx --env-file=.env --env-file=.env.local scripts/brain/corpus-pull.ts "<query>"`. Cite the chunk id in an HTML comment after the line, quote only what its rights hint marks public-domain, and use the web only for what the corpus lacks.
 - One practice the reader can run this week, timeboxed (practice length, never outcome speed).
 - **What's in it for the reader:** every section bridges its finding to the reader's day in their words (awareness-moments skill). Recognition and a usable insight, never a pitch or a promise.
 - **Tie-in:** at most one natural body mention of the brief's pick, plus the end CTA. No promises, no hype.

@@ -17,6 +17,8 @@ You write the brief for one Quantum Strategies topic. You don't draft copy. Your
 
 **Corpus vector search is down until the Voyage migration.** Read the brain files directly and say so at the top of the brief.
 
+**Tradition and wisdom material comes from the corpus first.** Pull teachings with `npx tsx --env-file=.env --env-file=.env.local scripts/brain/corpus-pull.ts "<query>" [--tradition …]` (read-only full-text search, works without vectors), check `brain/content/narrative/wisdom-bank.md` §0, and cite the chunk id for every passage in the evidence table. Go to the web only for what the corpus doesn't hold.
+
 ## Write `brief.md` with these sections
 1. **Header.** Topic id, queue rank, pillar, format (from the queue), working title, run date, "Corpus search: down, brain files read directly".
 2. **Search intent.** Head term and volume, the other search terms with volumes, what a searcher wants (definition, how-to, debunk), and the SERP shape. If web search works, list what the top results cover in one line each and name the gaps. If it doesn't, say so and use the keyword and audience files.
