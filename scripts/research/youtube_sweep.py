@@ -219,7 +219,7 @@ def whisper_transcribe(video_id: str, binary: str, timeout_cap: float | None) ->
             timeout = max(60.0, min(timeout, timeout_cap))
         t1 = time.time()
         cmd = [binary, str(audio), "--model", WHISPER_MODEL, "--output-format", "json",
-               "--output-dir", str(tmp), "--output-name", video_id, "--language", "en",
+               "--output-dir", str(tmp), f"--output-name={video_id}", "--language", "en",
                "--verbose", "False",
                # Stops Whisper looping on one line (seen on 2 of 18 videos, 2026-10-17).
                "--condition-on-previous-text", "False"]
