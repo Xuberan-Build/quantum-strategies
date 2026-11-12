@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import { Banner } from '@/components/admin/brain/primitives';
 import styles from '@/components/admin/brain/brain.module.css';
-import archive from '@/components/admin/brain/archive.module.css';
+import { DocsBrowser, type DocRow } from '@/components/admin/brain/DocsBrowser';
+import { DOC_SORTS, docRun, docTopic, type DocSort } from '@/lib/brain/doc-topics';
 import { BRAIN_FEEDBACK_TABLE } from '@/lib/brain/feedback';
 import { listBrainDocs } from '@/lib/brain/load';
 import { formatDate } from '@/lib/brain/viz';
@@ -26,14 +26,33 @@ async function commentCounts(): Promise<Map<string, { open: number; total: numbe
   return counts;
 }
 
-export default async function BrainDocsPage() {
-  const [{ docs, error }, counts] = await Promise.all([listBrainDocs(), commentCounts()]);
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-  const folders = new Map<string, typeof docs>();
-  for (const d of docs) {
-    const folder = d.path.includes('/') ? d.path.slice(0, d.path.lastIndexOf('/')) : '(root)';
-    folders.set(folder, [...(folders.get(folder) ?? []), d]);
-  }
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+export default async function BrainDocsPage({ searchParams }: { searchParams: SearchParams }) {
+  const [{ docs, error }, counts, params] = await Promise.all([listBrainDocs(), commentCounts(), searchParams]);
+
+  const rows: DocRow[] = docs.map((d) => {
+    const c = counts.get(d.slug);
+    const t = docTopic(d.path);
+    return {
+      slug: d.slug,
+      path: d.path,
+      title: d.title,
+      hash: d.hash,
+      updatedAt: d.updatedAt,
+      updatedLabel: formatDate(d.updatedAt),
+      versions: d.versions.length,
+      open: c?.open ?? 0,
+      total: c?.total ?? 0,
+      topicId: t.id,
+      topicLabel: t.label,
+      run: docRun(d.path),
+    };
+  });
+  const sortParam = one(params.sort);
+  const initialSort: DocSort = DOC_SORTS.some((s) => s.id === sortParam) ? (sortParam as DocSort) : 'newest';
 
   return (
     <div className={styles.content}>
@@ -51,47 +70,9 @@ export default async function BrainDocsPage() {
           <span className={styles.mono}>brain/docs.json</span>.
         </Banner>
       )}
-      {[...folders.entries()].map(([folder, items]) => (
-        <section key={folder} className={styles.section} aria-label={folder}>
-          <div className={styles.sectionHead}>
-            <h2 className={archive.docFolder}>brain/{folder}</h2>
-          </div>
-          <ul className={archive.list}>
-            {items.map((d) => {
-              const c = counts.get(d.slug);
-              return (
-                <li key={d.slug} className={archive.item}>
-                  <div className={archive.itemMain}>
-                    <div className={archive.itemMeta}>
-                      <span>Updated {formatDate(d.updatedAt)}</span>
-                      <span>
-                        {d.versions.length} version{d.versions.length === 1 ? '' : 's'}
-                      </span>
-                      {c && (
-                        <span className={c.open ? archive.commentCount : undefined}>
-                          {c.open} open · {c.total} note{c.total === 1 ? '' : 's'}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className={archive.title}>
-                      <Link href={`/admin/brain/docs/${encodeURIComponent(d.slug)}`}>{d.title}</Link>
-                    </h3>
-                    <div className={archive.itemFoot}>
-                      <span className={archive.source}>brain/{d.path}</span>
-                      <span className={archive.source}>#{d.hash.slice(0, 8)}</span>
-                    </div>
-                  </div>
-                  <div className={archive.actions}>
-                    <Link href={`/admin/brain/docs/${encodeURIComponent(d.slug)}`} className={`${styles.button} ${archive.smallButton}`}>
-                      Read
-                    </Link>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
+      {rows.length > 0 && (
+        <DocsBrowser rows={rows} initialTopic={one(params.topic) ?? 'all'} initialSort={initialSort} initialQuery={one(params.q) ?? ''} />
+      )}
       {!error && docs.length === 0 && <p className={`${styles.small} ${styles.muted}`}>No docs published yet.</p>}
     </div>
   );
