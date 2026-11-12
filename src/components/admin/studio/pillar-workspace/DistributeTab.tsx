@@ -14,7 +14,6 @@ import {
 const DISTRIBUTE_FORMATS: Array<{ type: string; label: string; desc: string; scope: 'section' | 'pillar' }> = [
   { type: 'blog',            label: 'Blog Post',           desc: 'One per section — 800-1200 word article', scope: 'section' },
   { type: 'social_twitter',  label: 'Twitter Thread',      desc: 'One per section — 5-7 tweet thread',     scope: 'section' },
-  { type: 'social_linkedin', label: 'LinkedIn Post',       desc: 'One per section — 300-500 words',        scope: 'section' },
   { type: 'social_ig',       label: 'Instagram Caption',   desc: 'One per section — caption + hashtags',   scope: 'section' },
   { type: 'email',           label: 'Launch Email',        desc: 'One for the full pillar',                scope: 'pillar'  },
   { type: 'email_sequence',  label: 'Email Sequence',      desc: '5-email nurture sequence for the pillar',scope: 'pillar'  },

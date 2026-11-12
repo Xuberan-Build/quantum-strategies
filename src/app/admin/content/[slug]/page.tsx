@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ContentPostForm from '@/components/admin/ContentPostForm';
+import MakeFromThis from '@/components/admin/content/MakeFromThis';
 import styles from '../../admin-layout.module.css';
 
 export default async function EditContentPage({
@@ -37,6 +38,9 @@ export default async function EditContentPage({
           )}
           {!post.is_published && ' · Draft'}
         </p>
+        <div style={{ marginTop: '0.75rem' }}>
+          <MakeFromThis source={{ kind: 'article', id: post.id }} sourceForm="article" />
+        </div>
       </header>
 
       <ContentPostForm

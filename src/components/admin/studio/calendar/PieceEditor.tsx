@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from '@/app/admin/admin-layout.module.css';
 import { locateExcerpt, pieceTypeColor, pieceTypeLabel, PIECE_STATUSES } from '@/lib/content/calendar';
+import MakeFromThis from '@/components/admin/content/MakeFromThis';
+import AssetGraphPanel from '@/components/admin/content/AssetGraphPanel';
+import { FORM_RANK, type PieceType } from '@/lib/content/any-to-any/types';
 
 type Piece = {
   id: string;
@@ -17,6 +20,7 @@ type Piece = {
   notes: string | null;
   platform_meta: Record<string, any> | null;
   version_history: unknown[] | null;
+  insight_id?: string | null;
 };
 
 type Sibling = { id: string; title: string | null; piece_type: string; scheduled_for: string | null; status: string };
@@ -197,7 +201,33 @@ export default function PieceEditor({ piece, sourceBody, siblings }: { piece: Pi
               </button>
             )}
             {msg && <span style={{ fontSize: '0.8125rem', color: 'var(--admin-text-muted)' }}>{msg}</span>}
+            <Link
+              href={`/admin/social/compose?piece=${piece.id}`}
+              className={`${styles.btn} ${styles.btnSecondary}`}
+              style={{ marginLeft: 'auto' }}
+              title={dirty ? 'Save first so the Publisher imports the latest copy' : undefined}
+            >
+              Schedule in Publisher
+            </Link>
           </div>
+        </div>
+
+        {meta.research && typeof meta.research === 'object' && <ResearchPackCard research={meta.research} pieceId={piece.id} />}
+
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>Make another form</h2>
+          </div>
+          <MakeFromThis
+            source={{ kind: 'piece', id: piece.id }}
+            insightId={piece.insight_id ?? null}
+            sourceForm={piece.piece_type in FORM_RANK ? (piece.piece_type as PieceType) : undefined}
+            onMade={() => router.refresh()}
+          />
+        </div>
+
+        <div className={styles.card}>
+          <AssetGraphPanel asset={{ kind: 'piece', id: piece.id }} title="Made from / made into" />
         </div>
 
         {siblings.length > 1 && (
@@ -228,5 +258,125 @@ export default function PieceEditor({ piece, sourceBody, siblings }: { piece: Pi
         )}
       </section>
     </div>
+  );
+}
+
+type StoredResearch = {
+  topic_id?: string | null;
+  topics?: { id: string; title: string; matchedBy?: string; matchReason?: string }[];
+  sources?: { id: string; author?: string | null; text_name?: string | null; section?: string | null; tier?: string; url?: string | null; claim?: string | null; excerpt?: string }[];
+  questions?: string[];
+  words?: { text: string; source?: string | null }[];
+  first_hand?: { id: string; text: string; where?: string }[];
+  links?: { url: string; label: string; kind?: string }[];
+  gaps?: string[];
+  built_at?: string;
+};
+
+/** Read-only view of platform_meta.research (saved by "Make from this"). */
+function ResearchPackCard({ research, pieceId }: { research: StoredResearch; pieceId: string }) {
+  const sources = research.sources ?? [];
+  const firstHand = research.first_hand ?? [];
+  const topics = research.topics ?? [];
+  const small = { fontSize: '0.8125rem', margin: 0 } as const;
+  const muted = { color: 'var(--admin-text-muted)' } as const;
+  return (
+    <details className={styles.card}>
+      <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+        Research pack
+        <span style={{ ...muted, fontWeight: 400, fontSize: '0.8125rem' }}>
+          {' '}
+          · {topics[0] ? topics[0].title : 'no topic match'} · {sources.length} sources · {firstHand.length} first-hand
+          {(research.gaps?.length ?? 0) > 0 && ` · ${research.gaps!.length} gaps`}
+        </span>
+      </summary>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem' }}>
+        <div style={small}>
+          <strong>Topic: </strong>
+          {topics.length
+            ? topics.map((t, i) => (
+                <span key={t.id}>
+                  {i > 0 && '; '}
+                  {t.title} <code style={{ fontSize: '0.75rem' }}>{t.id}</code>
+                  {t.matchReason && <span style={muted}> ({t.matchReason})</span>}
+                </span>
+              ))
+            : 'no topic match'}
+        </div>
+        {(research.gaps?.length ?? 0) > 0 && (
+          <div style={small}>
+            <strong>Gaps</strong>
+            <ul style={{ margin: '4px 0 0', paddingLeft: '1.1rem', color: '#b45309' }}>
+              {research.gaps!.map((g, i) => <li key={i}>{g}</li>)}
+            </ul>
+          </div>
+        )}
+        <div style={small}>
+          <strong>Sources</strong>
+          {sources.length === 0 ? (
+            <p style={{ ...small, ...muted }}>None found.</p>
+          ) : (
+            <ol style={{ margin: '4px 0 0', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {sources.map((s) => (
+                <li key={s.id}>
+                  <strong>[{s.id}]</strong> {[s.author, s.text_name, s.section].filter(Boolean).join(', ')}{' '}
+                  <span style={muted}>· {s.tier}{s.claim ? ` · backs: ${s.claim}` : ''}</span>
+                  {s.url && (
+                    <>
+                      {' '}
+                      <a href={s.url} target="_blank" rel="noreferrer">source ↗</a>
+                    </>
+                  )}
+                  {s.excerpt && <div style={{ ...muted, marginTop: 2 }}>&ldquo;{s.excerpt}&rdquo;</div>}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+        {((research.questions?.length ?? 0) > 0 || (research.words?.length ?? 0) > 0) && (
+          <div style={small}>
+            <strong>Audience questions and words</strong>
+            <ul style={{ margin: '4px 0 0', paddingLeft: '1.1rem' }}>
+              {(research.questions ?? []).map((q, i) => <li key={`q${i}`}>Q: {q}</li>)}
+              {(research.words ?? []).map((w, i) => (
+                <li key={`w${i}`}>
+                  &ldquo;{w.text}&rdquo;{w.source && <span style={muted}> ({w.source})</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div style={small}>
+          <strong>Austin&apos;s material</strong>
+          {firstHand.length === 0 ? (
+            <p style={{ ...small, ...muted }}>None on file. Stories stay [AUSTIN: …] questions.</p>
+          ) : (
+            <ul style={{ margin: '4px 0 0', paddingLeft: '1.1rem' }}>
+              {firstHand.map((a) => (
+                <li key={a.id}>
+                  <strong>[{a.id}]</strong> &ldquo;{a.text}&rdquo;{a.where && <span style={muted}> ({a.where})</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {(research.links?.length ?? 0) > 0 && (
+          <div style={small}>
+            <strong>Internal links</strong>
+            <ul style={{ margin: '4px 0 0', paddingLeft: '1.1rem' }}>
+              {research.links!.map((l) => (
+                <li key={l.url}>
+                  {l.label}: <a href={l.url} target="_blank" rel="noreferrer">{l.url}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p style={{ ...small, ...muted }}>
+          Full pipeline: <code style={{ fontSize: '0.75rem', userSelect: 'all' }}>/content-run piece:{pieceId}</code> runs the brief, first-hand and QA agents in Claude Code with your approvals.
+          {research.built_at && ` Pack built ${research.built_at.slice(0, 10)}.`}
+        </p>
+      </div>
+    </details>
   );
 }

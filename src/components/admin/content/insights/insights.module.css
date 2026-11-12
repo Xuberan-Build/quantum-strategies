@@ -1,0 +1,254 @@
+/* Insights + asset graph UI. Builds on the admin tokens from admin-layout.module.css (--admin-*). */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.toolbar input[type='search'] {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 0.5rem;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font-size: 0.875rem;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row {
+  display: block;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 0.625rem;
+  padding: 0.75rem 1rem;
+  color: var(--admin-text);
+  text-decoration: none;
+}
+
+.row:hover {
+  border-color: var(--admin-primary);
+}
+
+.row:focus-visible,
+.chip:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: 2px;
+}
+
+.line {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.625rem;
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.tagPrimary {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.panel {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.panelTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.field textarea,
+.field input,
+.field select {
+  font-weight: 400;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.error {
+  color: var(--admin-danger);
+  font-size: 0.8125rem;
+  margin: 0.5rem 0;
+}
+
+.muted {
+  color: var(--admin-text-muted);
+  font-size: 0.8125rem;
+}
+
+.candidate {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.75rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 0.5rem;
+  background: var(--admin-bg);
+}
+
+.candidateOff {
+  opacity: 0.55;
+}
+
+.candidate textarea {
+  width: 100%;
+  min-height: 3.5rem;
+  resize: vertical;
+}
+
+.group {
+  margin-top: 1rem;
+}
+
+.groupTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-text-muted);
+  margin: 0 0 0.5rem;
+}
+
+.assetRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--admin-border);
+  font-size: 0.875rem;
+}
+
+.assetRow:last-child {
+  border-bottom: none;
+}
+
+.assetTitle {
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--admin-text);
+}
+
+a.assetTitle:hover {
+  color: var(--admin-primary);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 100%;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 0.8125rem;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.linkBtn {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.linkBtn:hover {
+  color: var(--admin-danger);
+}
+
+.pickerList {
+  max-height: 16rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.pickerItem {
+  text-align: left;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  color: var(--admin-text);
+}
+
+.pickerItem:hover {
+  border-color: var(--admin-primary);
+}
+
+@media (max-width: 640px) {
+  .panel {
+    padding: 1rem;
+  }
+}

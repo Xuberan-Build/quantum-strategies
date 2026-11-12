@@ -8,7 +8,9 @@ export const PIECE_TYPES: Record<string, { label: string; color: string }> = {
   social_ig: { label: 'IG caption', color: '#ec4899' },
   social_twitter: { label: 'X', color: '#64748b' },
   social_tiktok: { label: 'TikTok', color: '#14b8a6' },
-  reddit: { label: 'Reddit', color: '#ff4500' },
+  reddit: { label: 'Reddit answer', color: '#ff4500' },
+  reddit_post: { label: 'Reddit post', color: '#ff5722' },
+  x_article: { label: 'X Article', color: '#475569' },
   email: { label: 'Email', color: '#0ea5e9' },
   blog: { label: 'Blog', color: '#22c55e' },
 };

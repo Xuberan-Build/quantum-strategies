@@ -6,13 +6,15 @@
  *
  * Writes brain/content/interviews/<slug>/brief.md: what the article says, every open [AUSTIN: ...] gap
  * and needs_austin piece in the calendar (grouped, with the pieces each one blocks), the run folder's
- * unanswered questions, and what Austin has already answered (so it isn't asked again).
+ * unanswered questions, what Austin has already answered (so it isn't asked again), and the article's research
+ * pack (topic claims with sources, lineage, audience questions) for the mentor-style sessions to teach from.
  * Re-run any time; it overwrites brief.md only. Session notes and insights are never touched.
  */
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
+import { buildResearchPack, researchBlock } from '../../src/lib/content/any-to-any/research';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
@@ -56,7 +58,7 @@ async function main() {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const { data: pieces, error } = await supabase
     .from('content_pieces')
-    .select('id, title, piece_type, scheduled_for, body, platform_meta, source:content_posts!content_pieces_source_post_id_fkey(slug, title, body)')
+    .select('id, title, piece_type, scheduled_for, body, platform_meta, source_post_id, source:content_posts!content_pieces_source_post_id_fkey(slug, title, body)')
     .not('source_post_id', 'is', null)
     .order('scheduled_for');
   if (error) throw error;
@@ -92,6 +94,19 @@ async function main() {
     const questions = read(run && path.join(run, 'questions-for-austin.md'));
     const input = read(run && path.join(run, 'input.md'));
 
+    // Research the mentor can teach from (same pack "make from this" builds when going longer)
+    let research = '';
+    try {
+      const pack = await buildResearchPack(supabase, {
+        source: { form: 'article', title: source.title, text: source.body, sourcePostId: list[0].source_post_id, articleUrl: `${SITE}/articles/${slug}` },
+        target: 'blog',
+        maxEvidence: 10,
+      });
+      research = researchBlock(pack);
+    } catch (e) {
+      research = `_Research pack failed: ${(e as Error).message}_`;
+    }
+
     const md = [
       `# Interview brief: ${source.title}`,
       '',
@@ -110,6 +125,10 @@ async function main() {
       '## Questions already written for this article',
       '',
       questions ? questions.replace(/^# .*\n/, '') : '_None on file._',
+      '',
+      '## What the research says (for the mentor to teach from; cite the S# source when you bring it in)',
+      '',
+      research || '_No research pack._',
       '',
       '## Already answered (do not ask again, build on it)',
       '',

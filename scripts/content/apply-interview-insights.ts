@@ -39,7 +39,8 @@ async function main() {
           continue;
         }
         if ((piece.notes ?? '').includes(`[${ins.id}]`)) continue;
-        const line = `From interview ${ins.date} [${ins.id}]${ins.confirmed ? ' (read back)' : ''}: "${ins.quote}"${ins.fills ? ` -> ${ins.fills}` : ''}${ins.consent ? ` (consent: ${ins.consent})` : ''}`;
+        const kind = (ins.tags ?? []).find((t: string) => ['lived', 'view', 'worked-out'].includes(t));
+        const line = `From interview ${ins.date} [${ins.id}]${ins.confirmed ? ' (read back)' : ''}${kind ? ` (${kind})` : ''}: "${ins.quote}"${ins.fills ? ` -> ${ins.fills}` : ''}${ins.consent ? ` (consent: ${ins.consent})` : ''}`;
         planned++;
         console.log(`  ${slug} -> ${piece.title}: ${line.slice(0, 140)}`);
         if (apply) {

@@ -47,17 +47,6 @@ ${sectionBody ? `CONTENT:\n${sectionBody.slice(0, 1000)}\n\n` : ''}Rules:
     maxTokens: 600,
   }),
 
-  social_linkedin: ({ sectionTitle, sectionBody, pillarTitle, audience, tone }) => ({
-    system: `You write LinkedIn posts: one idea, explained through a real mechanism, for one reader.`,
-    user: `Write a LinkedIn post (300-500 words) about "${sectionTitle}" from "${pillarTitle}".
-
-Audience: ${audience}
-Tone: ${tone}
-
-${sectionBody ? `CONTENT:\n${sectionBody.slice(0, 800)}\n\n` : ''}Format: Hook line → personal/professional framing → 3-4 insights → call to action. Professional but human. No corporate jargon.`,
-    maxTokens: 700,
-  }),
-
   social_ig: ({ sectionTitle, sectionBody, pillarTitle }) => ({
     system: `You write Instagram captions: specific, sincere, and short.`,
     user: `Write an Instagram caption + hashtags for "${sectionTitle}" from "${pillarTitle}".
@@ -196,7 +185,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }> = [];
 
   // Section-level formats: one piece per section
-  const sectionTypes = types.filter((t) => ['blog', 'social_twitter', 'social_linkedin', 'social_ig'].includes(t));
+  const sectionTypes = types.filter((t) => ['blog', 'social_twitter', 'social_ig'] /* no LinkedIn */.includes(t));
   // Pillar-level formats: one piece for the whole pillar
   const pillarTypes = types.filter((t) => ['email', 'email_sequence', 'gpt_product'].includes(t));
   // Video formats (angle-level, JSON + validator + one repair pass). Started now, awaited after the text formats.

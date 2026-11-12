@@ -105,6 +105,12 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
           active: pathname?.startsWith('/admin/studio/angles'),
         },
         {
+          label: 'Insights',
+          href: '/admin/studio/insights',
+          icon: KnowledgeIcon,
+          active: pathname?.startsWith('/admin/studio/insights'),
+        },
+        {
           label: 'Blog Calendar',
           href: '/admin/studio/blog-calendar',
           icon: CalendarIcon,
@@ -116,6 +122,12 @@ export default function AdminNav({ userName, userEmail, userRole }: AdminNavProp
           href: '/admin/studio/social-calendar',
           icon: CalendarIcon,
           active: pathname?.startsWith('/admin/studio/social-calendar'),
+        },
+        {
+          label: 'Publisher',
+          href: '/admin/social',
+          icon: CalendarIcon,
+          active: pathname?.startsWith('/admin/social'),
         },
       ],
     },

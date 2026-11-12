@@ -10,6 +10,7 @@ Runs `content-brief` → `content-experience` → ⏸ A1 → `content-writer` �
 ## Arguments
 - `<queue-rank>` (for example `1`) or `<topic-id>`: start a new run.
 - `<run-folder-name>`: resume (for example `2026-10-18-ras-myth-attentional-set`).
+- `piece:<uuid>`: start from a draft that "Make from this" created in the app (a longer form made from a shorter winner, or any long draft). Step 0 runs `npx tsx scripts/content/fetch-piece-for-run.ts <uuid> <run-folder>` (read-only), which writes `from-piece.md`: the draft, its source, the app's research pack (matched topic, numbered sources, audience questions, Austin's material, gaps). content-brief starts from that file and the matched topic instead of the queue; the rest of the run is unchanged. The draft is input, not output: the writer still writes `draft.md` from the approved brief.
 - `--dry-qa`: after the experience stage, also run content-qa in dry-run mode against the brief.
 - No argument: take the top queue item in `brain/content/topical-map-queue.md` that has no run folder yet.
 
@@ -22,7 +23,7 @@ Runs `content-brief` → `content-experience` → ⏸ A1 → `content-writer` �
 ## Steps
 
 ### 0. Set up or resume
-1. Resolve the topic from `topical-map-queue.md` and `topical-map.json`. Ignore Content Studio `content_angles` (superseded, see content-system §10.6).
+1. Resolve the topic from `topical-map-queue.md` and `topical-map.json`. For `piece:<uuid>`, make the run folder from the piece's title, run the fetch script, and take the topic from `from-piece.md` (if it says "no topic match", content-brief proposes the closest topic and flags it as an open decision). Ignore Content Studio `content_angles` (superseded, see content-system §10.6).
 2. Folder: `brain/content/pipeline/runs/<YYYY-MM-DD>-<slug>/`. If it exists, read `status.json` and continue from `stage`.
 3. Write or update `status.json` (schema in README §2). Record `defaultsAssumed` (README §6) and `corpusSearch: "down until the Voyage migration"`.
 
