@@ -102,7 +102,11 @@ export default function Navbar({ showProductCTA = false, productCTAText = "Get Y
   return (
     <nav className={styles.navbar} aria-label="Main navigation">
       <div className={styles.container}>
-        <Link href="/" className={styles.logo}>Quantum Strategies</Link>
+        <Link href="/" className={styles.logo} aria-label="Quantum Strategies home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/q-mark-nav.svg" alt="" className={styles.logoMark} width={47} height={63} />
+          <span className={styles.logoText}>Quantum Strategies</span>
+        </Link>
 
         {/* Desktop Navigation: render only on desktop */}
         {isDesktop && (

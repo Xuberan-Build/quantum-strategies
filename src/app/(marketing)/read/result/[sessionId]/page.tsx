@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { COUNTRY_HEADER, marketingPrecheckAllowed } from '@/lib/read/consent-region';
 import { ReadResultView } from '@/components/read/ReadResultView';
 import { ReadShell } from '@/components/read/ReadShell';
 
@@ -16,9 +18,11 @@ export default async function ReadResultPage({ params, searchParams }: { params:
   const { sessionId } = await params;
   const sp = await searchParams;
   const token = typeof sp.t === 'string' ? sp.t : undefined;
+  // Marketing box starts ticked for US visitors only; everyone else (and unknown) opts in actively.
+  const defaultConsent = marketingPrecheckAllowed((await headers()).get(COUNTRY_HEADER));
   return (
     <ReadShell>
-      <ReadResultView sessionId={sessionId} token={token} />
+      <ReadResultView sessionId={sessionId} token={token} defaultConsent={defaultConsent} />
     </ReadShell>
   );
 }

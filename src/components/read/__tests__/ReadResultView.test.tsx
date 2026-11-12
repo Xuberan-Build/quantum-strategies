@@ -8,10 +8,10 @@ import { createMockApi, PREVIEW, QUESTIONS, RESULT_FIXTURE } from './fixtures';
 
 const locked = () => Promise.reject(new ReadApiError(403, 'locked'));
 
-function renderResult(api = createMockApi(), token?: string) {
+function renderResult(api = createMockApi(), token?: string, defaultConsent?: boolean) {
   render(
     <ReadApiProvider api={api}>
-      <ReadResultView sessionId="sess-1" token={token} />
+      <ReadResultView sessionId="sess-1" token={token} defaultConsent={defaultConsent} />
     </ReadApiProvider>
   );
   return api;
@@ -75,10 +75,39 @@ describe('ReadResultView', () => {
     await user.click(screen.getByRole('button', { name: 'Show my full Read' }));
 
     await screen.findByTestId('read-result');
-    expect(api.unlock).toHaveBeenCalledWith('sess-1', { email: 'me@example.com', consentMarketing: false, utm: undefined });
+    expect(api.unlock).toHaveBeenCalledWith('sess-1', { email: 'me@example.com', consentMarketing: false, consentShownChecked: false, utm: undefined });
     // read_email_submit and read_result_view are recorded server-side (unlock and result routes).
     expect(api.event).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'read_email_submit' }));
     expect(api.event).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'read_result_view' }));
+  });
+
+  it('pre-ticks the consent box when the server allows it (US), and it can still be unticked', async () => {
+    const user = userEvent.setup();
+    sessionStorage.setItem('qs_read_preview:sess-1', JSON.stringify(PREVIEW));
+    const api = renderResult(createMockApi({ getResult: vi.fn(locked) as never }), undefined, true);
+
+    await screen.findByRole('heading', { name: 'Get your full Read' });
+    const consent = screen.getByRole('checkbox', { name: /occasional email from Austin.*unsubscribe in one click/ });
+    expect(consent).toBeChecked();
+    expect(screen.getByText(/untick it if you only want your result/)).toBeInTheDocument();
+
+    await user.click(consent);
+    expect(consent).not.toBeChecked();
+    await user.type(screen.getByLabelText('Your email'), 'me@example.com');
+    await user.click(screen.getByRole('button', { name: 'Show my full Read' }));
+    await screen.findByTestId('read-result');
+    expect(api.unlock).toHaveBeenCalledWith('sess-1', { email: 'me@example.com', consentMarketing: false, consentShownChecked: true, utm: undefined });
+  });
+
+  it('sends consent when the pre-ticked box is left ticked', async () => {
+    const user = userEvent.setup();
+    sessionStorage.setItem('qs_read_preview:sess-1', JSON.stringify(PREVIEW));
+    const api = renderResult(createMockApi({ getResult: vi.fn(locked) as never }), undefined, true);
+    await screen.findByRole('heading', { name: 'Get your full Read' });
+    await user.type(screen.getByLabelText('Your email'), 'me@example.com');
+    await user.click(screen.getByRole('button', { name: 'Show my full Read' }));
+    await screen.findByTestId('read-result');
+    expect(api.unlock).toHaveBeenCalledWith('sess-1', { email: 'me@example.com', consentMarketing: true, consentShownChecked: true, utm: undefined });
   });
 
   it('shows an error and keeps the gate when unlock fails', async () => {

@@ -5,6 +5,7 @@
  * No em-dashes, no exclamation marks, no "X, not Y" frames, no "quantum".
  */
 
+import { BUSINESS } from '../../../../config/business.config';
 import type { PatternId } from '@/lib/read/types';
 
 export interface RenderedReadEmail {
@@ -15,6 +16,28 @@ export interface RenderedReadEmail {
 }
 
 export type ReadEmailKind = 'r1' | 'day2' | 'day7';
+
+/** Postal address for email footers (CAN-SPAM). Two lines: street, then city, state and ZIP. */
+export function postalAddressLines(): [string, string] {
+  return [BUSINESS.postalAddress.street, BUSINESS.postalAddress.cityStateZip];
+}
+
+/** Absolute URL of the light Q mark (PNG, since most mail apps block SVG). */
+export function emailLogoUrl(): string {
+  const domain = BUSINESS.domain.startsWith('http://localhost') ? 'https://quantumstrategies.online' : BUSINESS.domain;
+  return `${domain.replace(/\/$/, '')}/brand/q-mark-email.png`;
+}
+
+/** Footer block: business name over the postal address, small and muted. */
+export function addressFooterHtml(business: string): string {
+  const [street, city] = postalAddressLines();
+  return `<p style="margin:12px 0 0;line-height:1.5;">${escapeHtml(business)}<br>${escapeHtml(street)}<br>${escapeHtml(city)}</p>`;
+}
+
+/** Plain-text twin of addressFooterHtml. */
+export function addressFooterText(business: string): string[] {
+  return [business, ...postalAddressLines()];
+}
 
 export const BRAND_PRIMARY = '#030048';
 export const BRAND_ACCENT = '#6C5CE7';
@@ -145,6 +168,7 @@ export function renderShell(input: ShellInput): string {
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${e(input.preheader)}</div>
   <div class="container">
     <div class="header">
+      <img src="${e(emailLogoUrl())}" width="36" height="48" alt="Quantum Strategies" style="display:block;width:36px;height:48px;border:0;margin:0 0 14px 0;">
       <p>${e(input.eyebrow)}</p>
       <h1>${e(input.heading)}</h1>
     </div>

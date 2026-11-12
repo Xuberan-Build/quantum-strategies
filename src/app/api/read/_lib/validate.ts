@@ -54,6 +54,7 @@ export const unlockBodySchema = z.strictObject({
   lead: z.strictObject({
     email: z.string().trim().max(254).pipe(z.email()),
     consentMarketing: z.boolean(),
+    consentShownChecked: z.boolean().optional(),
     utm: utmSchema,
   }),
 });

@@ -23,6 +23,12 @@ export const BUSINESS = {
     name: process.env.SENDER_NAME ?? 'Your Business',
   },
 
+  /** Postal address shown in every marketing email footer (CAN-SPAM). */
+  postalAddress: {
+    street: process.env.BUSINESS_POSTAL_STREET ?? '13001 Cleveland Gibbs Road',
+    cityStateZip: process.env.BUSINESS_POSTAL_CITY_STATE_ZIP ?? 'Northlake, TX 76262',
+  },
+
   /** Brand colors — used in email templates and can be referenced in CSS vars */
   brand: {
     primary: process.env.BRAND_PRIMARY ?? '#030048',

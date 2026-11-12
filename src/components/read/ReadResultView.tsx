@@ -24,6 +24,8 @@ interface ReadResultViewProps {
   sessionId: string;
   /** Signed link token from the result email (`?t=`). */
   token?: string;
+  /** Whether the gate's marketing box starts ticked; decided server-side from the visitor's country. */
+  defaultConsent?: boolean;
 }
 
 const LOCKED = new Set([401, 402, 403, 404, 409, 423]);
@@ -33,7 +35,7 @@ const LOCKED = new Set([401, 402, 403, 404, 409, 423]);
  * the page is the shareable link. Loads the full result first when it can (cookie or
  * `?t=`), and falls back to the preview when the Read hasn't been unlocked yet.
  */
-export function ReadResultView({ sessionId, token }: ReadResultViewProps) {
+export function ReadResultView({ sessionId, token, defaultConsent = false }: ReadResultViewProps) {
   const api = useReadApi();
   const [view, setView] = useState<View>({ kind: 'loading' });
   const sentPreviewView = useRef(false);
@@ -124,7 +126,7 @@ export function ReadResultView({ sessionId, token }: ReadResultViewProps) {
       return (
         <>
           <PreviewView preview={view.preview} youSaid={youSaid} />
-          <EmailGate onSubmit={unlock} />
+          <EmailGate onSubmit={unlock} defaultConsent={defaultConsent} />
         </>
       );
     }

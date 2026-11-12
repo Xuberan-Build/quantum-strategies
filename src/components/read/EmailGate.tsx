@@ -13,16 +13,22 @@ export function isValidEmail(email: string): boolean {
 
 interface EmailGateProps {
   onSubmit: (lead: Omit<ReadLeadInput, 'utm'>) => Promise<void>;
+  /**
+   * Whether the marketing box starts ticked. Decided server-side from the visitor's country
+   * (src/lib/read/consent-region.ts): true for US visitors only. Defaults to unticked.
+   */
+  defaultConsent?: boolean;
 }
 
 /**
- * Spec v3 §8.2. One field, no password. Marketing consent is its own unticked box;
- * the result email is transactional and goes to everyone who enters an email.
+ * Spec v3 §8.2. One field, no password. Marketing consent is its own box, pre-ticked only
+ * where the server says that's allowed (US) and always untickable; the result email is
+ * transactional and goes to everyone who enters an email.
  */
-export function EmailGate({ onSubmit }: EmailGateProps) {
+export function EmailGate({ onSubmit, defaultConsent = false }: EmailGateProps) {
   const id = useId();
   const [email, setEmail] = useState('');
-  const [consent, setConsent] = useState(false);
+  const [consent, setConsent] = useState(defaultConsent);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -36,7 +42,7 @@ export function EmailGate({ onSubmit }: EmailGateProps) {
     setBusy(true);
     setError(null);
     try {
-      await onSubmit({ email: email.trim(), consentMarketing: consent });
+      await onSubmit({ email: email.trim(), consentMarketing: consent, consentShownChecked: defaultConsent });
     } catch {
       setError(GATE.unlockError);
     } finally {

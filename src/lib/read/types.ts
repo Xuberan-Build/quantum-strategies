@@ -144,7 +144,9 @@ export interface ReadResult {
 /** Lead captured at the gate. No account until checkout. */
 export interface ReadLeadInput {
   email: string;
-  consentMarketing: boolean; // separate unticked box
+  consentMarketing: boolean; // separate box; pre-ticked for US visitors only, always untickable
+  /** Whether the box was shown pre-ticked. Consent evidence only; logged to product_events, not stored on the lead. */
+  consentShownChecked?: boolean;
   utm?: ReadUtm;
 }
 

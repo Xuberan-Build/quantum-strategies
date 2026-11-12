@@ -86,9 +86,10 @@ const freshIp = () => `10.0.${Math.floor(++ipN / 250)}.${ipN % 250}`;
 
 function req(
   url: string,
-  opts: { method?: string; body?: unknown; cookie?: string | null; ip?: string; rawBody?: string } = {}
+  opts: { method?: string; body?: unknown; cookie?: string | null; ip?: string; rawBody?: string; country?: string } = {}
 ) {
   const headers: Record<string, string> = { 'x-forwarded-for': opts.ip ?? freshIp() };
+  if (opts.country) headers['x-vercel-ip-country'] = opts.country;
   if (opts.cookie !== null) headers.cookie = `qs_read_token=${opts.cookie ?? TOKEN}`;
   if (opts.body !== undefined || opts.rawBody !== undefined) headers['content-type'] = 'application/json';
   return new NextRequest(`http://localhost${url}`, {
@@ -429,6 +430,37 @@ describe('POST /api/read/unlock', () => {
     const t = new URL(emailArg.resultUrl).searchParams.get('t');
     expect(store.verifyResultToken(SID, t)).toBe(true);
     expect(store.recordEvent).toHaveBeenCalledWith(expect.objectContaining({ event: 'read_email_submit', leadId: 'L1' }));
+  });
+
+  it('logs consent evidence: client-reported pre-tick plus the server-derived country', async () => {
+    authAs(completedRow());
+    // Own session id: the per-session unlock limit (5/hour) is shared across this file.
+    const sid = '66666666-2222-4333-8444-555555555555';
+    const res = await unlock(
+      req('/api/read/unlock', { body: { sessionId: sid, lead: { email: 'a@b.co', consentMarketing: true, consentShownChecked: true } }, country: 'us' })
+    );
+    expect(res.status).toBe(200);
+    expect(store.recordEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'read_email_submit',
+        props: expect.objectContaining({ consentMarketing: true, consentShownChecked: true, consentCountry: 'US', consentPrecheckAllowed: true }),
+      })
+    );
+    // the evidence flag never reaches the lead row
+    expect(vi.mocked(store.createLead).mock.calls.at(-1)?.[0]).not.toHaveProperty('consentShownChecked');
+  });
+
+  it('records non-US and unknown countries as not pre-tick-eligible', async () => {
+    authAs(completedRow());
+    const sid = '77777777-2222-4333-8444-555555555555';
+    await unlock(req('/api/read/unlock', { body: { sessionId: sid, lead: { email: 'a@b.co', consentMarketing: false, consentShownChecked: false } }, country: 'DE' }));
+    expect(store.recordEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ props: expect.objectContaining({ consentShownChecked: false, consentCountry: 'DE', consentPrecheckAllowed: false }) })
+    );
+    await unlock(req('/api/read/unlock', { body: { sessionId: sid, lead: { email: 'a@b.co', consentMarketing: false } } }));
+    expect(store.recordEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({ props: expect.objectContaining({ consentShownChecked: null, consentCountry: null, consentPrecheckAllowed: false }) })
+    );
   });
 
   it('still returns the result when the email work fails', async () => {

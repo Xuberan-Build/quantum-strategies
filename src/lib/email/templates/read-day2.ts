@@ -16,6 +16,8 @@ import {
   toPlain,
   withReadUtm,
   type RenderedReadEmail,
+  addressFooterHtml,
+  addressFooterText,
 } from './read-shared';
 
 export interface ReadDay2EmailData {
@@ -74,7 +76,7 @@ export function renderReadDay2Email(data: ReadDay2EmailData): RenderedReadEmail 
 
   const footerHtml = `      <p><a href="${e(resultUrl)}">Your full Read</a> · <a href="${e(data.unsubscribeUrl)}">Unsubscribe in one click</a></p>
       <p>You're getting this because you asked for follow-ups when you took the Perception Read.</p>
-      <p>${e(business)}</p>`;
+      ${addressFooterHtml(business)}`;
 
   const html = renderShell({ subject, preheader, eyebrow: 'Day 2 of your move', heading: name, bodyHtml, footerHtml });
 
@@ -92,6 +94,8 @@ export function renderReadDay2Email(data: ReadDay2EmailData): RenderedReadEmail 
     `Your full Read: ${resultUrl}`,
     `Unsubscribe in one click: ${data.unsubscribeUrl}`,
     "You're getting this because you asked for follow-ups when you took the Perception Read.",
+    '',
+    ...addressFooterText(business),
   ].join('\n');
 
   return { subject, preheader, html, text };

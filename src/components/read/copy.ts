@@ -88,7 +88,7 @@ export const GATE = {
   consent:
     'Send me the occasional email from Austin about this work. You can unsubscribe in one click.',
   privacy:
-    'We use your email to send your result. No password and no phone number. Marketing email only if you tick the box.',
+    'We use your email to send your result. No password and no phone number. The box above is for occasional emails from Austin; untick it if you only want your result.',
   privacyLink: 'Privacy policy',
   submit: 'Show my full Read',
   submitting: 'Opening your Read',

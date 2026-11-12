@@ -19,6 +19,8 @@ import {
   toPlain,
   withReadUtm,
   type RenderedReadEmail,
+  addressFooterHtml,
+  addressFooterText,
 } from './read-shared';
 
 export interface ReadResultEmailData {
@@ -125,7 +127,7 @@ export function renderReadResultEmail(data: ReadResultEmailData): RenderedReadEm
   const unsubLabel = data.consentMarketing ? 'Unsubscribe in one click' : "Don't email me again";
   const footerHtml = `      <p>${e(consentLine)}</p>
       <p><a href="${e(data.unsubscribeUrl)}">${e(unsubLabel)}</a>${data.replyEmail ? ` · Questions go to ${e(data.replyEmail)}` : ''}</p>
-      <p>${e(business)}</p>`;
+      ${addressFooterHtml(business)}`;
 
   const html = renderShell({
     subject,
@@ -165,6 +167,8 @@ export function renderReadResultEmail(data: ReadResultEmailData): RenderedReadEm
     '---',
     consentLine,
     `${unsubLabel}: ${data.unsubscribeUrl}`,
+    '',
+    ...addressFooterText(business),
   ].join('\n');
 
   return { subject, preheader, html, text };

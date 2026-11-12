@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server';
+import { COUNTRY_HEADER, marketingPrecheckAllowed, normalizeCountry } from '@/lib/read/consent-region';
 import { buildResult } from '@/lib/read/results';
 import { onReadUnlocked } from '@/lib/read/emails';
 import {
@@ -49,12 +50,21 @@ export async function POST(req: NextRequest) {
     });
     await linkLeadToSession(sessionId, lead.id);
 
+    // Consent evidence (no extra columns): what the visitor chose, whether the box was shown
+    // pre-ticked (client-reported), and the country + pre-tick rule as the server sees them now.
+    const country = normalizeCountry(req.headers.get(COUNTRY_HEADER));
     const ctx = eventContext(row);
     await recordEvent({
       event: 'read_email_submit',
       sessionId,
       leadId: lead.id,
-      props: { ...ctx.props, consentMarketing: leadInput.consentMarketing },
+      props: {
+        ...ctx.props,
+        consentMarketing: leadInput.consentMarketing,
+        consentShownChecked: leadInput.consentShownChecked ?? null,
+        consentCountry: country,
+        consentPrecheckAllowed: marketingPrecheckAllowed(country),
+      },
     });
 
     let result: ReadResult | undefined = sd.result;

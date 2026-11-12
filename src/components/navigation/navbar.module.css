@@ -14,29 +14,66 @@
 .container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1rem 2rem;
+  padding: 0.5rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+/* Logo lockup, golden-ratio proportions.
+   Bodoni Moda cap height = 0.75em (OS/2 sCapHeight 1500 / 2000 upm).
+   Mark height = wordmark size (1em) x phi^2; gap = cap height / phi.
+   The nav's vertical padding is cut by the same amount the mark grew, so the bar keeps its height. */
 .logo {
-  font-size: 1.5rem;
+  --wordmark-size: 1.5rem;
+  --cap: calc(var(--wordmark-size) * 0.75);
+  --phi: 1.618034;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--cap) / var(--phi));
+  flex-shrink: 0;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.logoMark {
+  display: block;
+  height: calc(var(--wordmark-size) * var(--phi) * var(--phi));
+  width: auto;
+  filter: drop-shadow(0 0 10px rgba(192, 132, 252, 0.35));
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.logo:hover .logoMark {
+  transform: rotate(-8deg);
+  filter: drop-shadow(0 0 14px rgba(192, 132, 252, 0.6));
+}
+
+.logoText {
+  font-size: var(--wordmark-size);
   font-weight: 700;
   font-family: 'Bodoni Moda', serif;
   color: #F8F5FF;
-  text-decoration: none;
   background: linear-gradient(135deg, #F8F5FF 0%, #E9D5FF 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   transition: all 0.3s ease;
   letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 
-.logo:hover {
+.logo:hover .logoText {
   background: linear-gradient(135deg, #E9D5FF 0%, #C084FC 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.logo:focus-visible {
+  outline: 2px solid #C084FC;
+  outline-offset: 4px;
+  border-radius: 6px;
 }
 
 .navList {
@@ -438,7 +475,7 @@
   }
 
   .logo {
-    font-size: 1.25rem;
+    --wordmark-size: 1.25rem;
   }
 
   .megaMenuContent {

@@ -61,7 +61,11 @@ export default function Footer() {
         <div className={styles.grid}>
           {/* Brand Column */}
           <div className={styles.brandColumn}>
-            <h3 className={styles.brandName}>Quantum Strategies</h3>
+            <h3 className={styles.brandName}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/q-mark-nav.svg" alt="" className={styles.brandMark} width={30} height={40} />
+              <span>Quantum Strategies</span>
+            </h3>
             <p className={styles.brandTagline}>
               Mastering the art of creating and adding value through strategic execution
             </p>
