@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
+import { Suspense } from 'react'
+import ProfileTabs from '@/components/profile/ProfileTabs'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import ProfileSettings from '@/components/profile/ProfileSettings'
 import EmailPreferencesSettings from '@/components/profile/EmailPreferencesSettings'
@@ -51,12 +52,6 @@ export default async function ProfilePage({ searchParams }: Props) {
   const journey = computeRiteJourney(accessRows ?? [])
   const emailPreferences = tab === 'settings' ? await getEmailPreferences(session.user.id) : DEFAULT_PREFERENCES
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'settings', label: 'Settings' },
-    { key: 'goals', label: 'Goals' },
-    { key: 'chart', label: 'Chart Data' },
-  ]
-
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -64,23 +59,9 @@ export default async function ProfilePage({ searchParams }: Props) {
         <p className={styles.subtitle}>Your identity, journey, and goals in one place</p>
       </div>
 
-      <nav className={styles.tabRow}>
-        {tabs.map(({ key, label }) => (
-          <Link
-            key={key}
-            href={`/dashboard/profile?tab=${key}`}
-            className={`${styles.tabLink} ${tab === key ? styles.tabLinkActive : ''}`}
-          >
-            {label}
-          </Link>
-        ))}
-        <Link
-          href="/dashboard/profile/portrait"
-          className={styles.tabLink}
-        >
-          Portrait
-        </Link>
-      </nav>
+      <Suspense fallback={null}>
+        <ProfileTabs />
+      </Suspense>
 
       <div className={styles.main}>
         {tab === 'settings' && (

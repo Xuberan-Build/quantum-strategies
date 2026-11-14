@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient, supabaseAdmin } from '@/lib/supabase/server';
+import { Suspense } from 'react';
 import PortraitView from '@/components/portrait/PortraitView';
+import ProfileTabs from '@/components/profile/ProfileTabs';
 import type { StoredSections } from '@/lib/portraits/schema';
 import styles from '../../dashboard.module.css';
 
@@ -91,6 +93,10 @@ export default async function PortraitPage() {
           A working picture of who you are right now — shaped by what you&apos;ve told us, kept under your control.
         </p>
       </div>
+
+      <Suspense fallback={null}>
+        <ProfileTabs />
+      </Suspense>
 
       <div className={styles.main}>
         <PortraitView
