@@ -1,16 +1,16 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getFoundingOffer, markOfferPresented } from '@/lib/beta/founding-member-server';
-import { FOUNDING_OFFER_CLOSES_AT } from '@/lib/beta/founding-member';
-import { BETA_CALENDAR_URL, FOUNDING_MEMBER_PRICE } from '@/lib/beta/constants';
-import FoundingCheckoutButton from './FoundingCheckoutButton';
+import { getInitiationOffer, markOfferPresented } from '@/lib/beta/initiation-server';
+import { INITIATION_OFFER_CLOSES_AT } from '@/lib/beta/initiation';
+import { BETA_CALENDAR_URL, INITIATION_PRICE } from '@/lib/beta/constants';
+import InitiationCheckoutButton from './InitiationCheckoutButton';
 import dashboardStyles from '../dashboard.module.css';
-import styles from './founding.module.css';
+import styles from './initiation.module.css';
 
 export const dynamic = 'force-dynamic';
 
-const closesLabel = new Date(FOUNDING_OFFER_CLOSES_AT).toLocaleDateString('en-US', {
+const closesLabel = new Date(INITIATION_OFFER_CLOSES_AT).toLocaleDateString('en-US', {
   timeZone: 'America/Los_Angeles',
   weekday: 'long',
   month: 'long',
@@ -21,10 +21,8 @@ function money(n: number): string {
   return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
 }
 
-// Display name: "Initiation" (the person becomes "an Initiate"). Internal names keep
-// "founding" (route, slug, env flag, DB values) to avoid migrations. See
-// brain/gtm/beta-conversion-offer.md, "Naming".
-export default async function FoundingMemberPage({
+// Initiation: the person who takes it becomes an Initiate. See brain/gtm/beta-conversion-offer.md.
+export default async function InitiationPage({
   searchParams,
 }: {
   searchParams: Promise<{ session_id?: string }>;
@@ -34,7 +32,7 @@ export default async function FoundingMemberPage({
   if (!user) redirect('/login');
 
   const { session_id: returnedFromCheckout } = await searchParams;
-  const offer = await getFoundingOffer(user.id, user.email);
+  const offer = await getInitiationOffer(user.id, user.email);
   const { participant, eligibility, pricing } = offer;
 
   if (!participant || (!eligibility.eligible && eligibility.reason === 'not_beta')) {
@@ -106,7 +104,7 @@ export default async function FoundingMemberPage({
               </h2>
               <p>
                 When you joined the beta I said you&apos;d get an offer at the end:{' '}
-                {money(FOUNDING_MEMBER_PRICE)}, minus anything you&apos;d already bought.
+                {money(INITIATION_PRICE)}, minus anything you&apos;d already bought.
                 {pricing.credit > 0
                   ? ` You've paid ${money(pricing.credit)} so far, so that comes off.`
                   : ''}
@@ -123,7 +121,7 @@ export default async function FoundingMemberPage({
               {pricing.covered ? (
                 <p>Reply to my email and I&apos;ll mark you as an Initiate myself.</p>
               ) : (
-                <FoundingCheckoutButton label={`Become an Initiate for ${money(pricing.price)}`} />
+                <InitiationCheckoutButton label={`Become an Initiate for ${money(pricing.price)}`} />
               )}
               <p className={styles.small}>Open until {closesLabel}, 11:59pm Pacific. One payment, nothing recurring.</p>
             </section>

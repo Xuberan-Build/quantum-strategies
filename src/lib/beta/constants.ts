@@ -13,8 +13,8 @@ export const BETA_CALENDAR_EMBED = `
 <!-- end Google Calendar Appointment Scheduling -->
 `;
 
-// Founding Member total target pricing
-export const FOUNDING_MEMBER_PRICE = 60;
+// Initiation total target pricing
+export const INITIATION_PRICE = 60;
 
 // À la carte purchasing strategy:
 // - Users can buy individual products throughout journey using existing Stripe product links

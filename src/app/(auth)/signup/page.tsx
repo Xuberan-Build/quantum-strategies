@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { auth } from '@/lib/auth/supabase-auth';
+import { safeRedirect } from '@/lib/security/safe-redirect';
 import styles from '../login/login.module.css';
 
 function SignupForm() {
@@ -16,7 +17,7 @@ function SignupForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const redirectTo = safeRedirect(searchParams.get('redirect'));
 
   useEffect(() => {
     const prefill = searchParams.get('email');
@@ -45,16 +46,23 @@ function SignupForm() {
 
     try {
       await auth.signUp(email, password, name);
-      setSuccess(true);
-
-      // Redirect to login after 1.5 seconds
-      setTimeout(() => {
-        const emailParam = encodeURIComponent(email);
-        const redirectParam = encodeURIComponent(redirectTo);
-        router.push(`/login?email=${emailParam}&redirect=${redirectParam}`);
-      }, 1500);
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
+      setLoading(false);
+      return;
+    }
+
+    // The account is created already confirmed, so sign straight in rather than
+    // making people type their password a second time.
+    try {
+      await auth.signIn(email, password);
+      setSuccess(true);
+      window.location.href = redirectTo;
+    } catch {
+      // Fall back to the login page with the email filled in.
+      const emailParam = encodeURIComponent(email);
+      const redirectParam = encodeURIComponent(redirectTo);
+      router.push(`/login?email=${emailParam}&redirect=${redirectParam}`);
     } finally {
       setLoading(false);
     }
@@ -65,27 +73,15 @@ function SignupForm() {
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.header}>
-            <h1>✅ Account Created!</h1>
-            <p>Check your email to verify your account</p>
+            <h1>You&apos;re in</h1>
+            <p>Taking you to your account…</p>
           </div>
-
-          <div className={styles.success}>
-            We've sent a confirmation email to <strong>{email}</strong>
-          </div>
-
-          <div className={styles.warning}>
-            <div>
-              <strong>Check your spam folder!</strong> The confirmation email often ends up there.<br />
-              Look for: <strong>"Confirm Your Signup"</strong> from <strong>Supabase Auth</strong> (noreply@mail.app.supabase.io)
-            </div>
-          </div>
-
           <div className={styles.footer}>
             <p>
-              After confirming, you can{' '}
-              <Link href="/login" className={styles.link}>
-                sign in here
-              </Link>
+              Not moving?{' '}
+              <a href={redirectTo} className={styles.link}>
+                Continue
+              </a>
             </p>
           </div>
         </div>

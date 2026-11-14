@@ -18,9 +18,10 @@ import { processAffiliate } from '@/lib/stripe/webhook-handlers/process-affiliat
 import { syncCustomer } from '@/lib/google-sheets/customer-sync';
 import { FEATURES } from '../../../../config/features.config';
 import { enrollInPurchaseCampaigns } from '@/lib/crm/auto-enroll';
-import { FOUNDING_MEMBER_SLUG } from '@/lib/beta/founding-member';
-import { recordFoundingMemberPayment } from '@/lib/beta/founding-member-server';
+import { isInitiationSlug } from '@/lib/beta/initiation';
+import { recordInitiationPayment } from '@/lib/beta/initiation-server';
 import { recordReadPurchase } from '@/lib/read/lead-link';
+import { supabaseAdmin } from '@/lib/supabase/server';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-02-25.clover',
@@ -62,6 +63,14 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Never grant for a session Stripe says is unpaid (delayed payment methods arrive this way).
+  // Only the explicit 'unpaid' value blocks: older endpoint API versions may omit the field,
+  // and 'no_payment_required' (100% promo codes) must still grant.
+  if (session.payment_status === 'unpaid') {
+    console.warn('Checkout completed but not paid, skipping grant:', session.id, session.payment_status);
+    return NextResponse.json({ received: true, skipped: 'unpaid' });
+  }
+
   const customerEmail = session.customer_details?.email || session.customer_email || null;
   const customerName = session.customer_details?.name || 'there';
   const amount = (session.amount_total || 0) / 100;
@@ -78,36 +87,44 @@ export async function POST(request: NextRequest) {
     if (urlMatch?.[1]) productSlug = urlMatch[1];
   }
   if (!productSlug) {
-    console.error('Could not determine product slug from session');
-    return NextResponse.json({ error: 'Unknown product' }, { status: 400 });
+    // A 4xx makes Stripe retry for days and can get the endpoint disabled, which blocks every
+    // other purchase. Acknowledge, alert, and let the reconciliation check surface it.
+    console.error('Could not determine product slug from session:', session.id);
+    try {
+      await sendAdminNotification({ customerEmail, customerName, productName: 'UNKNOWN PRODUCT, nothing granted, check Stripe', amount, sessionId: session.id });
+    } catch (err: any) {
+      console.error('⚠️ Admin notification failed (non-fatal):', err.message);
+    }
+    return NextResponse.json({ received: true, skipped: 'unknown_product' });
   }
 
-  // Founding Member, shown to users as "Initiation" (beta cohort): a status, not a product. Record it and stop, so no
+  // Initiation (beta cohort): a status, not a product. Record it and stop, so no
   // product_access row, welcome email, affiliate commission or campaign is triggered.
-  if (productSlug === FOUNDING_MEMBER_SLUG) {
+  if (isInitiationSlug(productSlug)) {
     const userId = session.client_reference_id;
     if (!userId) {
-      console.error('Founding Member session without client_reference_id:', session.id);
+      console.error('Initiation session without client_reference_id:', session.id);
       return NextResponse.json({ error: 'Missing user' }, { status: 400 });
     }
     let recorded = false;
     try {
-      ({ recorded } = await recordFoundingMemberPayment({
+      ({ recorded } = await recordInitiationPayment({
         userId,
         sessionId: session.id,
         amountPaid: amount,
-        credit: Number(session.metadata?.founding_credit ?? 0) || 0,
+        // founding_credit: the key's old name, on sessions created before 2026-11-14.
+        credit: Number(session.metadata?.initiation_credit ?? session.metadata?.founding_credit ?? 0) || 0,
       }));
     } catch (err: any) {
-      console.error('❌ Founding Member record failed:', err.message);
-      return NextResponse.json({ error: 'Founding Member record failed' }, { status: 500 });
+      console.error('❌ Initiation record failed:', err.message);
+      return NextResponse.json({ error: 'Initiation record failed' }, { status: 500 });
     }
     try {
       await sendAdminNotification({ customerEmail, customerName, productName: recorded ? 'Initiation (beta cohort)' : 'Initiation (beta cohort, NOT RECORDED, check beta_participants)', amount, sessionId: session.id });
     } catch (err: any) {
       console.error('⚠️ Admin notification failed (non-fatal):', err.message);
     }
-    return NextResponse.json({ received: true, founding: true });
+    return NextResponse.json({ received: true, initiation: true });
   }
 
   // Validate product exists (constants or DB — just used for fallback name here)
@@ -116,6 +133,21 @@ export async function POST(request: NextRequest) {
 
   const timestamp = new Date().toISOString();
   let emailSent = '❌ Failed';
+
+  // ── 0. REPLAY CHECK ─────────────────────────────────────────────────────────
+  // Stripe retries on any non-2xx and may deliver an event more than once. If this session
+  // already produced access rows, the side effects below (emails, affiliate, campaigns, CRM)
+  // have run before, so only re-run the grant, which is itself idempotent.
+  const { data: priorRows, error: priorErr } = await supabaseAdmin
+    .from('product_access')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .limit(1);
+  if (priorErr) {
+    console.error('❌ Replay check failed:', priorErr.message);
+    return NextResponse.json({ error: 'Replay check failed' }, { status: 500 });
+  }
+  const isReplay = (priorRows?.length ?? 0) > 0;
 
   // ── 1. GRANT ACCESS ─────────────────────────────────────────────────────────
   // client_reference_id is the Supabase auth user.id set during checkout session creation.
@@ -138,7 +170,20 @@ export async function POST(request: NextRequest) {
           : undefined,
     });
   } catch (err: any) {
-    console.error('⚠️ Grant access failed (non-fatal):', err.message);
+    // Fatal: the customer paid and has nothing. Return 500 so Stripe retries (the grant is
+    // idempotent), and tell the founder now rather than when the customer writes in.
+    console.error('❌ Grant access failed:', err.message);
+    try {
+      await sendAdminNotification({ customerEmail, customerName, productName: `GRANT FAILED for ${productName}, Stripe will retry, check product_access`, amount, sessionId: session.id });
+    } catch (notifyErr: any) {
+      console.error('⚠️ Admin notification failed:', notifyErr.message);
+    }
+    return NextResponse.json({ error: 'Grant failed' }, { status: 500 });
+  }
+
+  if (isReplay) {
+    console.log('Replayed session, grant re-checked, side effects skipped:', session.id);
+    return NextResponse.json({ received: true, replay: true });
   }
 
   // ── 2. SEND WELCOME EMAIL ────────────────────────────────────────────────────

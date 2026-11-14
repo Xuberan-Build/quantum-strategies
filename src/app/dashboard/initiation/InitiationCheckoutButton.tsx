@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import styles from './founding.module.css';
+import styles from './initiation.module.css';
 
-export default function FoundingCheckoutButton({ label }: { label: string }) {
+export default function InitiationCheckoutButton({ label }: { label: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -12,7 +12,7 @@ export default function FoundingCheckoutButton({ label }: { label: string }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/founding-member/checkout', { method: 'POST' });
+      const res = await fetch('/api/initiation/checkout', { method: 'POST' });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.url) {
         throw new Error(body.error || 'Something went wrong. Please try again.');

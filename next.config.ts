@@ -29,6 +29,13 @@ const config: NextConfig = {
         destination: 'https://quantumstrategies.online/:path*',
         permanent: true,
       },
+      // The Initiation offer page's old URL, still in emails already sent and open Stripe sessions.
+      // Query strings (e.g. ?session_id=) carry over.
+      {
+        source: '/dashboard/founding',
+        destination: '/dashboard/initiation',
+        permanent: true,
+      },
       // Redirects for renamed product slugs
       {
         source: '/products/quantum-initiation/:path*',

@@ -9,7 +9,7 @@ import { ALL_BETA_PRODUCTS } from '@/lib/beta/constants';
 import { getUserCompleteRiteOffers } from '@/lib/pricing/complete-the-rite-server';
 import { RITE_INFO } from '@/lib/constants/bundles';
 import BetaCommitmentModal from '@/components/beta/BetaCommitmentModal';
-import { checkFoundingEligibility, isFoundingOfferEnabled } from '@/lib/beta/founding-member';
+import { checkInitiationEligibility, isInitiationOfferEnabled } from '@/lib/beta/initiation';
 
 export const dynamic = 'force-dynamic';
 
@@ -141,11 +141,11 @@ export default async function ProductsDashboardPage() {
   ]);
 
   const isBetaParticipant = Boolean(betaParticipant?.id);
-  const foundingEligibility = isFoundingOfferEnabled()
-    ? checkFoundingEligibility(betaParticipant ?? null)
+  const initiationEligibility = isInitiationOfferEnabled()
+    ? checkInitiationEligibility(betaParticipant ?? null)
     : ({ eligible: false, reason: 'closed' } as const);
-  const showFoundingOffer = foundingEligibility.eligible;
-  const isFoundingMember = !foundingEligibility.eligible && foundingEligibility.reason === 'already_member';
+  const showInitiationOffer = initiationEligibility.eligible;
+  const isInitiate = !initiationEligibility.eligible && initiationEligibility.reason === 'already_member';
 
   const products = (allProducts || []).map((product) => {
     const access = productAccess?.find(
@@ -191,8 +191,8 @@ export default async function ProductsDashboardPage() {
     return null;
   })();
 
-  // Initiates (internally: founding members) have paid for the cohort; don't ask them to pay per product.
-  const unpaidBetaCompletion = isBetaParticipant && !isFoundingMember
+  // Initiates have paid for the cohort; don't ask them to pay per product.
+  const unpaidBetaCompletion = isBetaParticipant && !isInitiate
     ? await getLatestUnpaidBetaCompletion(session.user.id)
     : null;
 
@@ -262,22 +262,22 @@ export default async function ProductsDashboardPage() {
           </div>
         </section>
 
-        {/* Initiation offer for the beta cohort. Internal name: founding-member (slug, route, env flag). */}
-        {(showFoundingOffer || isFoundingMember) && (
+        {/* Initiation offer for the beta cohort. */}
+        {(showInitiationOffer || isInitiate) && (
           <section className={styles.section}>
             <div className={styles.nextActionCard}>
               <div>
                 <h2 className={styles.nextActionTitle}>
-                  {isFoundingMember ? 'You\'re an Initiate' : 'Your Initiation is open'}
+                  {isInitiate ? 'You\'re an Initiate' : 'Your Initiation is open'}
                 </h2>
                 <p className={styles.nextActionSubtitle}>
-                  {isFoundingMember
+                  {isInitiate
                     ? 'Book your debrief call with Austin.'
                     : 'You\'ve been working through the Rites. This is the offer from when you joined: $60, minus anything you\'ve already paid.'}
                 </p>
               </div>
-              <Link href="/dashboard/founding" className={styles.nextActionButton}>
-                {isFoundingMember ? 'Book the call' : 'See the offer'}
+              <Link href="/dashboard/initiation" className={styles.nextActionButton}>
+                {isInitiate ? 'Book the call' : 'See the offer'}
               </Link>
             </div>
           </section>

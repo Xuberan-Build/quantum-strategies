@@ -1,6 +1,6 @@
 /**
  * Initiation emails for the beta cohort (DRAFTS, NOT WIRED TO ANY SENDER).
- * Internal name: the founding-member offer. Users see "Initiation" and "Initiate".
+ * The Initiation offer emails. The person who takes it becomes an Initiate.
  *
  * Three emails: invitation, value + Rite I nudge, deadline reminder.
  * Austin sends these himself after approving the copy. Nothing in the app imports
@@ -10,10 +10,10 @@
  * Offer design: brain/gtm/beta-conversion-offer.md
  */
 
-export interface FoundingEmailData {
+export interface InitiationEmailData {
   /** First name. Falls back to "there". */
   name?: string | null;
-  /** Server-computed price in dollars (getFoundingOffer().pricing.price). */
+  /** Server-computed price in dollars (getInitiationOffer().pricing.price). */
   price: number;
   /** What they've already paid, in dollars (pricing.credit). */
   credit: number;
@@ -25,7 +25,7 @@ export interface FoundingEmailData {
   nextProductName?: string | null;
   /** e.g. "Sunday, November 15" */
   closesLabel: string;
-  /** https://<app>/dashboard/founding */
+  /** https://<app>/dashboard/initiation */
   offerUrl: string;
 }
 
@@ -44,7 +44,7 @@ function firstName(name?: string | null): string {
   return first || 'there';
 }
 
-function priceLine(d: FoundingEmailData): string {
+function priceLine(d: InitiationEmailData): string {
   if (d.credit > 0) {
     return `You've already paid ${money(d.credit)}, so your price is ${money(d.price)}.`;
   }
@@ -91,7 +91,7 @@ ${htmlParts.join('\n')}
 }
 
 /** Email 1: the invitation. Send day 0. */
-export function getFoundingInviteEmail(d: FoundingEmailData): EmailContent {
+export function getInitiationInviteEmail(d: InitiationEmailData): EmailContent {
   const { html, text } = render([
     `Hi ${firstName(d.name)},`,
     "When you joined the beta I said that at the end you'd get an offer: $60, minus anything you'd already bought. That offer is open now, and I want to keep the promise as I made it.",
@@ -108,7 +108,7 @@ export function getFoundingInviteEmail(d: FoundingEmailData): EmailContent {
 }
 
 /** Email 2: value plus the Rite I nudge. Send day 7 to anyone who hasn't joined. */
-export function getFoundingValueEmail(d: FoundingEmailData): EmailContent {
+export function getInitiationValueEmail(d: InitiationEmailData): EmailContent {
   const stalledInRiteOne = d.perceptionDone < 5;
   const next = d.nextProductName ? ` The next one for you is ${d.nextProductName}, and it takes about 20 minutes.` : '';
 
@@ -139,7 +139,7 @@ export function getFoundingValueEmail(d: FoundingEmailData): EmailContent {
 }
 
 /** Email 3: deadline reminder. Send two days before close to anyone who hasn't joined. */
-export function getFoundingDeadlineEmail(d: FoundingEmailData): EmailContent {
+export function getInitiationDeadlineEmail(d: InitiationEmailData): EmailContent {
   const { html, text } = render([
     `Hi ${firstName(d.name)},`,
     `Initiation closes on ${d.closesLabel} at 11:59pm Pacific. ${priceLine(d)}`,

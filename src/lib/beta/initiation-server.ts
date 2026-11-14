@@ -1,5 +1,5 @@
 /**
- * Server-only: load a beta participant's Founding Member offer and record the payment.
+ * Server-only: load a beta participant's Initiation offer and record the payment.
  * Uses the service role client and the Stripe secret key. Only call it with a user id
  * from the verified auth session or a verified Stripe webhook.
  */
@@ -7,16 +7,16 @@
 import Stripe from 'stripe';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import {
-  FOUNDING_MEMBER_SLUG,
-  checkFoundingEligibility,
-  isFoundingOfferEnabled,
+  INITIATION_SLUG,
+  checkInitiationEligibility,
+  isInitiationOfferEnabled,
   computePriorPayments,
-  getFoundingMemberPrice,
+  getInitiationPrice,
   stageForRite,
-  type FoundingEligibility,
-  type FoundingPrice,
+  type InitiationEligibility,
+  type InitiationPrice,
   type PaidStripeSession,
-} from './founding-member';
+} from './initiation';
 
 let stripeClient: Stripe | null = null;
 function getStripe(): Stripe {
@@ -28,7 +28,7 @@ function getStripe(): Stripe {
   return stripeClient;
 }
 
-export interface FoundingParticipantRow {
+export interface InitiationParticipantRow {
   id: string;
   user_id: string;
   status: string;
@@ -46,14 +46,14 @@ const PARTICIPANT_COLUMNS =
   'total_amount_paid_before_offer, perception_completed_count, orientation_completed_count, ' +
   'declaration_completed_count';
 
-export async function getBetaParticipant(userId: string): Promise<FoundingParticipantRow | null> {
+export async function getBetaParticipant(userId: string): Promise<InitiationParticipantRow | null> {
   const { data, error } = await supabaseAdmin
     .from('beta_participants')
     .select(PARTICIPANT_COLUMNS)
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
-  return (data as unknown as FoundingParticipantRow) ?? null;
+  return (data as unknown as InitiationParticipantRow) ?? null;
 }
 
 /** Paid Checkout Sessions for this email. Failure returns [] so the page still loads. */
@@ -73,26 +73,26 @@ async function getPaidStripeSessions(email: string | null | undefined): Promise<
         product_slug: s.metadata?.product_slug ?? null,
       }));
   } catch (err: any) {
-    console.error('[founding] Stripe session lookup failed:', err?.message || err);
+    console.error('[initiation] Stripe session lookup failed:', err?.message || err);
     return [];
   }
 }
 
-export interface FoundingOffer {
-  participant: FoundingParticipantRow | null;
-  eligibility: FoundingEligibility;
-  pricing: FoundingPrice | null;
+export interface InitiationOffer {
+  participant: InitiationParticipantRow | null;
+  eligibility: InitiationEligibility;
+  pricing: InitiationPrice | null;
 }
 
 /** Eligibility plus server-side price. Price is only computed for eligible users. */
-export async function getFoundingOffer(
+export async function getInitiationOffer(
   userId: string,
   email: string | null | undefined,
   now: Date = new Date()
-): Promise<FoundingOffer> {
+): Promise<InitiationOffer> {
   const participant = await getBetaParticipant(userId);
-  const eligibility: FoundingEligibility = isFoundingOfferEnabled()
-    ? checkFoundingEligibility(participant, now)
+  const eligibility: InitiationEligibility = isInitiationOfferEnabled()
+    ? checkInitiationEligibility(participant, now)
     : { eligible: false, reason: 'closed' };
   if (!eligibility.eligible || !participant) {
     return { participant, eligibility, pricing: null };
@@ -112,7 +112,7 @@ export async function getFoundingOffer(
     stripeSessions,
     participant.total_amount_paid_before_offer
   );
-  return { participant, eligibility, pricing: getFoundingMemberPrice(credit) };
+  return { participant, eligibility, pricing: getInitiationPrice(credit) };
 }
 
 /** First view of the offer: stamp when it was shown and what it was. Never overwrites. */
@@ -125,17 +125,17 @@ export async function markOfferPresented(participantId: string, price: number): 
     })
     .eq('id', participantId)
     .is('conversion_offer_presented_at', null);
-  if (error) console.error('[founding] markOfferPresented failed:', error.message);
+  if (error) console.error('[initiation] markOfferPresented failed:', error.message);
 }
 
 /**
- * Webhook: record a paid Founding Member checkout.
+ * Webhook: record a paid Initiation checkout.
  * Writes beta_participants conversion fields and one beta_conversion_results row.
  * No product_access rows: beta users already own all 11 products with no expiry, and
- * "Founding Member" is a status (conversion_decision = 'purchased'), not a product.
+ * Initiation is a status (conversion_decision = 'purchased'), not a product.
  * Safe to run twice for the same session (Stripe retries).
  */
-export async function recordFoundingMemberPayment(params: {
+export async function recordInitiationPayment(params: {
   userId: string;
   sessionId: string;
   amountPaid: number;
@@ -144,7 +144,7 @@ export async function recordFoundingMemberPayment(params: {
   const { userId, sessionId, amountPaid, credit } = params;
   const participant = await getBetaParticipant(userId);
   if (!participant) {
-    console.error('[founding] Paid founding checkout but no beta_participants row', { userId, sessionId });
+    console.error('[initiation] Paid Initiation checkout but no beta_participants row', { userId, sessionId });
     return { recorded: false, reason: 'not_beta' };
   }
 
@@ -171,7 +171,7 @@ export async function recordFoundingMemberPayment(params: {
       user_id: userId,
       offer_presented_at: offerPresentedAt,
       offer_amount: amountPaid,
-      offer_type: 'founding_member',
+      offer_type: 'initiation', // rows written before 2026-11-14 say 'founding_member'
       total_paid_before_offer: credit,
       discount_amount: credit,
       purchased_at_stage: stageForRite(participant.current_rite),
@@ -187,11 +187,11 @@ export async function recordFoundingMemberPayment(params: {
   );
   if (resultError) {
     // The participant row is the source of truth; this table is reporting.
-    console.error('[founding] beta_conversion_results upsert failed:', resultError.message);
+    console.error('[initiation] beta_conversion_results upsert failed:', resultError.message);
   }
 
-  console.log(`✅ Founding Member recorded for participant ${participant.id} (${sessionId})`);
+  console.log(`✅ Initiation recorded for participant ${participant.id} (${sessionId})`);
   return { recorded: true };
 }
 
-export { FOUNDING_MEMBER_SLUG };
+export { INITIATION_SLUG };

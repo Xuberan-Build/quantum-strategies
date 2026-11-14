@@ -1,6 +1,5 @@
 /**
- * Founding Member checkout (beta cohort only). Shown to users as "Initiation"; the
- * internal names (route, slug, metadata) keep "founding-member" to avoid churn.
+ * Initiation checkout (beta cohort only).
  *
  * Separate from /api/checkout so normal products are untouched. Eligibility is checked
  * against beta_participants and the price is computed here ($60 minus what the user
@@ -11,8 +10,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { APP_URL } from '@/lib/config/urls';
-import { getFoundingOffer } from '@/lib/beta/founding-member-server';
-import { FOUNDING_MEMBER_SLUG } from '@/lib/beta/founding-member';
+import { getInitiationOffer } from '@/lib/beta/initiation-server';
+import { INITIATION_SLUG } from '@/lib/beta/initiation';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY?.trim() || '', {
   apiVersion: '2026-02-25.clover',
@@ -33,7 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Please sign in first' }, { status: 401 });
     }
 
-    const offer = await getFoundingOffer(user.id, user.email);
+    const offer = await getInitiationOffer(user.id, user.email);
     if (!offer.eligibility.eligible) {
       const msg = INELIGIBLE_MESSAGES[offer.eligibility.reason];
       return NextResponse.json({ error: msg.error, reason: offer.eligibility.reason }, { status: msg.status });
@@ -59,7 +58,6 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: 'usd',
             product_data: {
-              // Display name only. The slug in metadata stays 'founding-member'.
               name: 'Quantum Strategies Initiation',
               description:
                 pricing.credit > 0
@@ -71,11 +69,11 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${appBaseUrl}/dashboard/founding?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appBaseUrl}/dashboard/founding`,
+      success_url: `${appBaseUrl}/dashboard/initiation?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appBaseUrl}/dashboard/initiation`,
       metadata: {
-        product_slug: FOUNDING_MEMBER_SLUG,
-        founding_credit: String(pricing.credit),
+        product_slug: INITIATION_SLUG,
+        initiation_credit: String(pricing.credit),
         beta_participant_id: offer.participant!.id,
       },
       allow_promotion_codes: false,
@@ -86,7 +84,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ sessionId: session.id, url: session.url });
   } catch (error: any) {
-    console.error('Founding Member checkout error:', error);
+    console.error('Initiation checkout error:', error);
     return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { auth } from '@/lib/auth/supabase-auth';
+import { safeRedirect } from '@/lib/security/safe-redirect';
 import styles from './login.module.css';
 
 function LoginForm() {
@@ -13,7 +14,7 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const redirectTo = safeRedirect(searchParams.get('redirect'));
 
   useEffect(() => {
     const prefill = searchParams.get('email');

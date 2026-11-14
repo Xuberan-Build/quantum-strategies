@@ -40,8 +40,8 @@ export default function CompleteJourneyForm({ onSubmitted }: CompleteJourneyForm
   const [wouldReferOthers, setWouldReferOthers] = useState('');
   const [referralCommitmentCount, setReferralCommitmentCount] = useState('');
 
-  const [foundingMemberInterest, setFoundingMemberInterest] = useState('');
-  const [foundingMemberDecisionFactors, setFoundingMemberDecisionFactors] = useState('');
+  const [initiationInterest, setInitiationInterest] = useState('');
+  const [initiationDecisionFactors, setInitiationDecisionFactors] = useState('');
 
   const [testimonialConsent, setTestimonialConsent] = useState(false);
   const [testimonialText, setTestimonialText] = useState('');
@@ -87,8 +87,9 @@ export default function CompleteJourneyForm({ onSubmitted }: CompleteJourneyForm
             nps_score: npsScore,
             would_refer_others: wouldReferOthers === 'yes' ? true : wouldReferOthers === 'no' ? false : null,
             referral_commitment_count: referralCommitmentCount ? Number(referralCommitmentCount) : null,
-            founding_member_interest: foundingMemberInterest || null,
-            founding_member_decision_factors: foundingMemberDecisionFactors.trim() || null,
+            // DB column names predate the rename; the values are about Initiation.
+            founding_member_interest: initiationInterest || null,
+            founding_member_decision_factors: initiationDecisionFactors.trim() || null,
             testimonial_consent: testimonialConsent,
             testimonial_text: testimonialText.trim() || null,
             video_testimonial_interest: videoTestimonialInterest,
@@ -395,14 +396,14 @@ export default function CompleteJourneyForm({ onSubmitted }: CompleteJourneyForm
 
       <div className={styles.gridTwo}>
         <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="foundingMemberInterest">
+          <label className={styles.label} htmlFor="initiationInterest">
             Interest in the Initiation offer
           </label>
           <select
-            id="foundingMemberInterest"
+            id="initiationInterest"
             className={styles.select}
-            value={foundingMemberInterest}
-            onChange={(event) => setFoundingMemberInterest(event.target.value)}
+            value={initiationInterest}
+            onChange={(event) => setInitiationInterest(event.target.value)}
             required
           >
             <option value="">Select one</option>
@@ -414,14 +415,14 @@ export default function CompleteJourneyForm({ onSubmitted }: CompleteJourneyForm
           </select>
         </div>
         <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="foundingMemberDecisionFactors">
+          <label className={styles.label} htmlFor="initiationDecisionFactors">
             What would influence your decision?
           </label>
           <textarea
-            id="foundingMemberDecisionFactors"
+            id="initiationDecisionFactors"
             className={styles.textarea}
-            value={foundingMemberDecisionFactors}
-            onChange={(event) => setFoundingMemberDecisionFactors(event.target.value)}
+            value={initiationDecisionFactors}
+            onChange={(event) => setInitiationDecisionFactors(event.target.value)}
             rows={3}
           />
         </div>

@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-  getFoundingInviteEmail,
-  getFoundingValueEmail,
-  getFoundingDeadlineEmail,
-  type FoundingEmailData,
-} from '../founding-member-offer';
+  getInitiationInviteEmail,
+  getInitiationValueEmail,
+  getInitiationDeadlineEmail,
+  type InitiationEmailData,
+} from '../initiation-offer';
 
-const base: FoundingEmailData = {
+const base: InitiationEmailData = {
   name: 'Sam Example',
   price: 60,
   credit: 0,
@@ -15,12 +15,12 @@ const base: FoundingEmailData = {
   declarationDone: 0,
   nextProductName: 'Boundary & Burnout',
   closesLabel: 'Sunday, November 15',
-  offerUrl: 'https://app.example.test/dashboard/founding',
+  offerUrl: 'https://app.example.test/dashboard/initiation',
 };
 
-const all = (d: FoundingEmailData) => [getFoundingInviteEmail(d), getFoundingValueEmail(d), getFoundingDeadlineEmail(d)];
+const all = (d: InitiationEmailData) => [getInitiationInviteEmail(d), getInitiationValueEmail(d), getInitiationDeadlineEmail(d)];
 
-describe('founding member emails', () => {
+describe('Initiation offer emails', () => {
   it('uses the first name, the price and the offer link', () => {
     for (const e of all(base)) {
       expect(e.text).toContain('Hi Sam,');
@@ -31,12 +31,12 @@ describe('founding member emails', () => {
   });
 
   it('shows the credit when they have paid before', () => {
-    const e = getFoundingInviteEmail({ ...base, price: 43, credit: 17 });
+    const e = getInitiationInviteEmail({ ...base, price: 43, credit: 17 });
     expect(e.text).toContain("You've already paid $17, so your price is $43.");
   });
 
   it('nudges people stalled in Rite I and names the next scan', () => {
-    const e = getFoundingValueEmail(base);
+    const e = getInitiationValueEmail(base);
     expect(e.subject).toBe('Where most of the beta got stuck');
     expect(e.text).toContain("You've done 2 of the 5 Perception scans.");
     expect(e.text).toContain('Boundary & Burnout');
@@ -44,12 +44,12 @@ describe('founding member emails', () => {
   });
 
   it('switches the nudge once Rite I is done', () => {
-    const e = getFoundingValueEmail({ ...base, perceptionDone: 5, orientationDone: 1, nextProductName: null });
+    const e = getInitiationValueEmail({ ...base, perceptionDone: 5, orientationDone: 1, nextProductName: null });
     expect(e.subject).toBe('What comes after Rite I');
     expect(e.text).toContain("You've finished Rite I");
   });
 
-  it('uses the Initiation language and never the old Founding Member name', () => {
+  it('uses the Initiation language and never the retired offer name', () => {
     const [invite, value, deadline] = all(base);
     expect(invite.subject).toBe('Your Initiation is open');
     expect(deadline.subject).toBe('Initiation closes Sunday, November 15');
@@ -60,7 +60,7 @@ describe('founding member emails', () => {
   });
 
   it('falls back to "there" with no name', () => {
-    expect(getFoundingDeadlineEmail({ ...base, name: null }).text).toContain('Hi there,');
+    expect(getInitiationDeadlineEmail({ ...base, name: null }).text).toContain('Hi there,');
   });
 
   it('has no em-dashes or exclamation marks (tonality rules)', () => {

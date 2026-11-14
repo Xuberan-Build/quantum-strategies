@@ -1,57 +1,71 @@
 /**
- * Founding Member offer for the beta cohort (pure logic, safe on client and server).
- * Display name: "Initiation", and the person becomes "an Initiate" (renamed 2026-10-17).
- * Internal identifiers keep "founding" so no migration is needed.
+ * Initiation offer for the beta cohort (pure logic, safe on client and server).
+ * The person who takes it becomes an Initiate.
  *
- * The beta page promised: "Founding Member access offered at $60 (minus any à la
- * carte purchases you made)". Beta users already own all 11 products, so this file
- * decides two things only: who may buy, and what they pay. The server loads the
- * data (founding-member-server.ts); everything here is a pure function so it can be
- * unit tested.
+ * The beta page promised Initiation at $60, minus any à la carte purchases. Beta users
+ * already own all 11 products, so this file decides two things only: who may buy, and
+ * what they pay. The server loads the data (initiation-server.ts); everything here is a
+ * pure function so it can be unit tested.
+ *
+ * Naming: the old name for this offer is retired everywhere. It survives only in data
+ * written before 2026-11-14 (Stripe metadata on past sessions, two beta_participants
+ * column names, one env var), each read through a LEGACY_ constant below.
  *
  * Offer design and founder decisions: brain/gtm/beta-conversion-offer.md
  */
 
-import { FOUNDING_MEMBER_PRICE } from './constants';
+import { INITIATION_PRICE } from './constants';
 
 /** Checkout metadata slug. Not in PRODUCTS, so /api/checkout rejects it. */
-export const FOUNDING_MEMBER_SLUG = 'founding-member';
+export const INITIATION_SLUG = 'initiation';
+
+/** Slug written on Initiation checkouts created before 2026-11-14. Read-only. */
+export const LEGACY_INITIATION_SLUG = 'founding-member';
+
+/** True for an Initiation checkout, old or new. */
+export function isInitiationSlug(slug: string | null | undefined): boolean {
+  return slug === INITIATION_SLUG || slug === LEGACY_INITIATION_SLUG;
+}
 
 /**
- * When the founding price closes for the whole cohort. Enforced on the server
+ * When the Initiation price closes for the whole cohort. Enforced on the server
  * (eligibility below), so the deadline in the emails is real.
  * FOUNDER DECISION: confirm the date before email 1 goes out.
  */
-export const FOUNDING_OFFER_CLOSES_AT = '2026-11-15T23:59:59-08:00';
+export const INITIATION_OFFER_CLOSES_AT = '2026-11-15T23:59:59-08:00';
 
 /** Stripe won't charge less than $0.50, so a smaller balance counts as paid in full. */
 export const MIN_CHARGE = 0.5;
 
-/** The offer stays hidden until the founder approves its terms and sets FEATURE_FOUNDING_OFFER=true. */
-export function isFoundingOfferEnabled(): boolean {
-  return process.env.FEATURE_FOUNDING_OFFER === 'true';
+/**
+ * The offer stays hidden until the founder approves its terms and sets FEATURE_INITIATION_OFFER=true.
+ * FEATURE_FOUNDING_OFFER is the env var's old name, still read so a deploy doesn't switch the
+ * offer off before the new name is set in Vercel.
+ */
+export function isInitiationOfferEnabled(): boolean {
+  return (process.env.FEATURE_INITIATION_OFFER ?? process.env.FEATURE_FOUNDING_OFFER) === 'true';
 }
 
-export type FoundingIneligibleReason =
+export type InitiationIneligibleReason =
   | 'not_beta'
   | 'withdrawn'
   | 'already_member'
   | 'closed';
 
-export interface FoundingParticipant {
+export interface InitiationParticipant {
   status: string | null;
   conversion_decision: string | null;
 }
 
-export type FoundingEligibility =
+export type InitiationEligibility =
   | { eligible: true }
-  | { eligible: false; reason: FoundingIneligibleReason };
+  | { eligible: false; reason: InitiationIneligibleReason };
 
-export function checkFoundingEligibility(
-  participant: FoundingParticipant | null,
+export function checkInitiationEligibility(
+  participant: InitiationParticipant | null,
   now: Date = new Date(),
-  closesAt: string = FOUNDING_OFFER_CLOSES_AT
-): FoundingEligibility {
+  closesAt: string = INITIATION_OFFER_CLOSES_AT
+): InitiationEligibility {
   if (!participant) return { eligible: false, reason: 'not_beta' };
   if (participant.status === 'withdrawn') return { eligible: false, reason: 'withdrawn' };
   if (participant.conversion_decision === 'purchased') {
@@ -80,7 +94,7 @@ export interface PaidStripeSession {
  *
  * Counts each Stripe session once. A bundle writes the full bundle amount on every
  * product row it grants, so rows are grouped by session id. Beta grants and the
- * founding-member payment itself never count.
+ * Initiation payment itself never count.
  *
  * Stripe sessions are included because a beta user who buys something they already
  * own (the July $17 Orientation purchase) gets no new product_access row: the
@@ -106,7 +120,7 @@ export function computePriorPayments(
   }
 
   for (const s of stripeSessions) {
-    if (s.product_slug === FOUNDING_MEMBER_SLUG) continue;
+    if (isInitiationSlug(s.product_slug)) continue;
     const amount = Number(s.amount_total ?? 0) / 100;
     if (!(amount > 0)) continue;
     bySession.set(s.id, Math.max(bySession.get(s.id) ?? 0, amount));
@@ -120,7 +134,7 @@ export function computePriorPayments(
   return manual > total ? roundCents(manual) : total;
 }
 
-export interface FoundingPrice {
+export interface InitiationPrice {
   /** What they've already paid, in dollars. */
   credit: number;
   /** What checkout will charge, in dollars. 0 means prior payments cover it. */
@@ -130,10 +144,10 @@ export interface FoundingPrice {
 }
 
 /** $60 minus what they've paid, never below zero. Balances under $0.50 are waived. */
-export function getFoundingMemberPrice(
+export function getInitiationPrice(
   priorPayments: number,
-  fullPrice: number = FOUNDING_MEMBER_PRICE
-): FoundingPrice {
+  fullPrice: number = INITIATION_PRICE
+): InitiationPrice {
   const credit = roundCents(Math.max(0, Number(priorPayments) || 0));
   let price = roundCents(Math.max(0, fullPrice - credit));
   if (price < MIN_CHARGE) price = 0;
