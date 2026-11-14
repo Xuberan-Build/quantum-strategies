@@ -1,0 +1,1297 @@
+[
+  {
+    "name": "Albert Einstein",
+    "birth": {
+      "date": "1879-03-14",
+      "time": "11:30",
+      "timezone": "Europe/Berlin",
+      "utcOffset": "+00:39:58",
+      "lat": 48.4,
+      "lng": 9.997,
+      "place": "Ulm, Germany",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Einstein,_Albert",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there. Germany had no standard time in 1879; the register time is Ulm local mean time (+00:39:58). IANA Europe/Berlin resolves to Berlin LMT (+00:53:28), 13.5 min different. Tested: both offsets give identical 26 activations (true node). Our old fixture used lat 48.4011, lng 9.9876."
+    },
+    "hd": {
+      "type": "Generator",
+      "authority": "Emotional",
+      "profile": "1/4",
+      "definition": "Split",
+      "incarnationCross": "Right Angle Cross of Eden (36/6 | 11/12)",
+      "activations": {
+        "personality": {
+          "sun": "36.1",
+          "earth": "6.1",
+          "moon": "5.4",
+          "northNode": "41.1",
+          "southNode": "31.1",
+          "mercury": "25.6",
+          "venus": "51.2",
+          "mars": "60.1",
+          "jupiter": "30.4",
+          "saturn": "17.1",
+          "uranus": "59.2",
+          "neptune": "24.1",
+          "pluto": "8.1"
+        },
+        "design": {
+          "sun": "11.4",
+          "earth": "12.4",
+          "moon": "46.3",
+          "northNode": "41.3",
+          "southNode": "31.3",
+          "mercury": "38.3",
+          "venus": "10.1",
+          "mars": "14.1",
+          "jupiter": "41.6",
+          "saturn": "36.5",
+          "uranus": "59.5",
+          "neptune": "27.6",
+          "pluto": "8.1"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/albert-einstein",
+      "designMomentUtc": "1878-12-17T12:38Z",
+      "secondarySources": [
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/celebrity/albert-einstein/",
+          "says": "Emotional Generator, 1/4, Split, channels 30-41, 25-51, 06-59, cross RAX Eden 1 (via search snippet; page blocks fetch)"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Published channels (secondary source): 30-41, 25-51, 6-59. Conflicts: scripts/calculator/fixtures/einstein.json (our old engine: 301.625 deg / 88.736 deg arc) says 2/3 Triple Split; THD and Genetic Matrix both say 1/4 Split. | metamorphicosmosis.blogspot.com (2019) describes an open Ego centre; THD and Genetic Matrix both have 25-51 defined (Ego defined). Blog gives no birth data or gates. | Our corrected engine (302/88) gets 1/4 but Triple Split, because its lunar node formula puts Personality North/South Node in 60.5/56.5 instead of 41.1/31.1, creating a spurious 11-56 channel.",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "Steve Jobs",
+    "birth": {
+      "date": "1955-02-24",
+      "time": "19:15",
+      "timezone": "America/Los_Angeles",
+      "utcOffset": "-08:00",
+      "lat": 37.78,
+      "lng": -122.42,
+      "place": "San Francisco, California",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Jobs,_Steve",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Generator",
+      "authority": "Emotional",
+      "profile": "6/3",
+      "definition": "Split",
+      "incarnationCross": "Left Angle Cross of Spirit (55/59 | 9/16)",
+      "activations": {
+        "personality": {
+          "sun": "55.6",
+          "earth": "59.6",
+          "moon": "17.5",
+          "northNode": "10.6",
+          "southNode": "15.6",
+          "mercury": "13.2",
+          "venus": "61.1",
+          "mars": "3.3",
+          "jupiter": "53.6",
+          "saturn": "43.3",
+          "uranus": "62.4",
+          "neptune": "50.2",
+          "pluto": "29.1"
+        },
+        "design": {
+          "sun": "9.3",
+          "earth": "16.3",
+          "moon": "41.1",
+          "northNode": "58.2",
+          "southNode": "52.2",
+          "mercury": "43.6",
+          "venus": "1.3",
+          "mars": "30.3",
+          "jupiter": "56.4",
+          "saturn": "1.2",
+          "uranus": "56.2",
+          "neptune": "50.1",
+          "pluto": "29.3"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/steve-jobs",
+      "designMomentUtc": "1954-11-30T11:53Z",
+      "secondarySources": [
+        {
+          "name": "Jovian Archive (Ryan Hanna, 3-part series, Oct 2026)",
+          "url": "https://jovianarchive.com/blogs/chart-interpretations-components/steve-jobs-part-3",
+          "says": "Generator, Emotional, 6/3, Split; channels 41-30, 52-9, 17-62; open Heart, Spleen, G, Head; LAX Spirit with Personality Sun 55.6, Earth 59.6, Design Sun 9.3, Earth 16.3"
+        },
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/celebrity/steve-jobs/",
+          "says": "GE 6/3 Split, LAX Spirit"
+        },
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/celebrities/steve-jobs-human-design",
+          "says": "Generator, Emotional, 6/3"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Published channels (secondary source): 30-41, 9-52, 17-62.",
+      "confidence": "very high (Jovian Archive gate.lines match THD exactly)"
+    }
+  },
+  {
+    "name": "Meryl Streep",
+    "birth": {
+      "date": "1949-06-22",
+      "time": "08:05",
+      "timezone": "America/New_York",
+      "utcOffset": "-04:00",
+      "lat": 40.718,
+      "lng": -74.359,
+      "place": "Summit, New Jersey",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Streep,_Meryl",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Generator",
+      "authority": "Sacral",
+      "profile": "3/5",
+      "definition": "Split",
+      "incarnationCross": "Right Angle Cross of The Vessel of Love (15/10 | 25/46)",
+      "activations": {
+        "personality": {
+          "sun": "15.3",
+          "earth": "10.3",
+          "moon": "2.2",
+          "northNode": "42.3",
+          "southNode": "32.3",
+          "mercury": "16.5",
+          "venus": "53.4",
+          "mars": "16.4",
+          "jupiter": "60.5",
+          "saturn": "59.2",
+          "uranus": "15.3",
+          "neptune": "48.4",
+          "pluto": "7.2"
+        },
+        "design": {
+          "sun": "25.5",
+          "earth": "46.5",
+          "moon": "60.2",
+          "northNode": "42.6",
+          "southNode": "32.6",
+          "mercury": "63.4",
+          "venus": "36.5",
+          "mars": "25.4",
+          "jupiter": "60.1",
+          "saturn": "59.1",
+          "uranus": "12.5",
+          "neptune": "48.5",
+          "pluto": "7.2"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/meryl-streep",
+      "designMomentUtc": "1949-03-23T16:32Z",
+      "secondarySources": [
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/celebrities/meryl-streep-human-design",
+          "says": "Generator, 3/5 (via search snippet)"
+        },
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/streep-meryl-human-design-chart.html",
+          "says": "page exists; details not readable"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases.",
+      "confidence": "medium-high (type/profile agree; gates single-source)"
+    }
+  },
+  {
+    "name": "Gwyneth Paltrow",
+    "birth": {
+      "date": "1972-09-27",
+      "time": "17:25",
+      "timezone": "America/Los_Angeles",
+      "utcOffset": "-07:00",
+      "lat": 34.052,
+      "lng": -118.243,
+      "place": "Los Angeles, California",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Paltrow,_Gwyneth",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Generator",
+      "authority": "Sacral",
+      "profile": "2/4",
+      "definition": "Split",
+      "incarnationCross": "Right Angle Cross of Service (18/17 | 52/58)",
+      "activations": {
+        "personality": {
+          "sun": "18.2",
+          "earth": "17.2",
+          "moon": "35.1",
+          "northNode": "61.3",
+          "southNode": "62.3",
+          "mercury": "48.3",
+          "venus": "4.3",
+          "mars": "6.6",
+          "jupiter": "10.3",
+          "saturn": "45.4",
+          "uranus": "57.3",
+          "neptune": "34.4",
+          "pluto": "46.5"
+        },
+        "design": {
+          "sun": "52.4",
+          "earth": "58.4",
+          "moon": "60.2",
+          "northNode": "61.6",
+          "southNode": "62.6",
+          "mercury": "56.4",
+          "venus": "45.4",
+          "mars": "56.4",
+          "jupiter": "10.6",
+          "saturn": "35.3",
+          "uranus": "48.6",
+          "neptune": "34.4",
+          "pluto": "46.2"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/gwyneth-paltrow",
+      "designMomentUtc": "1972-06-28T14:42Z",
+      "secondarySources": [
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/celebrities/gwyneth-paltrow-2/",
+          "says": "Generator, Sacral, 2/4, RAX Service (18/17 | 52/58)"
+        },
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/celebrity/gwyneth-paltrow/",
+          "says": "Pure (Sacral) Generator, 2/4"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases.",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "Donald Trump",
+    "birth": {
+      "date": "1946-06-14",
+      "time": "10:54",
+      "timezone": "America/New_York",
+      "utcOffset": "-04:00",
+      "lat": 40.713,
+      "lng": -74.007,
+      "place": "Jamaica Hospital Queens (Queens County), New York",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Trump,_Donald",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Manifesting Generator",
+      "authority": "Emotional",
+      "profile": "1/3",
+      "definition": "Single",
+      "incarnationCross": "Right Angle Cross of Eden (12/11 | 36/6)",
+      "activations": {
+        "personality": {
+          "sun": "12.1",
+          "earth": "11.1",
+          "moon": "26.5",
+          "northNode": "45.5",
+          "southNode": "26.5",
+          "mercury": "52.6",
+          "venus": "62.6",
+          "mars": "29.3",
+          "jupiter": "57.3",
+          "saturn": "62.4",
+          "uranus": "45.1",
+          "neptune": "18.3",
+          "pluto": "33.3"
+        },
+        "design": {
+          "sun": "36.3",
+          "earth": "6.3",
+          "moon": "59.6",
+          "northNode": "12.4",
+          "southNode": "11.4",
+          "mercury": "21.1",
+          "venus": "17.2",
+          "mars": "53.2",
+          "jupiter": "32.6",
+          "saturn": "53.4",
+          "uranus": "35.3",
+          "neptune": "18.4",
+          "pluto": "33.3"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/donald-trump",
+      "designMomentUtc": "1946-03-16T03:05Z",
+      "secondarySources": [
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://my.humandesign.ai/celebrities/donald-trump-human-design/",
+          "says": "Manifesting Generator, Emotional, 1/3, Single"
+        },
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/fr/celebrity/donald-trump/",
+          "says": "MGE 1/3 Single"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases.",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "Jimi Hendrix",
+    "birth": {
+      "date": "1942-11-27",
+      "time": "10:15",
+      "timezone": "America/Los_Angeles",
+      "utcOffset": "-07:00",
+      "lat": 47.603,
+      "lng": -122.33,
+      "place": "Seattle, Washington",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Hendrix,_Jimi",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Manifesting Generator",
+      "authority": "Emotional",
+      "profile": "6/2",
+      "definition": "Split",
+      "incarnationCross": "Left Angle Cross of Duality (34/20 | 40/37)",
+      "activations": {
+        "personality": {
+          "sun": "34.6",
+          "earth": "20.6",
+          "moon": "56.2",
+          "northNode": "29.5",
+          "southNode": "30.5",
+          "mercury": "34.4",
+          "venus": "9.2",
+          "mars": "1.5",
+          "jupiter": "62.5",
+          "saturn": "16.4",
+          "uranus": "20.3",
+          "neptune": "46.4",
+          "pluto": "31.6"
+        },
+        "design": {
+          "sun": "40.2",
+          "earth": "37.2",
+          "moon": "27.4",
+          "northNode": "59.5",
+          "southNode": "55.5",
+          "mercury": "46.2",
+          "venus": "7.4",
+          "mars": "47.2",
+          "jupiter": "53.3",
+          "saturn": "35.1",
+          "uranus": "20.5",
+          "neptune": "46.1",
+          "pluto": "31.5"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/jimi-hendrix",
+      "designMomentUtc": "1942-08-30T20:55Z",
+      "secondarySources": [
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/celebrity/jimi-hendrix/",
+          "says": "MGE 6/2 Split; channels 29-46, 37-40, 20-34, 07-31"
+        },
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/celebrities/jimi-hendrix",
+          "says": "Manifesting Generator, 6/2"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Published channels (secondary source): 29-46, 37-40, 20-34, 7-31. Conflicts: Genetic Matrix 13-sign (non-tropical) variant shows PSE 5/1; not comparable, different zodiac.",
+      "confidence": "very high (our corrected engine matches all 26 THD activations)"
+    }
+  },
+  {
+    "name": "Tony Robbins",
+    "birth": {
+      "date": "1960-02-29",
+      "time": "20:10",
+      "timezone": "America/Los_Angeles",
+      "utcOffset": "-08:00",
+      "lat": 34.05,
+      "lng": -118.25,
+      "place": "Los Angeles, California",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Robbins,_Tony",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Manifesting Generator",
+      "authority": "Emotional",
+      "profile": "6/2",
+      "definition": "Single",
+      "incarnationCross": "Left Angle Cross of Migration (37/40 | 5/35)",
+      "activations": {
+        "personality": {
+          "sun": "37.6",
+          "earth": "40.6",
+          "moon": "42.2",
+          "northNode": "6.3",
+          "southNode": "36.3",
+          "mercury": "36.4",
+          "venus": "19.5",
+          "mars": "41.4",
+          "jupiter": "10.2",
+          "saturn": "54.1",
+          "uranus": "7.6",
+          "neptune": "44.2",
+          "pluto": "59.5"
+        },
+        "design": {
+          "sun": "5.2",
+          "earth": "35.2",
+          "moon": "49.5",
+          "northNode": "46.3",
+          "southNode": "25.3",
+          "mercury": "43.6",
+          "venus": "50.2",
+          "mars": "34.2",
+          "jupiter": "5.2",
+          "saturn": "58.3",
+          "uranus": "4.3",
+          "neptune": "44.1",
+          "pluto": "40.1"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/tony-robbins",
+      "designMomentUtc": "1959-12-05T11:47Z",
+      "secondarySources": [
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/celebrities/tony-robbins-human-design-chart",
+          "says": "Manifesting Generator, Emotional, 6/2, LAX Migration (37/40 | 5/35)"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Conflicts: Genetic Matrix Vedic/sidereal variant page shows 5/1; not comparable (sidereal).",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "Stephen King",
+    "birth": {
+      "date": "1947-09-21",
+      "time": "01:30",
+      "timezone": "America/New_York",
+      "utcOffset": "-04:00",
+      "lat": 43.666667,
+      "lng": -70.25,
+      "place": "Portland, Maine",
+      "rodden": "A",
+      "source": "https://www.astro.com/astro-databank/King,_Stephen",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Manifesting Generator",
+      "authority": "Sacral",
+      "profile": "6/2",
+      "definition": "Single",
+      "incarnationCross": "Left Angle Cross of The Plane (6/36 | 15/10)",
+      "activations": {
+        "personality": {
+          "sun": "6.6",
+          "earth": "36.6",
+          "moon": "5.6",
+          "northNode": "8.1",
+          "southNode": "14.1",
+          "mercury": "48.6",
+          "venus": "46.5",
+          "mars": "62.4",
+          "jupiter": "43.6",
+          "saturn": "7.6",
+          "uranus": "12.4",
+          "neptune": "48.1",
+          "pluto": "7.2"
+        },
+        "design": {
+          "sun": "15.2",
+          "earth": "10.2",
+          "moon": "33.1",
+          "northNode": "20.3",
+          "southNode": "34.3",
+          "mercury": "62.4",
+          "venus": "16.4",
+          "mars": "23.5",
+          "jupiter": "1.6",
+          "saturn": "31.6",
+          "uranus": "45.6",
+          "neptune": "18.5",
+          "pluto": "33.5"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/stephen-king",
+      "designMomentUtc": "1947-06-21T15:02Z",
+      "secondarySources": [
+        {
+          "name": "Jovian Archive (4-part series)",
+          "url": "https://jovianarchive.com/blogs/chart-interpretations-components/keynoting-stephen-kings-design-part-2",
+          "says": "Manifesting Generator, Sacral, 6/2, Single; channels 20-34, 34-57, 20-10, 10-57, 10-34, 20-57, 1-8, 31-7, 48-16, 43-23"
+        },
+        {
+          "name": "Jovian Archive part 4",
+          "url": "https://jovianarchive.com/blogs/chart-interpretations-components/part-4-stephen-kings-incarnation-cross",
+          "says": "LAX The Plane (6/36 | 15/10); Personality Jupiter 43.6, Personality Mars 62.4, Design Mars 23.5, Design Mercury 62.4"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Published channels (secondary source): 20-34, 34-57, 10-20, 10-57, 10-34, 20-57, 1-8, 7-31, 16-48, 23-43. Conflicts: Rodden A (not AA). | Our corrected engine gives Design Mercury 62.3; Jovian and THD both give 62.4 (a line-boundary case worth a regression test).",
+      "confidence": "very high (four Jovian gate.lines match THD exactly)"
+    }
+  },
+  {
+    "name": "Angelina Jolie",
+    "birth": {
+      "date": "1975-06-04",
+      "time": "09:09",
+      "timezone": "America/Los_Angeles",
+      "utcOffset": "-07:00",
+      "lat": 34.052,
+      "lng": -118.243,
+      "place": "Los Angeles Cedars of Lebanon, California",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Jolie,_Angelina",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Manifesting Generator",
+      "authority": "Emotional",
+      "profile": "3/5",
+      "definition": "Split",
+      "incarnationCross": "Right Angle Cross of Consciousness (35/5 | 63/64)",
+      "activations": {
+        "personality": {
+          "sun": "35.3",
+          "earth": "5.3",
+          "moon": "21.4",
+          "northNode": "34.1",
+          "southNode": "20.1",
+          "mercury": "45.6",
+          "venus": "56.2",
+          "mars": "21.2",
+          "jupiter": "51.3",
+          "saturn": "53.3",
+          "uranus": "50.3",
+          "neptune": "9.5",
+          "pluto": "18.3"
+        },
+        "design": {
+          "sun": "63.5",
+          "earth": "64.5",
+          "moon": "58.3",
+          "northNode": "34.5",
+          "southNode": "20.5",
+          "mercury": "13.6",
+          "venus": "21.5",
+          "mars": "41.1",
+          "jupiter": "36.5",
+          "saturn": "39.3",
+          "uranus": "28.1",
+          "neptune": "5.1",
+          "pluto": "18.5"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/angelina-jolie",
+      "designMomentUtc": "1975-03-06T15:12Z",
+      "secondarySources": [
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/celebrities/angelina-jolie-human-design",
+          "says": "Manifesting Generator, 3/5"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Conflicts: Our corrected engine calls her a Manifestor: its node formula puts Personality North Node in 14.6 instead of 34.1, losing the Sacral definition. THD and HumanDesign.ai both say Manifesting Generator. Good regression case for the node fix.",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "Barack Obama",
+    "birth": {
+      "date": "1961-08-04",
+      "time": "19:24",
+      "timezone": "Pacific/Honolulu",
+      "utcOffset": "-10:00",
+      "lat": 21.283,
+      "lng": -157.739,
+      "place": "Honolulu, Hawaii",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Obama,_Barack",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there. Time 19:24 from released birth certificate; astrotheme also lists AA."
+    },
+    "hd": {
+      "type": "Projector",
+      "authority": "Emotional",
+      "profile": "6/2",
+      "definition": "Single",
+      "incarnationCross": "Left Angle Cross of Refinement (33/19 | 2/1)",
+      "activations": {
+        "personality": {
+          "sun": "33.6",
+          "earth": "19.6",
+          "moon": "20.4",
+          "northNode": "29.3",
+          "southNode": "30.3",
+          "mercury": "31.1",
+          "venus": "15.4",
+          "mars": "47.6",
+          "jupiter": "60.5",
+          "saturn": "61.5",
+          "uranus": "29.1",
+          "neptune": "44.2",
+          "pluto": "40.2"
+        },
+        "design": {
+          "sun": "2.2",
+          "earth": "1.2",
+          "moon": "38.5",
+          "northNode": "59.4",
+          "southNode": "55.4",
+          "mercury": "2.6",
+          "venus": "21.4",
+          "mars": "56.4",
+          "jupiter": "41.5",
+          "saturn": "60.4",
+          "uranus": "4.3",
+          "neptune": "44.3",
+          "pluto": "59.6"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/barack-obama",
+      "designMomentUtc": "1961-05-05T07:08Z",
+      "secondarySources": [
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/celebrity/barack-obama/",
+          "says": "Emotional Projector, 6/2, Single, LAX Refinement 1"
+        },
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/public-figures",
+          "says": "6/2 Projector (via search snippet)"
+        },
+        {
+          "name": "hdflow.io",
+          "url": "https://hdflow.io/blog/human-design-historical-figures-bodygraph-database",
+          "says": "Projector (type only)"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases.",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "Marilyn Monroe",
+    "birth": {
+      "date": "1926-06-01",
+      "time": "09:30",
+      "timezone": "America/Los_Angeles",
+      "utcOffset": "-08:00",
+      "lat": 34.052,
+      "lng": -118.243,
+      "place": "Los Angeles, California",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Monroe,_Marilyn",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Projector",
+      "authority": "Emotional",
+      "profile": "6/2",
+      "definition": "Split",
+      "incarnationCross": "Left Angle Cross of Identification (16/9 | 63/64)",
+      "activations": {
+        "personality": {
+          "sun": "16.6",
+          "earth": "9.6",
+          "moon": "49.1",
+          "northNode": "53.2",
+          "southNode": "54.2",
+          "mercury": "16.2",
+          "venus": "3.3",
+          "mars": "22.4",
+          "jupiter": "30.3",
+          "saturn": "43.3",
+          "uranus": "25.1",
+          "neptune": "4.4",
+          "pluto": "39.5"
+        },
+        "design": {
+          "sun": "63.2",
+          "earth": "64.2",
+          "moon": "50.2",
+          "northNode": "62.4",
+          "southNode": "61.4",
+          "mercury": "36.4",
+          "venus": "19.4",
+          "mars": "54.2",
+          "jupiter": "19.6",
+          "saturn": "14.2",
+          "uranus": "36.3",
+          "neptune": "4.5",
+          "pluto": "39.4"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/marilyn-monroe",
+      "designMomentUtc": "1926-03-03T18:45Z",
+      "secondarySources": [
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/celebrity/marilyn-monroe/",
+          "says": "Emotional Projector, 6/2, Split, LAX Identification 1, channels 19-49, 04-63"
+        },
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/celebrities/marilyn-monroe-human-design-chart",
+          "says": "Projector, 6/2"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Published channels (secondary source): 19-49, 4-63. Conflicts: Genetic Matrix 13-sign variant shows 5/1 LAX Defiance; not comparable.",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "Leonardo DiCaprio",
+    "birth": {
+      "date": "1974-11-11",
+      "time": "02:47",
+      "timezone": "America/Los_Angeles",
+      "utcOffset": "-08:00",
+      "lat": 34.052,
+      "lng": -118.243,
+      "place": "Los Angeles, California",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/DiCaprio,_Leonardo",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Projector",
+      "authority": "Emotional",
+      "profile": "6/2",
+      "definition": "Split",
+      "incarnationCross": "Left Angle Cross of Defiance (1/2 | 4/49)",
+      "activations": {
+        "personality": {
+          "sun": "1.6",
+          "earth": "2.6",
+          "moon": "57.1",
+          "northNode": "9.5",
+          "southNode": "16.5",
+          "mercury": "50.4",
+          "venus": "43.2",
+          "mars": "44.3",
+          "jupiter": "37.3",
+          "saturn": "53.4",
+          "uranus": "50.4",
+          "neptune": "9.4",
+          "pluto": "18.5"
+        },
+        "design": {
+          "sun": "4.2",
+          "earth": "49.2",
+          "moon": "12.3",
+          "northNode": "26.1",
+          "southNode": "45.1",
+          "mercury": "7.4",
+          "venus": "56.3",
+          "mars": "40.6",
+          "jupiter": "63.5",
+          "saturn": "39.5",
+          "uranus": "32.4",
+          "neptune": "9.2",
+          "pluto": "18.2"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/leonardo-dicaprio",
+      "designMomentUtc": "1974-08-13T19:36Z",
+      "secondarySources": [
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/celebrity/leonardo-dicaprio/",
+          "says": "Emotional Projector, 6/2, Split"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Conflicts: Genetic Matrix Vedic variant shows PSP 5/1 Single; not comparable (sidereal).",
+      "confidence": "very high (our corrected engine matches all 26 THD activations)"
+    }
+  },
+  {
+    "name": "Diana, Princess of Wales",
+    "birth": {
+      "date": "1961-07-01",
+      "time": "19:45",
+      "timezone": "Europe/London",
+      "utcOffset": "+01:00",
+      "lat": 52.833333,
+      "lng": 0.5,
+      "place": "Sandringham, England",
+      "rodden": "A",
+      "source": "https://www.astro.com/astro-databank/Diana,_Princess_of_Wales",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Projector",
+      "authority": "Emotional",
+      "profile": "1/3",
+      "definition": "Split",
+      "incarnationCross": "Right Angle Cross of Tension (39/38 | 21/48)",
+      "activations": {
+        "personality": {
+          "sun": "39.1",
+          "earth": "38.1",
+          "moon": "30.1",
+          "northNode": "29.4",
+          "southNode": "30.4",
+          "mercury": "15.6",
+          "venus": "23.6",
+          "mars": "59.2",
+          "jupiter": "41.4",
+          "saturn": "60.2",
+          "uranus": "4.5",
+          "neptune": "44.2",
+          "pluto": "40.1"
+        },
+        "design": {
+          "sun": "21.3",
+          "earth": "48.3",
+          "moon": "57.2",
+          "northNode": "40.1",
+          "southNode": "37.1",
+          "mercury": "63.6",
+          "venus": "42.6",
+          "mars": "39.5",
+          "jupiter": "41.1",
+          "saturn": "60.3",
+          "uranus": "4.4",
+          "neptune": "44.4",
+          "pluto": "40.1"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/princess-of-wales-diana",
+      "designMomentUtc": "1961-04-01T15:23Z",
+      "secondarySources": [
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/diana,_princess_of_wales--human-design-chart.html",
+          "says": "listed under \"Type: Emotional Projector\"; profile not readable"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Conflicts: Rodden A, not AA: the 19:45 time is reported, not from a birth certificate. Alternative times have circulated in astrology literature (not verified here); her Moon (30.1/57.2) and profile are sensitive to the time.",
+      "confidence": "medium"
+    }
+  },
+  {
+    "name": "Maya Angelou",
+    "birth": {
+      "date": "1928-04-04",
+      "time": "14:10",
+      "timezone": "America/Chicago",
+      "utcOffset": "-06:00",
+      "lat": 38.635,
+      "lng": -90.201,
+      "place": "Saint Louis, Missouri",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Angelou,_Maya",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Manifestor",
+      "authority": "Splenic",
+      "profile": "6/2",
+      "definition": "Single",
+      "incarnationCross": "Left Angle Cross of Endeavour (21/48 | 54/53)",
+      "activations": {
+        "personality": {
+          "sun": "21.6",
+          "earth": "48.6",
+          "moon": "48.2",
+          "northNode": "16.6",
+          "southNode": "9.6",
+          "mercury": "22.4",
+          "venus": "22.6",
+          "mars": "30.4",
+          "jupiter": "51.2",
+          "saturn": "26.3",
+          "uranus": "17.1",
+          "neptune": "29.3",
+          "pluto": "39.6"
+        },
+        "design": {
+          "sun": "54.2",
+          "earth": "53.2",
+          "moon": "56.5",
+          "northNode": "45.2",
+          "southNode": "26.2",
+          "mercury": "54.2",
+          "venus": "34.6",
+          "mars": "26.6",
+          "jupiter": "36.6",
+          "saturn": "5.4",
+          "uranus": "25.2",
+          "neptune": "29.5",
+          "pluto": "53.1"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/maya-angelou",
+      "designMomentUtc": "1928-01-08T08:04Z",
+      "secondarySources": [
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/it/celebrity/maya-angelou/",
+          "says": "Splenic Manifestor, 6/2, Single"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases.",
+      "confidence": "very high (our corrected engine matches all 26 THD activations)"
+    }
+  },
+  {
+    "name": "Gloria Steinem",
+    "birth": {
+      "date": "1934-03-25",
+      "time": "22:00",
+      "timezone": "America/New_York",
+      "utcOffset": "-05:00",
+      "lat": 41.655,
+      "lng": -83.536,
+      "place": "Toledo, Ohio",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Steinem,_Gloria",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Manifestor",
+      "authority": "Emotional",
+      "profile": "1/4",
+      "definition": "Split",
+      "incarnationCross": "Right Angle Cross of Service (17/18 | 58/52)",
+      "activations": {
+        "personality": {
+          "sun": "17.1",
+          "earth": "18.1",
+          "moon": "33.1",
+          "northNode": "13.6",
+          "southNode": "7.6",
+          "mercury": "37.3",
+          "venus": "49.2",
+          "mars": "17.6",
+          "jupiter": "57.6",
+          "saturn": "49.6",
+          "uranus": "42.6",
+          "neptune": "40.5",
+          "pluto": "62.2"
+        },
+        "design": {
+          "sun": "58.4",
+          "earth": "52.4",
+          "moon": "20.6",
+          "northNode": "49.2",
+          "southNode": "4.2",
+          "mercury": "11.2",
+          "venus": "13.6",
+          "mars": "60.5",
+          "jupiter": "32.1",
+          "saturn": "13.1",
+          "uranus": "42.3",
+          "neptune": "64.2",
+          "pluto": "62.4"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/gloria-steinem",
+      "designMomentUtc": "1933-12-28T22:30Z",
+      "secondarySources": [
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/celebrities/gloria-steinem",
+          "says": "Manifestor, 1/4"
+        },
+        {
+          "name": "astrotheme",
+          "url": "https://www.astrotheme.com/astrology/Gloria_Steinem",
+          "says": "birth data cross-check: 25 Mar 1934 22:00 Toledo, AA, birth certificate"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases.",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "Al Gore",
+    "birth": {
+      "date": "1948-03-31",
+      "time": "12:53",
+      "timezone": "America/New_York",
+      "utcOffset": "-05:00",
+      "lat": 38.892,
+      "lng": -77.02,
+      "place": "Washington, District of Columbia",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Gore,_Al",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Manifestor",
+      "authority": "Ego Manifested",
+      "profile": "2/4",
+      "definition": "Single",
+      "incarnationCross": "Right Angle Cross of Tension (21/48 | 38/39)",
+      "activations": {
+        "personality": {
+          "sun": "21.2",
+          "earth": "48.2",
+          "moon": "10.6",
+          "northNode": "2.2",
+          "southNode": "1.2",
+          "mercury": "63.6",
+          "venus": "8.2",
+          "mars": "7.6",
+          "jupiter": "10.1",
+          "saturn": "7.3",
+          "uranus": "45.6",
+          "neptune": "48.3",
+          "pluto": "33.6"
+        },
+        "design": {
+          "sun": "38.4",
+          "earth": "39.4",
+          "moon": "32.4",
+          "northNode": "23.4",
+          "southNode": "43.4",
+          "mercury": "38.5",
+          "venus": "19.6",
+          "mars": "40.2",
+          "jupiter": "5.5",
+          "saturn": "4.4",
+          "uranus": "12.1",
+          "neptune": "48.4",
+          "pluto": "7.2"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/al-gore",
+      "designMomentUtc": "1948-01-04T09:05Z",
+      "secondarySources": [
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/celebrities/al-gore",
+          "says": "Manifestor, 2/4"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Conflicts: THD labels authority \"Ego Manifested\"; our engine labels it \"Ego\". Same thing, naming only.",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "Johnny Depp",
+    "birth": {
+      "date": "1963-06-09",
+      "time": "08:44",
+      "timezone": "America/Chicago",
+      "utcOffset": "-05:00",
+      "lat": 37.773,
+      "lng": -87.111,
+      "place": "Owensboro, Kentucky",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Depp,_Johnny",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Manifestor",
+      "authority": "Emotional",
+      "profile": "2/4",
+      "definition": "Split",
+      "incarnationCross": "Right Angle Cross of Rulership (45/26 | 22/47)",
+      "activations": {
+        "personality": {
+          "sun": "45.2",
+          "earth": "26.2",
+          "moon": "38.5",
+          "northNode": "53.6",
+          "southNode": "54.6",
+          "mercury": "8.1",
+          "venus": "8.2",
+          "mars": "59.4",
+          "jupiter": "21.5",
+          "saturn": "49.5",
+          "uranus": "59.2",
+          "neptune": "1.1",
+          "pluto": "40.5"
+        },
+        "design": {
+          "sun": "22.4",
+          "earth": "47.4",
+          "moon": "46.3",
+          "northNode": "56.3",
+          "southNode": "60.3",
+          "mercury": "55.4",
+          "venus": "19.1",
+          "mars": "31.4",
+          "jupiter": "36.2",
+          "saturn": "13.6",
+          "uranus": "59.3",
+          "neptune": "1.3",
+          "pluto": "40.6"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/johnny-depp",
+      "designMomentUtc": "1963-03-11T07:30Z",
+      "secondarySources": [
+        {
+          "name": "HumanDesign.ai",
+          "url": "https://app.humandesign.ai/celebrities/johnny-depp-human-design",
+          "says": "Manifestor, Emotional, 2/4, RAX Rulership (45/26 | 22/47)"
+        },
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/celebrity/johnny-depp/",
+          "says": "Emotional Manifestor, 2/4, Split"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases.",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "H. G. Wells",
+    "birth": {
+      "date": "1866-09-21",
+      "time": "16:30",
+      "timezone": "Europe/London",
+      "utcOffset": "+00:00",
+      "lat": 51.406,
+      "lng": 0.014,
+      "place": "Bromley, England",
+      "rodden": "AA",
+      "source": "https://www.astro.com/astro-databank/Wells,_H.G.",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Reflector",
+      "authority": "Lunar",
+      "profile": "1/3",
+      "definition": "None",
+      "incarnationCross": "Right Angle Cross of The Vessel of Love (46/25 | 15/10)",
+      "activations": {
+        "personality": {
+          "sun": "46.1",
+          "earth": "25.1",
+          "moon": "49.3",
+          "northNode": "46.5",
+          "southNode": "25.5",
+          "mercury": "47.3",
+          "venus": "1.2",
+          "mars": "52.3",
+          "jupiter": "61.2",
+          "saturn": "44.3",
+          "uranus": "52.5",
+          "neptune": "21.3",
+          "pluto": "2.2"
+        },
+        "design": {
+          "sun": "15.3",
+          "earth": "10.3",
+          "moon": "32.4",
+          "northNode": "18.5",
+          "southNode": "17.5",
+          "mercury": "52.4",
+          "venus": "56.4",
+          "mars": "27.6",
+          "jupiter": "60.5",
+          "saturn": "28.5",
+          "uranus": "15.6",
+          "neptune": "21.4",
+          "pluto": "2.2"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/hg-wells",
+      "designMomentUtc": "1866-06-22T03:30Z",
+      "secondarySources": [
+        {
+          "name": "Genetic Matrix",
+          "url": "https://www.geneticmatrix.com/learn-hub/profiles/index.html",
+          "says": "listed as a 1/3 Reflector example"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Conflicts: THD Personality Nodes 46.5/25.5; our engine 18.1/17.1 (node formula). Type unaffected.",
+      "confidence": "high"
+    }
+  },
+  {
+    "name": "Rosalynn Carter",
+    "birth": {
+      "date": "1927-08-18",
+      "time": "06:00",
+      "timezone": "America/New_York",
+      "utcOffset": "-06:00",
+      "lat": 32.033333,
+      "lng": -84.4,
+      "place": "Plains, Georgia (US)",
+      "rodden": "A",
+      "source": "https://www.astro.com/astro-databank/Carter,_Rosalynn",
+      "sourceNote": "Rodden rating and data as embedded in the Total Human Design page (its source_id is the Astro-Databank page name); astro.com itself blocks automated reads, so not re-read there."
+    },
+    "hd": {
+      "type": "Reflector",
+      "authority": "Lunar",
+      "profile": "6/3",
+      "definition": "None",
+      "incarnationCross": "Left Angle Cross of Revolution (4/49 | 8/14)",
+      "activations": {
+        "personality": {
+          "sun": "4.6",
+          "earth": "49.6",
+          "moon": "27.5",
+          "northNode": "12.4",
+          "southNode": "11.4",
+          "mercury": "33.3",
+          "venus": "6.3",
+          "mars": "64.5",
+          "jupiter": "25.5",
+          "saturn": "34.2",
+          "uranus": "25.5",
+          "neptune": "29.3",
+          "pluto": "53.2"
+        },
+        "design": {
+          "sun": "8.3",
+          "earth": "14.3",
+          "moon": "5.4",
+          "northNode": "12.6",
+          "southNode": "11.6",
+          "mercury": "23.6",
+          "venus": "52.4",
+          "mars": "53.4",
+          "jupiter": "36.5",
+          "saturn": "34.6",
+          "uranus": "25.5",
+          "neptune": "4.6",
+          "pluto": "39.6"
+        }
+      },
+      "source": "https://totalhumandesign.com/design/rosalynn-carter",
+      "designMomentUtc": "1927-05-18T09:45Z",
+      "secondarySources": [
+        {
+          "name": "Several HD blogs (type only)",
+          "url": "https://thedesignofyou.squarespace.com/blog/everything-you-need-to-know-about-reflectors",
+          "says": "commonly listed as a famous Reflector"
+        }
+      ],
+      "notes": "Primary chart: Total Human Design (totalhumandesign.com), which builds charts from Astro-Databank records; independently re-checked here: Sun and Moon gates.lines reproduce with 302.0 deg wheel start and 88.0 deg design arc, and its lunar nodes match the true (osculating) node in 90/90 cases. Conflicts: DO NOT USE FOR REGRESSION. THD shows the ADB offset -06:00 (CST) but its activations were computed at -04:00 (America/New_York EDT, UTC 10:00); its design moment is 121 min off an 88 deg arc from the displayed time. At -04:00 (THD) she is a Reflector 6/3 with Personality Sun 4.6. At the ADB -06:00 (UTC 12:00) Personality Sun moves to 29.1 and Earth to 30.1, which changes the chart. Which zone Plains, Georgia kept in 1927 needs checking on astro.com before use.",
+      "confidence": "conflict"
+    }
+  }
+]

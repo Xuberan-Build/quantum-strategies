@@ -100,29 +100,24 @@ export function getSunLongitude(date: Date): number {
 // True Lunar Node
 // ---------------------------------------------------------------------------
 
+/**
+ * True (osculating) lunar node: where the plane of the Moon's instantaneous geocentric
+ * orbit crosses the ecliptic of date, northbound. Computed from the Moon's position and
+ * velocity (angular momentum h = r × v; ascending node direction = ẑ × h), which is how
+ * Swiss Ephemeris and the reference Human Design calculators define the "true node".
+ *
+ * Until 2026-11-14 this used a short Meeus-style series with the wrong arguments
+ * (2(F−Ω) for 2(D−F), etc.). The nodes then disagreed with published charts in 25 of 18×2
+ * activations (scripts/calculator/reference-check.ts).
+ */
 function getTrueNorthNode(date: Date): number {
-  const T = julianCentury(date);
-  let omega =
-    125.0445479 -
-    1934.1362608 * T +
-    0.0020754 * T * T +
-    T * T * T / 467441 -
-    T * T * T * T / 60616000;
-
-  const D_r  = (297.85036 + 445267.111480 * T) * (Math.PI / 180);
-  const M_r  = (357.52772 + 35999.050340  * T) * (Math.PI / 180);
-  const Mp_r = (134.96298 + 477198.867398 * T) * (Math.PI / 180);
-  const F_r  = (93.27191  + 483202.017538 * T) * (Math.PI / 180);
-  const Om_r = omega * (Math.PI / 180);
-
-  const correction =
-    -1.4979 * Math.sin(2 * (F_r - Om_r)) -
-    0.1500 * Math.sin(M_r) -
-    0.1226 * Math.sin(2 * (F_r - Om_r) + 2 * D_r) +
-    0.1176 * Math.sin(2 * (F_r - Om_r) - 2 * D_r) -
-    0.0801 * Math.sin(2 * (Mp_r - F_r));
-
-  return norm360(omega + correction);
+  const time = Astronomy.MakeTime(date);
+  const eqj = Astronomy.GeoMoonState(time);
+  const s = Astronomy.RotateState(Astronomy.Rotation_EQJ_ECT(time), eqj);
+  const hx = s.y * s.vz - s.z * s.vy;
+  const hy = s.z * s.vx - s.x * s.vz;
+  // Ascending node vector n = ẑ × h = (−hy, hx, 0)
+  return norm360(Math.atan2(hx, -hy) * (180 / Math.PI));
 }
 
 // ---------------------------------------------------------------------------
@@ -324,17 +319,22 @@ export async function getEphemeris(utcDatetime: Date, lat: number, lng: number):
 }
 
 /**
- * Finds the UTC datetime when the Sun was exactly 88.736° before the birth
- * Sun longitude — the Human Design "design date" (~88 days before birth).
+ * Human Design "design" moment: when the Sun stood 88° of solar arc before its birth
+ * position (about 88 to 89 days earlier). A solar-arc rule, not a day count.
+ * Until 2026-11-14 the engine used 88.736°, which put the design moment ~18 hours early
+ * and shifted the Design Moon by ~10°. See brain/research/chart-industry/field-primer.md §2.5.
  */
-export function findDesignDate(birthUtc: Date, birthSunLng: number): Date {
-  const targetLng = norm360(birthSunLng - 88.736);
+export const DESIGN_SOLAR_ARC = 88;
+
+export function findDesignDate(birthUtc: Date, birthSunLng: number, solarArc: number = DESIGN_SOLAR_ARC): Date {
+  const targetLng = norm360(birthSunLng - solarArc);
   const searchStart = new Date(birthUtc.getTime() - 95 * 86_400_000);
   const result = Astronomy.SearchSunLongitude(targetLng, searchStart, 95);
 
   if (result === null) {
     console.warn('[ephemeris] SearchSunLongitude returned null — using linear estimate.');
-    return new Date(birthUtc.getTime() - 88.736 * 86_400_000);
+    // Rough fallback: the Sun moves a little under 1° a day.
+    return new Date(birthUtc.getTime() - solarArc * 1.0146 * 86_400_000);
   }
 
   return result.date;

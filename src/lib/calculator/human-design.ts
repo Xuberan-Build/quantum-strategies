@@ -28,24 +28,30 @@ import { norm360 } from './utils';
 // ---------------------------------------------------------------------------
 
 /**
- * 64 gates ordered around the Rave Mandala starting at 301.625° tropical
- * (~1°37′ Aquarius). Each gate spans 5.625°. Source: Jovian Archive / Ra Uru Hu.
+ * The 64 gates in wheel order, starting with Gate 41 at 2°00′ Aquarius (302°).
+ * Each gate spans 5.625°, each line 0.9375°.
  *
- * Gate 41 begins at 301.625°
- * Gate 19 begins at 307.25°
- * Gate 13 begins at 312.875°
- * … and so on, wrapping through 360°/0° back to 302°.
+ * Gate 41 begins at 302.0°
+ * Gate 19 begins at 307.625°
+ * Gate 13 begins at 313.25°
+ * … wrapping through 360°/0° back to 302°.
  */
-const GATE_SEQUENCE: readonly number[] = [
+export const GATE_SEQUENCE: readonly number[] = [
   41, 19, 13, 49, 30, 55, 37, 63, 22, 36, 25, 17, 21, 51, 42, 3,
   27, 24, 2,  23, 8,  20, 16, 35, 45, 12, 15, 52, 39, 53, 62, 56,
   31, 33, 7,  4,  29, 59, 40, 64, 47, 6,  46, 18, 48, 57, 32, 50,
   28, 44, 1,  43, 14, 34, 9,  5,  26, 11, 10, 58, 38, 54, 61, 60,
 ];
 
-/** Tropical longitude where Gate 41 (index 0) begins. Calibrated to 301.625° (~1°37' Aquarius).
- *  Valid range: 301.5°–301.75°. Confirmed against Austin Santos (1/3 Manifestor, self-reported). */
-const GATE_START_DEGREE = 301.625;
+/**
+ * Tropical longitude where Gate 41 (index 0) begins: 2°00′ Aquarius.
+ *
+ * This is the field convention (every independent engine and published gate table we found;
+ * see brain/research/chart-industry/field-primer.md §2.5). Until 2026-11-14 the engine used
+ * 301.625°, tuned to one self-reported chart; that moved planets near a boundary into the
+ * wrong gate or line. Changing this changes users' charts: see scripts/calculator/impact-report.ts.
+ */
+export const GATE_START_DEGREE = 302.0;
 
 /** Width of each gate in degrees (360 / 64). */
 const GATE_WIDTH = 360 / 64; // 5.625°
@@ -205,9 +211,12 @@ const CHANNELS: ReadonlyArray<readonly [number, number]> = [
  *   gateIndex = floor(offset / GATE_WIDTH)        → 0..63
  *   line      = floor((offset % GATE_WIDTH) / LINE_WIDTH) + 1  → 1..6
  */
-function gateFromLongitude(lng: number): { gate: number; line: 1 | 2 | 3 | 4 | 5 | 6 } {
+export function gateFromLongitude(
+  lng: number,
+  gateStart: number = GATE_START_DEGREE,
+): { gate: number; line: 1 | 2 | 3 | 4 | 5 | 6 } {
   const normalizedLng = norm360(lng);
-  const offset = norm360(normalizedLng - GATE_START_DEGREE);
+  const offset = norm360(normalizedLng - gateStart);
   const gateIndex = Math.floor(offset / GATE_WIDTH);
   const lineRaw = Math.floor((offset % GATE_WIDTH) / LINE_WIDTH) + 1;
   // Clamp to 1–6 for floating-point safety
@@ -219,8 +228,8 @@ function gateFromLongitude(lng: number): { gate: number; line: 1 | 2 | 3 | 4 | 5
 /**
  * Build a GateActivation from a tropical longitude.
  */
-function activationFromLng(lng: number): GateActivation {
-  const { gate, line } = gateFromLongitude(lng);
+function activationFromLng(lng: number, gateStart: number): GateActivation {
+  const { gate, line } = gateFromLongitude(lng, gateStart);
   const center = GATE_CENTERS[gate];
   if (!center) {
     throw new Error(`No center mapping for gate ${gate}`);
@@ -236,26 +245,27 @@ function activationFromLng(lng: number): GateActivation {
  * Builds an HDActivations record for 13 planets from a single EphemerisResult.
  * Earth's longitude is always opposite the Sun (sun + 180°).
  */
-function buildActivations(eph: EphemerisResult): HDActivations {
+function buildActivations(eph: EphemerisResult, gateStart: number): HDActivations {
   const p = eph.planets;
+  const at = (lng: number) => activationFromLng(lng, gateStart);
 
   const sunLng = p.sun.tropicalLng;
   const earthLng = norm360(sunLng + 180);
 
   return {
-    sun:      activationFromLng(sunLng),
-    earth:    activationFromLng(earthLng),
-    moon:     activationFromLng(p.moon.tropicalLng),
-    northNode: activationFromLng(p.northNode.tropicalLng),
-    southNode: activationFromLng(p.southNode.tropicalLng),
-    mercury:  activationFromLng(p.mercury.tropicalLng),
-    venus:    activationFromLng(p.venus.tropicalLng),
-    mars:     activationFromLng(p.mars.tropicalLng),
-    jupiter:  activationFromLng(p.jupiter.tropicalLng),
-    saturn:   activationFromLng(p.saturn.tropicalLng),
-    uranus:   activationFromLng(p.uranus.tropicalLng),
-    neptune:  activationFromLng(p.neptune.tropicalLng),
-    pluto:    activationFromLng(p.pluto.tropicalLng),
+    sun:      at(sunLng),
+    earth:    at(earthLng),
+    moon:     at(p.moon.tropicalLng),
+    northNode: at(p.northNode.tropicalLng),
+    southNode: at(p.southNode.tropicalLng),
+    mercury:  at(p.mercury.tropicalLng),
+    venus:    at(p.venus.tropicalLng),
+    mars:     at(p.mars.tropicalLng),
+    jupiter:  at(p.jupiter.tropicalLng),
+    saturn:   at(p.saturn.tropicalLng),
+    uranus:   at(p.uranus.tropicalLng),
+    neptune:  at(p.neptune.tropicalLng),
+    pluto:    at(p.pluto.tropicalLng),
   };
 }
 
@@ -475,7 +485,7 @@ function deriveDefinition(
 /**
  * Profile = "${conscious sun line}/${unconscious sun line}".
  * Conscious = natal (birth) Sun activation.
- * Unconscious = design (88.736° earlier) Sun activation.
+ * Unconscious = design (Sun 88° of solar arc earlier) Sun activation.
  */
 function deriveProfile(conscious: HDActivations, unconscious: HDActivations): string {
   return `${conscious.sun.line}/${unconscious.sun.line}`;
@@ -496,10 +506,13 @@ export function buildHumanDesignChart(
   natalEphemeris: EphemerisResult,
   designEphemeris: EphemerisResult,
   designDate: Date,
+  /** Overrides for comparisons and tests only. Production uses the defaults. */
+  options: { gateStart?: number } = {},
 ): HumanDesignChart {
+  const gateStart = options.gateStart ?? GATE_START_DEGREE;
   // 1. Compute activations for conscious (natal) and unconscious (design) layers
-  const conscious   = buildActivations(natalEphemeris);
-  const unconscious = buildActivations(designEphemeris);
+  const conscious   = buildActivations(natalEphemeris, gateStart);
+  const unconscious = buildActivations(designEphemeris, gateStart);
 
   // 2. Collect all defined gates (union of both layers)
   const definedGates = collectDefinedGates(conscious, unconscious);
